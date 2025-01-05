@@ -25,19 +25,29 @@ type LogConfig struct {
 	Compress   bool   `mapstructure:"compress" toml:"compress"`
 }
 
+const DefaultPort = 8000
+
 func New() *Config {
 	v := viper.New()
 
-	v.SetDefault("server.port", 8000)
+	v.SetDefault("server.port", DefaultPort)
 
 	v.SetConfigName("config")
 	v.SetConfigType("toml")
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Failed to get current directory, %v", err)
+	}
+	// Search the current working directory first for the configuration file
+	v.AddConfigPath(cwd)
 
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Fatalf("Failed to get executable path, %v", err)
 	}
 	exeDir := filepath.Dir(exePath)
+
 	v.AddConfigPath(exeDir)
 
 	if err := v.ReadInConfig(); err != nil {

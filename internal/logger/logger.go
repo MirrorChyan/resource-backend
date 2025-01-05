@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
@@ -12,12 +13,11 @@ import (
 )
 
 func New(conf *config.Config) *zap.Logger {
-	exePath, err := os.Executable()
+	cwd, err := os.Getwd()
 	if err != nil {
-		return nil
+		panic(err)
 	}
-	exeDir := filepath.Dir(exePath)
-	logPath := filepath.Join(exeDir, "debug", "log.jsonl")
+	logPath := filepath.Join(cwd, "debug", "mirrorc-res.log")
 	hook := lumberjack.Logger{
 		Filename:   logPath,
 		MaxSize:    conf.Log.MaxSize,
@@ -26,10 +26,11 @@ func New(conf *config.Config) *zap.Logger {
 		Compress:   conf.Log.Compress,
 	}
 
-	encoder := getJsonEncoder()
+	encoder := getConsoleEncoder()
+	writer := io.MultiWriter(os.Stdout, &hook)
 	core := zapcore.NewCore(
 		encoder,
-		zapcore.AddSync(&hook),
+		zapcore.AddSync(writer),
 		getLevel(conf.Log.Level),
 	)
 	return zap.New(core, zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel))
@@ -53,11 +54,11 @@ func getLevel(level string) zapcore.Level {
 }
 
 func getLumberjackLogger(conf *config.Config) (lumberjack.Logger, error) {
-	exePath, err := os.Executable()
+	exePath, err := os.Getwd()
 	if err != nil {
 		return lumberjack.Logger{}, err
 	}
-	exeDir := filepath.Dir(exePath)
+	exeDir := exePath
 	logPath := filepath.Join(exeDir, "debug", "log.jsonl")
 	return lumberjack.Logger{
 		Filename:   logPath,
@@ -68,9 +69,9 @@ func getLumberjackLogger(conf *config.Config) (lumberjack.Logger, error) {
 	}, nil
 }
 
-func getJsonEncoder() zapcore.Encoder {
+func getConsoleEncoder() zapcore.Encoder {
 	conf := zap.NewProductionEncoderConfig()
 	conf.TimeKey = "time"
 	conf.EncodeTime = zapcore.ISO8601TimeEncoder
-	return zapcore.NewJSONEncoder(conf)
+	return zapcore.NewConsoleEncoder(conf)
 }

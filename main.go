@@ -16,34 +16,42 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
+var (
+	CTX = context.Background()
+)
+
+const BodyLimit = 50 * 1024 * 1024
+
 func main() {
 	conf := config.New()
 	l := logger.New(conf)
 
-	d, err := db.New(conf)
+	database, err := db.New(conf)
 	if err != nil {
 		l.Fatal("failed to connect to database",
 			zap.Error(err),
 		)
 	}
-	defer d.Close()
-	if err := d.Schema.Create(context.Background()); err != nil {
+	defer database.Close()
+	if err := database.Schema.Create(CTX); err != nil {
 		l.Fatal("failed creating schema resources",
 			zap.Error(err))
 	}
 
-	handlerSet := wire.NewHandlerSet(l, d)
+	handlerSet := wire.NewHandlerSet(l, database)
+
 	app := fiber.New(fiber.Config{
-		BodyLimit: 50 * 1024 * 1024,
+		BodyLimit: BodyLimit,
 	})
 	app.Use(fiberzap.New(fiberzap.Config{
 		Logger: l,
 	}))
+
 	initRoute(app, handlerSet)
 
 	addr := fmt.Sprintf(":%d", conf.Server.Port)
-	err = app.Listen(addr)
-	if err != nil {
+
+	if err := app.Listen(addr); err != nil {
 		l.Fatal("failed to start server",
 			zap.Error(err),
 		)
