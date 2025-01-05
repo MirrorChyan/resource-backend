@@ -32,5 +32,5 @@ func init() {
 	// versionDescCreatedAt is the schema descriptor for created_at field.
 	versionDescCreatedAt := versionFields[3].Descriptor()
 	// version.DefaultCreatedAt holds the default value on creation for the created_at field.
-	version.DefaultCreatedAt = versionDescCreatedAt.Default.(func() time.Time)
+	version.DefaultCreatedAt = versionDescCreatedAt.Default.(time.Time)
 }

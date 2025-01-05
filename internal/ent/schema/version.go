@@ -20,7 +20,7 @@ func (Version) Fields() []ent.Field {
 		field.Uint64("number"),
 		field.JSON("file_hashes", map[string]string{}),
 		field.Time("created_at").
-			Default(time.Now),
+			Default(time.Now()),
 	}
 }
 
