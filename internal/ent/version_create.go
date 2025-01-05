@@ -124,7 +124,7 @@ func (vc *VersionCreate) ExecX(ctx context.Context) {
 // defaults sets the default values of the builder before save.
 func (vc *VersionCreate) defaults() {
 	if _, ok := vc.mutation.CreatedAt(); !ok {
-		v := version.DefaultCreatedAt()
+		v := version.DefaultCreatedAt
 		vc.mutation.SetCreatedAt(v)
 	}
 }
