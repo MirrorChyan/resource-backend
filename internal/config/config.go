@@ -2,8 +2,6 @@ package config
 
 import (
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/viper"
 )
@@ -33,12 +31,8 @@ func New() *Config {
 	v.SetConfigName("config")
 	v.SetConfigType("toml")
 
-	exePath, err := os.Executable()
-	if err != nil {
-		log.Fatalf("Failed to get executable path, %v", err)
-	}
-	exeDir := filepath.Dir(exePath)
-	v.AddConfigPath(exeDir)
+	v.AddConfigPath("./")
+	v.AddConfigPath(".")
 
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to read config file, %v", err)
