@@ -3,9 +3,10 @@ name: build
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - "**"
+    tags:
+      - "v*"
 
 jobs:
 
