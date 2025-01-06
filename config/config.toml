@@ -7,3 +7,10 @@ max_size = 5
 max_backups = 10
 max_age = 30
 compress = true
+
+[database]
+host = "localhost"
+port = 3306
+username = "username"
+password = "password"
+name = "name"
