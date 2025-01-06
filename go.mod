@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	entgo.io/ent v0.14.1
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gofiber/contrib/fiberzap/v2 v2.1.4
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/google/wire v0.6.0
@@ -11,10 +12,7 @@ require (
 	go.uber.org/zap v1.27.0
 )
 
-require (
-	github.com/ncruces/julianday v1.0.0 // indirect
-	github.com/tetratelabs/wazero v1.8.2 // indirect
-)
+require filippo.io/edwards25519 v1.1.0 // indirect
 
 require (
 	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect
@@ -34,7 +32,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/ncruces/go-sqlite3 v0.21.3
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
