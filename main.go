@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 
+	_ "github.com/MirrorChyan/resource-backend/internal/banner"
 	_ "github.com/go-sql-driver/mysql"
 )
 

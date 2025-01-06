@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/spf13/viper"
@@ -55,6 +56,10 @@ func New() *Config {
 	}
 	// Search the current working directory first for the configuration file
 	v.AddConfigPath(cwd)
+
+	configDir := path.Join(cwd, "config")
+
+	v.AddConfigPath(configDir)
 
 	exePath, err := os.Executable()
 	if err != nil {
