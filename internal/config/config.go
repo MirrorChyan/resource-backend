@@ -12,6 +12,7 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Log      LogConfig      `mapstructure:"log"`
 	Database DatabaseConfig `mapstructure:"database"`
+	Auth     AuthConfig     `mapstructure:"auth"`
 }
 
 type ServerConfig struct {
@@ -32,6 +33,10 @@ type DatabaseConfig struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
 	Name     string `mapstructure:"name"`
+}
+
+type AuthConfig struct {
+	CDKValidationURL string `mapstructure:"cdk_validation_url"`
 }
 
 const DefaultPort = 8000

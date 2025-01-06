@@ -4,6 +4,7 @@
 package wire
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -34,7 +35,7 @@ func newHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *han
 	}
 }
 
-func NewHandlerSet(logger *zap.Logger, db *ent.Client) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client) *HandlerSet {
 	wire.Build(logicSet, handlerSet, newHandlerSet)
 	return nil
 }

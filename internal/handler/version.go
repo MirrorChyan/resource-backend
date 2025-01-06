@@ -1,14 +1,18 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
@@ -18,14 +22,16 @@ import (
 )
 
 type VersionHandler struct {
+	conf          *config.Config
 	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
 	storageLogic  *logic.StorageLogic
 }
 
-func NewVersionHandler(logger *zap.Logger, versionLogic *logic.VersionLogic, storageLogic *logic.StorageLogic) *VersionHandler {
+func NewVersionHandler(conf *config.Config, logger *zap.Logger, versionLogic *logic.VersionLogic, storageLogic *logic.StorageLogic) *VersionHandler {
 	return &VersionHandler{
+		conf:         conf,
 		logger:       logger,
 		versionLogic: versionLogic,
 		storageLogic: storageLogic,
@@ -34,6 +40,7 @@ func NewVersionHandler(logger *zap.Logger, versionLogic *logic.VersionLogic, sto
 
 func (h *VersionHandler) Register(r fiber.Router) {
 	r.Post("/resources/:resID/versions", h.Create)
+	r.Use("/resources/:resID/versions/latest", h.ValidateCDK)
 	r.Get("/resources/:resID/versions/latest", h.GetLatest)
 }
 
@@ -198,6 +205,60 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+type ValidateCDKRequest struct {
+	CDK             string `json:"cdk"`
+	SpecificationID string `json:"specificationId"`
+}
+
+func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
+	h.logger.Debug("Validating CDK")
+	cdk := c.Get("X-CDK")
+	if cdk == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Missing X-CDK header",
+		})
+	}
+	specificationID := c.Get("X-Specification-ID")
+	if specificationID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Missing X-Specification-ID header",
+		})
+	}
+
+	reqData := ValidateCDKRequest{
+		CDK:             cdk,
+		SpecificationID: specificationID,
+	}
+
+	jsonData, err := json.Marshal(reqData)
+	if err != nil {
+		h.logger.Error("Failed to marshal JSON",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to marshal JSON",
+		})
+	}
+
+	resp, err := http.Post(h.conf.Auth.CDKValidationURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		h.logger.Error("Failed to send request",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to send request",
+		})
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "CDK validation failed",
+		})
+	}
+
+	return c.Next()
 }
 
 type GetLatestVersionRequest struct {

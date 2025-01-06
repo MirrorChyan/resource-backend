@@ -37,7 +37,7 @@ func main() {
 			zap.Error(err))
 	}
 
-	handlerSet := wire.NewHandlerSet(l, database)
+	handlerSet := wire.NewHandlerSet(conf, l, database)
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: BodyLimit,

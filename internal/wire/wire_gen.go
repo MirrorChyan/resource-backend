@@ -7,6 +7,7 @@
 package wire
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -16,12 +17,12 @@ import (
 
 // Injectors from wire.go:
 
-func NewHandlerSet(logger *zap.Logger, db *ent.Client) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client) *HandlerSet {
 	resourceLogic := logic.NewResourceLogic(logger, db)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
 	versionLogic := logic.NewVersionLogic(logger, db)
 	storageLogic := logic.NewStorageLogic(logger, db)
-	versionHandler := handler.NewVersionHandler(logger, versionLogic, storageLogic)
+	versionHandler := handler.NewVersionHandler(conf, logger, versionLogic, storageLogic)
 	wireHandlerSet := newHandlerSet(resourceHandler, versionHandler)
 	return wireHandlerSet
 }

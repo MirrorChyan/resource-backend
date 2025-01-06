@@ -14,3 +14,6 @@ port = 3306
 username = "username"
 password = "password"
 name = "name"
+
+[auth]
+cdk_validation_url = "https://cdk.validation.example"
