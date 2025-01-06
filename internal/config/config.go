@@ -18,11 +18,11 @@ type ServerConfig struct {
 }
 
 type LogConfig struct {
-	Level      string `mapstructure:"level" toml:"level"`
-	MaxSize    int    `mapstructure:"max_size" toml:"max_size"`
-	MaxBackups int    `mapstructure:"max_backups" toml:"max_backups"`
-	MaxAge     int    `mapstructure:"max_age" toml:"max_age"`
-	Compress   bool   `mapstructure:"compress" toml:"compress"`
+	Level      string `mapstructure:"level"`
+	MaxSize    int    `mapstructure:"max_size"`
+	MaxBackups int    `mapstructure:"max_backups"`
+	MaxAge     int    `mapstructure:"max_age"`
+	Compress   bool   `mapstructure:"compress"`
 }
 
 const DefaultPort = 8000
