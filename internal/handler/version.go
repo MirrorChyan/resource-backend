@@ -257,6 +257,11 @@ type ValidateCDKRequest struct {
 	SpecificationID string `json:"specificationId"`
 }
 
+type ValidateCDKResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+}
+
 func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 	h.logger.Debug("Validating CDK")
 	cdk := c.Get("X-CDK")
@@ -298,6 +303,22 @@ func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "CDK validation failed",
+		})
+	}
+
+	var res ValidateCDKResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		h.logger.Error("Failed to decode response",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to decode response",
+		})
+	}
+
+	if res.Code != 0 {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "CDK validation failed",
 		})
