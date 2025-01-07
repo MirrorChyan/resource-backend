@@ -121,7 +121,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	saveDir := fmt.Sprintf("./storage/%s/%s/resource", resID, name)
+	storageRootDir := filepath.Join(cwd, "storage")
+	saveDir := filepath.Join(storageRootDir, resID, name, "resource")
 	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 		h.logger.Error("Failed to create storage directory",
 			zap.Error(err),
@@ -322,8 +323,17 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	changes, err := patcher.CalculateDiff(latest.FileHashes, current.FileHashes)
 
-	patchDir := fmt.Sprintf("./storage/%s/%s/patch", resIDStr, latest.Name)
-
+	cwd, err := os.Getwd()
+	if err != nil {
+		h.logger.Error("Failed to get current directory",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to get current directory",
+		})
+	}
+	storageRootDir := filepath.Join(cwd, "storage")
+	patchDir := filepath.Join(storageRootDir, resIDStr, latest.Name, "patch")
 	patchName := fmt.Sprintf("%s-%s", current.Name, latest.Name)
 	latestStorage, err := h.storageLogic.GetByVersionID(ctx, latest.ID)
 	if err != nil {
