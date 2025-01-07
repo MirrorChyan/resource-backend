@@ -25,7 +25,7 @@ jobs:
           go-version: '1.23'
 
       - name: Build
-        run: go build -o resource-backend
+        run: go build -o ./bin/app
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
