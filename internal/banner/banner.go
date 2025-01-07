@@ -1,19 +1,14 @@
 package banner
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 )
 
-const banner = `
-███╗   ███╗ █████╗  █████╗ ███████╗██╗    ██╗
-████╗ ████║██╔══██╗██╔══██╗██╔════╝██║    ██║
-██╔████╔██║███████║███████║█████╗  ██║ █╗ ██║
-██║╚██╔╝██║██╔══██║██╔══██║██╔══╝  ██║███╗██║
-██║ ╚═╝ ██║██║  ██║██║  ██║██║     ╚███╔███╔╝
-╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝      ╚══╝╚══╝
-`
+//go:embed banner.txt
+var banner string
 
 func init() {
-	fmt.Print(strings.TrimSpace(banner))
+	fmt.Println(strings.TrimSpace(banner))
 }
