@@ -71,7 +71,7 @@ type CreateVersionResponse struct {
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
-	resID := c.Params("resID")
+	resIDStr := c.Params("resID")
 	name := c.FormValue("name")
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -122,7 +122,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	storageRootDir := filepath.Join(cwd, "storage")
-	saveDir := filepath.Join(storageRootDir, resID, name, "resource")
+	saveDir := filepath.Join(storageRootDir, resIDStr, name, "resource")
 	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 		h.logger.Error("Failed to create storage directory",
 			zap.Error(err),
@@ -157,7 +157,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	resIDInt, err := strconv.Atoi(resID)
+	resID, err := strconv.Atoi(resIDStr)
 	if err != nil {
 		h.logger.Error("Failed to convert resource ID to int",
 			zap.Error(err),
@@ -168,7 +168,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	param := logic.CreateVersionParam{
-		ResourceID:  resIDInt,
+		ResourceID:  resID,
 		Name:        name,
 		ResourceDir: saveDir,
 	}
@@ -277,7 +277,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		})
 	}
 
-	resIDInt, err := strconv.Atoi(resIDStr)
+	resID, err := strconv.Atoi(resIDStr)
 	if err != nil {
 		h.logger.Error("Failed to convert resource ID to int",
 			zap.Error(err),
@@ -288,7 +288,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	latest, err := h.versionLogic.GetLatest(ctx, resIDInt)
+	latest, err := h.versionLogic.GetLatest(ctx, resID)
 	if err != nil {
 		h.logger.Error("Failed to get latest version",
 			zap.Error(err),
@@ -307,7 +307,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	getCurrentVersionParam := logic.GetVersionByNameParam{
-		ResourceID: resIDInt,
+		ResourceID: resID,
 		Name:       req.CurrentVersion,
 	}
 	current, err := h.versionLogic.GetByName(ctx, getCurrentVersionParam)
