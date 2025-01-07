@@ -147,6 +147,14 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 	tempRootDir := filepath.Join(cwd, "temp")
+	if err := os.MkdirAll(tempRootDir, os.ModePerm); err != nil {
+		h.logger.Error("Failed to create temp root directory",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to create temp root directory",
+		})
+	}
 	tempDir, err := os.MkdirTemp(tempRootDir, "version")
 	if err != nil {
 		h.logger.Error("Failed to create temp directory", zap.Error(err))

@@ -90,6 +90,9 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 		return "", err
 	}
 	tempRootDir := filepath.Join(cwd, "temp")
+	if err := os.MkdirAll(tempRootDir, os.ModePerm); err != nil {
+		return "", fmt.Errorf("failed to create temp root directory: %w", err)
+	}
 	tempDir, err := os.MkdirTemp(tempRootDir, "patch")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
