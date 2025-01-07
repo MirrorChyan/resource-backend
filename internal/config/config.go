@@ -37,7 +37,8 @@ type DatabaseConfig struct {
 }
 
 type AuthConfig struct {
-	CDKValidationURL string `mapstructure:"cdk_validation_url"`
+	UploaderValidationURL string `mapstructure:"uploader_validation_url"`
+	CDKValidationURL      string `mapstructure:"cdk_validation_url"`
 }
 
 const DefaultPort = 8000

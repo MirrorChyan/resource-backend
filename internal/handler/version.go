@@ -38,9 +38,54 @@ func NewVersionHandler(conf *config.Config, logger *zap.Logger, versionLogic *lo
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
+	r.Use("/resources/:resID/versions", h.ValidateUploader)
 	r.Post("/resources/:resID/versions", h.Create)
 	r.Use("/resources/:resID/versions/latest", h.ValidateCDK)
 	r.Get("/resources/:resID/versions/latest", h.GetLatest)
+}
+
+type ValidateUploaderResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+}
+
+func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
+	token := c.Get("Authorization")
+	if token == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Missing authorization header",
+		})
+	}
+
+	url := fmt.Sprintf("%s?token=%s", h.conf.Auth.UploaderValidationURL, token)
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Invalid authorization token",
+		})
+	}
+
+	var res ValidateUploaderResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if res.Code != 0 {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Invalid authorization token",
+		})
+	}
+
+	return c.Next()
 }
 
 func (h *VersionHandler) isValidExtension(filename string) bool {
