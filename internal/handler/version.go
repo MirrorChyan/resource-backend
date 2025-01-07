@@ -16,7 +16,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/rand"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -93,18 +92,18 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	tempDirName, err := rand.TempDirName()
+	cwd, err := os.Getwd()
 	if err != nil {
-		h.logger.Error("Failed to generate temp directory name",
+		h.logger.Error("Failed to get current directory",
 			zap.Error(err),
 		)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to generate temp directory name",
+			"error": "Failed to get current directory",
 		})
 	}
-
-	tempDir := fmt.Sprintf("./temp/%s", tempDirName)
-	if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
+	tempRootDir := filepath.Join(cwd, "temp")
+	tempDir, err := os.MkdirTemp(tempRootDir, "version")
+	if err != nil {
 		h.logger.Error("Failed to create temp directory", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to create temp directory",

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/rand"
 )
 
 type ChangeType int
@@ -86,13 +85,13 @@ func copyFile(src, dst string) error {
 }
 
 func Generate(patchName, resDir, targetDir string, changes []Change) (string, error) {
-	tempDirName, err := rand.TempDirName()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	tempDir := fmt.Sprintf("./temp/%s", tempDirName)
-
-	if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
+	tempRootDir := filepath.Join(cwd, "temp")
+	tempDir, err := os.MkdirTemp(tempRootDir, "patch")
+	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
