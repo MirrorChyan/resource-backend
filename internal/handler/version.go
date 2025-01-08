@@ -38,10 +38,10 @@ func NewVersionHandler(conf *config.Config, logger *zap.Logger, versionLogic *lo
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
-	r.Use("/resources/:resID/versions", h.ValidateUploader)
-	r.Post("/resources/:resID/versions", h.Create)
 	r.Use("/resources/:resID/versions/latest", h.ValidateCDK)
 	r.Get("/resources/:resID/versions/latest", h.GetLatest)
+	r.Use("/resources/:resID/versions", h.ValidateUploader)
+	r.Post("/resources/:resID/versions", h.Create)
 }
 
 type ValidateUploaderResponse struct {
