@@ -214,9 +214,10 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	resp := CreateVersionResponse{
-		ID:     version.ID,
-		Name:   version.Name,
-		Number: version.Number,
+		ID:        version.ID,
+		Name:      version.Name,
+		Number:    version.Number,
+		CreatedAt: version.CreatedAt,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(resp)
