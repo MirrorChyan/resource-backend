@@ -13,6 +13,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"go.uber.org/zap"
 )
 
@@ -129,7 +130,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 
 	archivePath := filepath.Join(versionDir, "resource.zip")
 	if strings.HasSuffix(param.UploadArchivePath, ".zip") {
-		err = os.Rename(param.UploadArchivePath, archivePath)
+		err = fileops.MoveFile(param.UploadArchivePath, archivePath)
 		if err != nil {
 			l.logger.Error("Failed to move archive file",
 				zap.String("origin path", param.UploadArchivePath),
