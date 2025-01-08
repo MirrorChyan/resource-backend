@@ -15,7 +15,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -174,42 +173,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	storageRootDir := filepath.Join(cwd, "storage")
-	saveDir := filepath.Join(storageRootDir, resIDStr, name, "resource")
-	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
-		h.logger.Error("Failed to create storage directory",
-			zap.Error(err),
-		)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to create storage directory",
-		})
-	}
-
-	var unpackErr error
-	if strings.HasSuffix(file.Filename, ".zip") {
-		unpackErr = archive.UnpackZip(tempPath, saveDir)
-	} else if strings.HasSuffix(file.Filename, ".tar.gz") {
-		unpackErr = archive.UnpackTarGz(tempPath, saveDir)
-	}
-
-	if unpackErr != nil {
-		h.logger.Error("Failed to unpack file",
-			zap.Error(unpackErr),
-		)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to unpack file",
-		})
-	}
-
-	if err := os.Remove(tempPath); err != nil {
-		h.logger.Error("Failed to remove temp file",
-			zap.Error(err),
-		)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to remove temp file",
-		})
-	}
-
 	resID, err := strconv.Atoi(resIDStr)
 	if err != nil {
 		h.logger.Error("Failed to convert resource ID to int",
@@ -220,14 +183,13 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	param := logic.CreateVersionParam{
-		ResourceID:  resID,
-		Name:        name,
-		ResourceDir: saveDir,
-	}
-
 	ctx := context.Background()
-	version, err := h.versionLogic.Create(ctx, param)
+	createVersionParam := logic.CreateVersionParam{
+		ResourceID:        resID,
+		Name:              name,
+		UploadArchivePath: tempPath,
+	}
+	version, saveDir, err := h.versionLogic.Create(ctx, createVersionParam)
 	if err != nil {
 		h.logger.Error("Failed to create version",
 			zap.Error(err),
