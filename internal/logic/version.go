@@ -139,7 +139,15 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return l.createRollbackRemoveSaveDir(tx, err, saveDir)
 	}
 
-	return v, saveDir, err
+	err = tx.Commit()
+	if err != nil {
+		l.logger.Error("Failed to commit transaction",
+			zap.Error(err),
+		)
+		return nil, "", err
+	}
+
+	return v, saveDir, nil
 }
 
 func (l *VersionLogic) createRollback(tx *ent.Tx, err error) (*ent.Version, string, error) {
