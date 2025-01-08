@@ -98,7 +98,8 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return l.createRollback(tx, err)
 	}
 	storageRootDir := filepath.Join(cwd, "storage")
-	saveDir := filepath.Join(storageRootDir, strconv.Itoa(param.ResourceID), strconv.Itoa(v.ID), "resource")
+	versionDir := filepath.Join(storageRootDir, strconv.Itoa(param.ResourceID), strconv.Itoa(v.ID))
+	saveDir := filepath.Join(versionDir, "resource")
 	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 		l.logger.Error("Failed to create storage directory",
 			zap.Error(err),
@@ -126,11 +127,34 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return l.createRollbackRemoveSaveDir(tx, err, saveDir)
 	}
 
-	if err := os.Remove(param.UploadArchivePath); err != nil {
-		l.logger.Error("Failed to remove temp file",
-			zap.Error(err),
-		)
-		return l.createRollbackRemoveSaveDir(tx, err, saveDir)
+	archivePath := filepath.Join(versionDir, "resource.zip")
+	if strings.HasSuffix(param.UploadArchivePath, ".zip") {
+		err = os.Rename(param.UploadArchivePath, archivePath)
+		if err != nil {
+			l.logger.Error("Failed to move archive file",
+				zap.String("origin path", param.UploadArchivePath),
+				zap.String("destination path", archivePath),
+				zap.Error(err),
+			)
+			return l.createRollbackRemoveSaveDir(tx, err, saveDir)
+		}
+	} else {
+		if err := os.Remove(param.UploadArchivePath); err != nil {
+			l.logger.Error("Failed to remove temp file",
+				zap.Error(err),
+			)
+			return l.createRollbackRemoveSaveDir(tx, err, saveDir)
+		}
+		err = archive.CompressToZip(saveDir, archivePath)
+		if err != nil {
+			l.logger.Error("Failed to compress to zip",
+				zap.String("src dir", saveDir),
+				zap.String("dst file", archivePath),
+				zap.Error(err),
+			)
+			return l.createRollbackRemoveSaveDir(tx, err, saveDir)
+		}
+
 	}
 
 	fileHashes, err := filehash.GetAll(saveDir)
