@@ -236,12 +236,14 @@ func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 	h.logger.Debug("Validating CDK")
 	cdk := c.Get("X-CDK")
 	if cdk == "" {
+		h.logger.Error("Missing X-CDK header")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Missing X-CDK header",
 		})
 	}
 	specificationID := c.Get("X-Specification-ID")
 	if specificationID == "" {
+		h.logger.Error("Missing X-Specification-ID header")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Missing X-Specification-ID header",
 		})
@@ -273,6 +275,9 @@ func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		h.logger.Error("CDK validation failed",
+			zap.Int("status_code", resp.StatusCode),
+		)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "CDK validation failed",
 		})
@@ -289,6 +294,10 @@ func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 	}
 
 	if res.Code != 0 {
+		h.logger.Info("CDK validation failed",
+			zap.Int("code", res.Code),
+			zap.String("msg", res.Msg),
+		)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "CDK validation failed",
 		})
