@@ -28,6 +28,18 @@ func NewVersionLogic(logger *zap.Logger, db *ent.Client) *VersionLogic {
 	}
 }
 
+type VersionNameExistsParam struct {
+	ResourceID int
+	Name       string
+}
+
+func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
+	return l.db.Version.Query().
+		Where(version.HasResourceWith(resource.ID(param.ResourceID))).
+		Where(version.Name(param.Name)).
+		Exist(ctx)
+}
+
 func (l *VersionLogic) GetLatest(ctx context.Context, resourceID int) (*ent.Version, error) {
 	return l.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(resourceID))).

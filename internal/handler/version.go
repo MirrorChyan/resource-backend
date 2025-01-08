@@ -136,6 +136,38 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
+	resID, err := strconv.Atoi(resIDStr)
+	if err != nil {
+		h.logger.Error("Failed to convert resource ID to int",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid resource ID",
+		})
+	}
+
+	ctx := context.Background()
+	versionNameExistsParam := logic.VersionNameExistsParam{
+		ResourceID: resID,
+		Name:       name,
+	}
+	exists, err := h.versionLogic.NameExists(ctx, versionNameExistsParam)
+	if err != nil {
+		h.logger.Error("Failed to check if version name exists")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to check if version name exists",
+		})
+	}
+	if exists {
+		h.logger.Info("Version name already exists",
+			zap.String("resource id", resIDStr),
+			zap.String("version name", name),
+		)
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error": "Version name already exists",
+		})
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		h.logger.Error("Failed to get current directory",
@@ -173,17 +205,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	resID, err := strconv.Atoi(resIDStr)
-	if err != nil {
-		h.logger.Error("Failed to convert resource ID to int",
-			zap.Error(err),
-		)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid resource ID",
-		})
-	}
-
-	ctx := context.Background()
 	createVersionParam := logic.CreateVersionParam{
 		ResourceID:        resID,
 		Name:              name,
