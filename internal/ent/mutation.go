@@ -1324,9 +1324,22 @@ func (m *VersionMutation) OldFileHashes(ctx context.Context) (v map[string]strin
 	return oldValue.FileHashes, nil
 }
 
+// ClearFileHashes clears the value of the "file_hashes" field.
+func (m *VersionMutation) ClearFileHashes() {
+	m.file_hashes = nil
+	m.clearedFields[version.FieldFileHashes] = struct{}{}
+}
+
+// FileHashesCleared returns if the "file_hashes" field was cleared in this mutation.
+func (m *VersionMutation) FileHashesCleared() bool {
+	_, ok := m.clearedFields[version.FieldFileHashes]
+	return ok
+}
+
 // ResetFileHashes resets all changes to the "file_hashes" field.
 func (m *VersionMutation) ResetFileHashes() {
 	m.file_hashes = nil
+	delete(m.clearedFields, version.FieldFileHashes)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -1619,7 +1632,11 @@ func (m *VersionMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *VersionMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(version.FieldFileHashes) {
+		fields = append(fields, version.FieldFileHashes)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1632,6 +1649,11 @@ func (m *VersionMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *VersionMutation) ClearField(name string) error {
+	switch name {
+	case version.FieldFileHashes:
+		m.ClearFileHashes()
+		return nil
+	}
 	return fmt.Errorf("unknown Version nullable field %s", name)
 }
 

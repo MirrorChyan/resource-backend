@@ -71,6 +71,12 @@ func (vu *VersionUpdate) SetFileHashes(m map[string]string) *VersionUpdate {
 	return vu
 }
 
+// ClearFileHashes clears the value of the "file_hashes" field.
+func (vu *VersionUpdate) ClearFileHashes() *VersionUpdate {
+	vu.mutation.ClearFileHashes()
+	return vu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (vu *VersionUpdate) SetCreatedAt(t time.Time) *VersionUpdate {
 	vu.mutation.SetCreatedAt(t)
@@ -198,6 +204,9 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := vu.mutation.FileHashes(); ok {
 		_spec.SetField(version.FieldFileHashes, field.TypeJSON, value)
+	}
+	if vu.mutation.FileHashesCleared() {
+		_spec.ClearField(version.FieldFileHashes, field.TypeJSON)
 	}
 	if value, ok := vu.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)
@@ -334,6 +343,12 @@ func (vuo *VersionUpdateOne) AddNumber(u int64) *VersionUpdateOne {
 // SetFileHashes sets the "file_hashes" field.
 func (vuo *VersionUpdateOne) SetFileHashes(m map[string]string) *VersionUpdateOne {
 	vuo.mutation.SetFileHashes(m)
+	return vuo
+}
+
+// ClearFileHashes clears the value of the "file_hashes" field.
+func (vuo *VersionUpdateOne) ClearFileHashes() *VersionUpdateOne {
+	vuo.mutation.ClearFileHashes()
 	return vuo
 }
 
@@ -494,6 +509,9 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 	}
 	if value, ok := vuo.mutation.FileHashes(); ok {
 		_spec.SetField(version.FieldFileHashes, field.TypeJSON, value)
+	}
+	if vuo.mutation.FileHashesCleared() {
+		_spec.ClearField(version.FieldFileHashes, field.TypeJSON)
 	}
 	if value, ok := vuo.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)

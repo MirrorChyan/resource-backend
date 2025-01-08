@@ -137,9 +137,6 @@ func (vc *VersionCreate) check() error {
 	if _, ok := vc.mutation.Number(); !ok {
 		return &ValidationError{Name: "number", err: errors.New(`ent: missing required field "Version.number"`)}
 	}
-	if _, ok := vc.mutation.FileHashes(); !ok {
-		return &ValidationError{Name: "file_hashes", err: errors.New(`ent: missing required field "Version.file_hashes"`)}
-	}
 	if _, ok := vc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Version.created_at"`)}
 	}

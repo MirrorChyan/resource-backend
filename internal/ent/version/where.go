@@ -175,6 +175,16 @@ func NumberLTE(v uint64) predicate.Version {
 	return predicate.Version(sql.FieldLTE(FieldNumber, v))
 }
 
+// FileHashesIsNil applies the IsNil predicate on the "file_hashes" field.
+func FileHashesIsNil() predicate.Version {
+	return predicate.Version(sql.FieldIsNull(FieldFileHashes))
+}
+
+// FileHashesNotNil applies the NotNil predicate on the "file_hashes" field.
+func FileHashesNotNil() predicate.Version {
+	return predicate.Version(sql.FieldNotNull(FieldFileHashes))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Version {
 	return predicate.Version(sql.FieldEQ(FieldCreatedAt, v))

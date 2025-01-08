@@ -18,7 +18,8 @@ func (Version) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name"),
 		field.Uint64("number"),
-		field.JSON("file_hashes", map[string]string{}),
+		field.JSON("file_hashes", map[string]string{}).
+			Optional(),
 		field.Time("created_at").
 			Default(time.Now()),
 	}

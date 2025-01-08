@@ -48,7 +48,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "number", Type: field.TypeUint64},
-		{Name: "file_hashes", Type: field.TypeJSON},
+		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "resource_versions", Type: field.TypeInt, Nullable: true},
 	}
