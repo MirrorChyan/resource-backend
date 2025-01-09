@@ -400,7 +400,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		})
 	}
 	storageRootDir := filepath.Join(cwd, "storage")
-	patchDir := filepath.Join(storageRootDir, resIDStr, latest.Name, "patch")
+	patchDir := filepath.Join(storageRootDir, resIDStr, strconv.Itoa(latest.ID), "patch")
 	patchName := fmt.Sprintf("%s-%s", current.Name, latest.Name)
 	latestStorage, err := h.storageLogic.GetByVersionID(ctx, latest.ID)
 	if err != nil {
