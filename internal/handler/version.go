@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/gofiber/fiber/v2"
@@ -366,29 +367,13 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if latest.Name == req.CurrentVersion {
-		c.Set("X-Latest-Version", latest.Name)
 		c.Set("X-New-Version-Available", "false")
+		c.Set("X-Latest-Version", latest.Name)
+		c.Set("X-Update-Type", "none")
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "No new version available",
 		})
 	}
-
-	getCurrentVersionParam := logic.GetVersionByNameParam{
-		ResourceID: resID,
-		Name:       req.CurrentVersion,
-	}
-	current, err := h.versionLogic.GetByName(ctx, getCurrentVersionParam)
-	if err != nil {
-		h.logger.Error("Failed to get current version",
-			zap.String("version name", req.CurrentVersion),
-			zap.Error(err),
-		)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to get current version",
-		})
-	}
-
-	changes, err := patcher.CalculateDiff(latest.FileHashes, current.FileHashes)
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -400,7 +385,40 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		})
 	}
 	storageRootDir := filepath.Join(cwd, "storage")
-	patchDir := filepath.Join(storageRootDir, resIDStr, strconv.Itoa(latest.ID), "patch")
+	versionDir := filepath.Join(storageRootDir, resIDStr, strconv.Itoa(latest.ID))
+
+	resArchivePath := filepath.Join(versionDir, "resource.zip")
+	if req.CurrentVersion == "" {
+		c.Set("X-New-Version-Available", "true")
+		c.Set("X-Latest-Version", latest.Name)
+		c.Set("X-Update-Type", "full")
+		return c.Status(fiber.StatusOK).Download(resArchivePath)
+	}
+
+	getCurrentVersionParam := logic.GetVersionByNameParam{
+		ResourceID: resID,
+		Name:       req.CurrentVersion,
+	}
+	current, err := h.versionLogic.GetByName(ctx, getCurrentVersionParam)
+	if ent.IsNotFound(err) {
+		c.Set("X-New-Version-Available", "true")
+		c.Set("X-Latest-Version", latest.Name)
+		c.Set("X-Update-Type", "full")
+		return c.Status(fiber.StatusOK).Download(resArchivePath)
+
+	} else if err != nil {
+		h.logger.Error("Failed to get current version",
+			zap.String("version name", req.CurrentVersion),
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to get current version",
+		})
+	}
+
+	changes, err := patcher.CalculateDiff(latest.FileHashes, current.FileHashes)
+
+	patchDir := filepath.Join(versionDir, "patch")
 	patchName := fmt.Sprintf("%s-%s", current.Name, latest.Name)
 	latestStorage, err := h.storageLogic.GetByVersionID(ctx, latest.ID)
 	if err != nil {
@@ -423,5 +441,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	c.Set("X-New-Version-Available", "true")
 	c.Set("X-Latest-Version", latest.Name)
+	c.Set("X-Update-Type", "incremental")
 	return c.Status(fiber.StatusOK).Download(filepath.Join(patchDir, archvieName))
 }
