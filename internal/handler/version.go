@@ -298,11 +298,11 @@ func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		h.logger.Error("CDK validation failed",
+		h.logger.Error("CDK validation request error",
 			zap.Int("status_code", resp.StatusCode),
 		)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "CDK validation failed",
+			"error": "Internal Server Error",
 		})
 	}
 
@@ -316,13 +316,21 @@ func (h *VersionHandler) ValidateCDK(c *fiber.Ctx) error {
 		})
 	}
 
-	if res.Code != 0 {
+	if res.Code == 1 {
 		h.logger.Info("CDK validation failed",
 			zap.Int("code", res.Code),
 			zap.String("msg", res.Msg),
 		)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "CDK validation failed",
+			"error": res.Msg,
+		})
+	} else if res.Code == -1 {
+		h.logger.Error("CDK validation failed",
+			zap.Int("code", res.Code),
+			zap.String("msg", res.Msg),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Internal Server Error",
 		})
 	}
 
