@@ -45,9 +45,10 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		resp := response.BusinessError("failed to parse request body")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+
+	if req.Name == "" {
+		resp := response.BusinessError("name is required")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
 	param := logic.CreateResourceParam{
