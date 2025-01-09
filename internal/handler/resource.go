@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 
+	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -29,9 +30,21 @@ type CreateResourceRequest struct {
 	Description string `json:"description"`
 }
 
+type CreateResourceResponseData struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 	req := &CreateResourceRequest{}
 	if err := c.BodyParser(req); err != nil {
+		h.logger.Error("failed to parse request body",
+			zap.Error(err),
+		)
+		resp := response.BusinessError("failed to parse request body")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -45,10 +58,15 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 	ctx := context.Background()
 	res, err := h.resourceLogic.Create(ctx, param)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		resp := response.UnexpectedError("internal server error")
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(res)
+	data := CreateResourceResponseData{
+		ID:          res.ID,
+		Name:        res.Name,
+		Description: res.Description,
+	}
+	resp := response.Success(data)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }
