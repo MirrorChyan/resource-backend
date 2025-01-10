@@ -40,7 +40,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		h.logger.Error("failed to parse request body",
 			zap.Error(err),
 		)
-		resp := response.BusinessError("failed to parse request body")
+		resp := response.BusinessError("invalid param")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
