@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"context"
-
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/gofiber/fiber/v2"
@@ -56,8 +54,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		Description: req.Description,
 	}
 
-	ctx := context.Background()
-	res, err := h.resourceLogic.Create(ctx, param)
+	res, err := h.resourceLogic.Create(c.UserContext(), param)
 	if err != nil {
 		resp := response.UnexpectedError("internal server error")
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
