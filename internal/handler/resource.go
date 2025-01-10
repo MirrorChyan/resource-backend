@@ -56,7 +56,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 
 	res, err := h.resourceLogic.Create(c.UserContext(), param)
 	if err != nil {
-		resp := response.UnexpectedError("internal server error")
+		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 

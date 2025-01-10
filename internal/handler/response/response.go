@@ -28,6 +28,12 @@ func BusinessError(msg string) *Response {
 	return New(CodeBusiness, msg, nil)
 }
 
-func UnexpectedError(msg string) *Response {
-	return New(CodeUnexpected, msg, nil)
+func UnexpectedError(msg ...string) *Response {
+	var msgStr string
+	if len(msg) > 0 {
+		msgStr = msg[0]
+	} else {
+		msgStr = "internal server error"
+	}
+	return New(CodeUnexpected, msgStr, nil)
 }
