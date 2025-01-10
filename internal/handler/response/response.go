@@ -20,8 +20,14 @@ func New(code int, msg string, data interface{}) *Response {
 	}
 }
 
-func Success(data interface{}) *Response {
-	return New(CodeSuccess, "success", data)
+func Success(data interface{}, msg ...string) *Response {
+	var msgStr string
+	if len(msg) > 0 {
+		msgStr = msg[0]
+	} else {
+		msgStr = "success"
+	}
+	return New(CodeSuccess, msgStr, data)
 }
 
 func BusinessError(msg string) *Response {
