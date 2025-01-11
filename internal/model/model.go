@@ -1,10 +1,9 @@
 package model
 
 type UpdateResourceParam struct {
-	ID            int
-	Name          string
-	Description   string
-	LatestVersion string
+	ID          int
+	Name        string
+	Description string
 }
 
 type ListResourceParam struct {
