@@ -56,13 +56,13 @@ type ValidateCDKResponse struct {
 type GetLatestVersionRequest struct {
 	CurrentVersion string `query:"current_version"`
 	CDK            string `query:"cdk"`
-	SpId           string `query:"sp_id"`
+	SpID           string `query:"sp_id"`
 }
 
 type QueryLatestResponseData struct {
-	VersionName string `json:"version_name"`
-	Number      uint64 `json:"number"`
-	Url         string `json:"url"`
+	VersionName   string `json:"version_name"`
+	VersionNumber uint64 `json:"version_number"`
+	Url           string `json:"url"`
 }
 
 type CreateVersionResponseData struct {

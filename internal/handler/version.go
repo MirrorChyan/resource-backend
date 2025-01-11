@@ -383,14 +383,14 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	resp := QueryLatestResponseData{
-		VersionName: latest.Name,
-		Number:      latest.Number,
+		VersionName:   latest.Name,
+		VersionNumber: latest.Number,
 	}
 	if req.CDK == "" {
 		return c.Status(fiber.StatusOK).JSON(response.Success(resp, "current resource latest version is "+latest.Name))
 	}
 
-	if err := h.ValidateCDK(req.CDK, req.SpId); err != nil {
+	if err := h.ValidateCDK(req.CDK, req.SpID); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound):
