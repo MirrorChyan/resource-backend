@@ -57,9 +57,8 @@ const (
 var (
 	CTX = context.Background()
 
-	CdkNotfound   = errors.New("no cdk")
-	SpIdNotfound  = errors.New("no sp_id")
-	ValidateError = errors.New("cdk validate error")
+	CdkNotfound  = errors.New("no cdk")
+	SpIdNotfound = errors.New("no sp_id")
 )
 
 type RemoteError string
@@ -69,7 +68,6 @@ func (r RemoteError) Error() string {
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
-	r.Get("/resources/:rid/versions/latest/query", h.QueryLatest)
 
 	r.Get("/resources/:rid/latest", h.GetLatest)
 	r.Get("/resources/download/:key", h.Download)
@@ -284,60 +282,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 	resp := response.Success(data)
 	return c.Status(fiber.StatusCreated).JSON(resp)
-}
-
-func (h *VersionHandler) QueryLatest(c *fiber.Ctx) error {
-	resIDStr := c.Params(resourceKey)
-	resID, err := strconv.Atoi(resIDStr)
-	if err != nil {
-		h.logger.Error("Failed to convert resource ID to int",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid resource ID")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	exists, err := h.resourceLogic.Exists(c.UserContext(), resID)
-	if err != nil {
-		h.logger.Error("Failed to check if resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	if !exists {
-		h.logger.Error("Resource not found",
-			zap.Int("resource id", resID),
-		)
-		resp := response.BusinessError("resource not found")
-		err := c.Status(fiber.StatusNotFound).JSON(resp)
-		if err != nil {
-			return err
-		}
-	}
-
-	latest, err := h.versionLogic.GetLatest(c.UserContext(), resID)
-	if ent.IsNotFound(err) {
-		h.logger.Error("Version not found",
-			zap.Int("resource id", resID),
-			zap.Error(err),
-		)
-		resp := response.BusinessError("version not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	} else if err != nil {
-		h.logger.Error("Failed to get latest version",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	data := QueryLatestResponseData{
-		VersionName: latest.Name,
-		Number:      latest.Number,
-	}
-	resp := response.Success(data)
-	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
 func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
