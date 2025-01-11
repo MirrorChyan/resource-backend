@@ -22,7 +22,7 @@ func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client) *Han
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
 	versionLogic := logic.NewVersionLogic(logger, db)
 	storageLogic := logic.NewStorageLogic(logger, db)
-	versionHandler := handler.NewVersionHandler(conf, logger, versionLogic, storageLogic)
+	versionHandler := handler.NewVersionHandler(conf, logger, resourceLogic, versionLogic, storageLogic)
 	wireHandlerSet := newHandlerSet(resourceHandler, versionHandler)
 	return wireHandlerSet
 }

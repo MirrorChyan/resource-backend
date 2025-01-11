@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"go.uber.org/zap"
 )
 
@@ -29,6 +30,12 @@ func (l *ResourceLogic) Create(ctx context.Context, param CreateResourceParam) (
 		SetName(param.Name).
 		SetDescription(param.Description).
 		Save(ctx)
+}
+
+func (l *ResourceLogic) Exists(ctx context.Context, id int) (bool, error) {
+	return l.db.Resource.Query().
+		Where(resource.ID(id)).
+		Exist(ctx)
 }
 
 func (l *ResourceLogic) GetByID(ctx context.Context, id int) (*ent.Resource, error) {

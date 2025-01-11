@@ -28,16 +28,24 @@ type VersionHandler struct {
 	storageLogic  *logic.StorageLogic
 }
 
-func NewVersionHandler(conf *config.Config, logger *zap.Logger, versionLogic *logic.VersionLogic, storageLogic *logic.StorageLogic) *VersionHandler {
+func NewVersionHandler(
+	conf *config.Config,
+	logger *zap.Logger,
+	resourceLogic *logic.ResourceLogic,
+	versionLogic *logic.VersionLogic,
+	storageLogic *logic.StorageLogic,
+) *VersionHandler {
 	return &VersionHandler{
-		conf:         conf,
-		logger:       logger,
-		versionLogic: versionLogic,
-		storageLogic: storageLogic,
+		conf:          conf,
+		logger:        logger,
+		resourceLogic: resourceLogic,
+		versionLogic:  versionLogic,
+		storageLogic:  storageLogic,
 	}
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
+	r.Get("/resources/:resID/versions/latest/query", h.QueryLatest)
 	r.Use("/resources/:resID/versions/latest", h.ValidateCDK)
 	r.Get("/resources/:resID/versions/latest", h.GetLatest)
 	r.Use("/resources/:resID/versions", h.ValidateUploader)
@@ -249,6 +257,62 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 	resp := response.Success(data)
 	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+type QueryLatestResponseData struct {
+	Name   string `json:"name"`
+	Number uint64 `json:"number"`
+}
+
+func (h *VersionHandler) QueryLatest(c *fiber.Ctx) error {
+	resIDStr := c.Params("resID")
+	resID, err := strconv.Atoi(resIDStr)
+	if err != nil {
+		h.logger.Error("Failed to convert resource ID to int",
+			zap.Error(err),
+		)
+		resp := response.BusinessError("invalid resource ID")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	exists, err := h.resourceLogic.Exists(c.UserContext(), resID)
+	if err != nil {
+		h.logger.Error("Failed to check if resource exists",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+	if !exists {
+		h.logger.Error("Resource not found",
+			zap.Int("resource id", resID),
+		)
+		resp := response.BusinessError("resource not found")
+		c.Status(fiber.StatusNotFound).JSON(resp)
+	}
+
+	latest, err := h.versionLogic.GetLatest(c.UserContext(), resID)
+	if ent.IsNotFound(err) {
+		h.logger.Error("Version not found",
+			zap.Int("resource id", resID),
+			zap.Error(err),
+		)
+		resp := response.BusinessError("version not found")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
+	} else if err != nil {
+		h.logger.Error("Failed to get latest version",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+
+	data := QueryLatestResponseData{
+		Name:   latest.Name,
+		Number: latest.Number,
+	}
+	resp := response.Success(data)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
 type ValidateCDKRequest struct {
