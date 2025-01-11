@@ -6,6 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -16,13 +24,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type VersionHandler struct {
@@ -443,7 +444,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 	if req.CDK == "" {
-		return c.Status(fiber.StatusOK).JSON(response.Success("current resource latest version is " + latest.Name))
+		return c.Status(fiber.StatusOK).JSON(response.Success(nil, "current resource latest version is "+latest.Name))
 	}
 
 	if err := h.ValidateCDK(req.CDK, req.SpId); err != nil {
