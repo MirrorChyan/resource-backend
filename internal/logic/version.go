@@ -3,18 +3,18 @@ package logic
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"go.uber.org/zap"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type VersionLogic struct {
@@ -29,11 +29,6 @@ func NewVersionLogic(logger *zap.Logger, db *ent.Client) *VersionLogic {
 	}
 }
 
-type VersionNameExistsParam struct {
-	ResourceID int
-	Name       string
-}
-
 func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
 	return l.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(param.ResourceID))).
@@ -46,12 +41,6 @@ func (l *VersionLogic) GetLatest(ctx context.Context, resourceID int) (*ent.Vers
 		Where(version.HasResourceWith(resource.ID(resourceID))).
 		Order(ent.Desc("number")).
 		First(ctx)
-}
-
-type CreateVersionParam struct {
-	ResourceID        int
-	Name              string
-	UploadArchivePath string
 }
 
 func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*ent.Version, string, error) {
@@ -208,12 +197,6 @@ func (l *VersionLogic) createRollbackRemoveSaveDir(tx *ent.Tx, err error, saveDi
 	return l.createRollback(tx, err)
 }
 
-type ListVersionParam struct {
-	ResourceID int
-	Offset     int
-	Limit      int
-}
-
 func (l *VersionLogic) List(ctx context.Context, param ListVersionParam) (int, []*ent.Version, error) {
 	query := l.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(param.ResourceID)))
@@ -233,11 +216,6 @@ func (l *VersionLogic) List(ctx context.Context, param ListVersionParam) (int, [
 	}
 
 	return count, versions, nil
-}
-
-type GetVersionByNameParam struct {
-	ResourceID int
-	Name       string
 }
 
 func (l *VersionLogic) GetByName(ctx context.Context, param GetVersionByNameParam) (*ent.Version, error) {

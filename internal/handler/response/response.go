@@ -7,12 +7,12 @@ const (
 )
 
 type Response struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data,omitempty"`
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data,omitempty"`
 }
 
-func New(code int, msg string, data interface{}) *Response {
+func New(code int, msg string, data any) *Response {
 	return &Response{
 		Code: code,
 		Msg:  msg,
@@ -20,7 +20,7 @@ func New(code int, msg string, data interface{}) *Response {
 	}
 }
 
-func Success(data interface{}, msg ...string) *Response {
+func Success(data any, msg ...string) *Response {
 	var msgStr string
 	if len(msg) > 0 {
 		msgStr = msg[0]

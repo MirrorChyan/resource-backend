@@ -1,12 +1,11 @@
 package config
 
 import (
+	"github.com/spf13/viper"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
-
-	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -14,6 +13,8 @@ type Config struct {
 	Log      LogConfig      `mapstructure:"log"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Auth     AuthConfig     `mapstructure:"auth"`
+	Redis    RedisConfig    `mapstructure:"redis"`
+	Extra    ExtraConfig    `mapstructure:"extra"`
 }
 
 type ServerConfig struct {
@@ -36,12 +37,28 @@ type DatabaseConfig struct {
 	Name     string `mapstructure:"name"`
 }
 
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	Name     string `mapstructure:"name"`
+	DB       int    `mapstructure:"db"`
+}
+
+type ExtraConfig struct {
+	DownloadPrefix string `mapstructure:"download_prefix"`
+}
+
 type AuthConfig struct {
 	UploaderValidationURL string `mapstructure:"uploader_validation_url"`
 	CDKValidationURL      string `mapstructure:"cdk_validation_url"`
 }
 
 const DefaultPort = 8000
+
+var (
+	GlobalConfig *Config
+)
 
 func New() *Config {
 	v := viper.New()
@@ -78,5 +95,6 @@ func New() *Config {
 	if err := v.Unmarshal(&config); err != nil {
 		log.Fatalf("Failed to unmarshal config file, %v", err)
 	}
+
 	return &config
 }

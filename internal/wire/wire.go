@@ -36,6 +36,5 @@ func newHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *han
 }
 
 func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client) *HandlerSet {
-	wire.Build(logicSet, handlerSet, newHandlerSet)
-	return nil
+	panic(wire.Build(logicSet, handlerSet, newHandlerSet))
 }

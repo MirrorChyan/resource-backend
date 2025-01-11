@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
+	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/gofiber/contrib/fiberzap/v2"
@@ -24,15 +24,27 @@ const BodyLimit = 50 * 1024 * 1024
 
 func main() {
 	conf := config.New()
+	config.GlobalConfig = conf
+
 	l := logger.New(conf)
 
+	db.NewRedis(conf)
+
 	database, err := db.New(conf)
+
 	if err != nil {
 		l.Fatal("failed to connect to database",
 			zap.Error(err),
 		)
 	}
-	defer database.Close()
+
+	defer func(database *ent.Client) {
+		err := database.Close()
+		if err != nil {
+			l.Fatal("failed to close database")
+		}
+	}(database)
+
 	if err := database.Schema.Create(CTX); err != nil {
 		l.Fatal("failed creating schema resources",
 			zap.Error(err))
@@ -63,5 +75,6 @@ func initRoute(app *fiber.App, handlerSet *wire.HandlerSet) {
 	r := app.Group("/")
 
 	handlerSet.ResourceHandler.Register(r)
+
 	handlerSet.VersionHandler.Register(r)
 }

@@ -128,7 +128,10 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 
 	archiveName := fmt.Sprintf("%s.zip", patchName)
 	archivePath := filepath.Join(targetDir, archiveName)
-	archive.CompressToZip(tempDir, archivePath)
+	err = archive.CompressToZip(tempDir, archivePath)
+	if err != nil {
+		return "", err
+	}
 
 	return archiveName, nil
 }

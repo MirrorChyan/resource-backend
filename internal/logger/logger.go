@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 
@@ -13,24 +12,10 @@ import (
 )
 
 func New(conf *config.Config) *zap.Logger {
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	logPath := filepath.Join(cwd, "debug", "mirrorc-res.log")
-	hook := lumberjack.Logger{
-		Filename:   logPath,
-		MaxSize:    conf.Log.MaxSize,
-		MaxBackups: conf.Log.MaxBackups,
-		MaxAge:     conf.Log.MaxAge,
-		Compress:   conf.Log.Compress,
-	}
-
 	encoder := getConsoleEncoder()
-	writer := io.MultiWriter(os.Stdout, &hook)
 	core := zapcore.NewCore(
 		encoder,
-		zapcore.AddSync(writer),
+		zapcore.AddSync(os.Stdout),
 		getLevel(conf.Log.Level),
 	)
 	return zap.New(core, zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel))

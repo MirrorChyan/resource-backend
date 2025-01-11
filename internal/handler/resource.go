@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
+	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -20,18 +21,8 @@ func NewResourceHandler(logger *zap.Logger, resourceLogic *logic.ResourceLogic) 
 }
 
 func (h *ResourceHandler) Register(r fiber.Router) {
+	// For Developer
 	r.Post("/resources", h.Create)
-}
-
-type CreateResourceRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type CreateResourceResponseData struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
 }
 
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
@@ -49,7 +40,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	param := logic.CreateResourceParam{
+	param := CreateResourceParam{
 		Name:        req.Name,
 		Description: req.Description,
 	}

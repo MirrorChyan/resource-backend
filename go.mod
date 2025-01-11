@@ -8,11 +8,18 @@ require (
 	github.com/gofiber/contrib/fiberzap/v2 v2.1.4
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/google/wire v0.6.0
+	github.com/pkg/errors v0.9.1
+	github.com/redis/go-redis/v9 v9.7.0
+	github.com/segmentio/ksuid v1.0.4
 	github.com/spf13/viper v1.19.0
 	go.uber.org/zap v1.27.0
 )
 
-require filippo.io/edwards25519 v1.1.0 // indirect
+require (
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+)
 
 require (
 	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect

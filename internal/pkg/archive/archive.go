@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"fmt"
+	"github.com/gofiber/fiber/v2/log"
 	"io"
 	"os"
 	"path/filepath"
@@ -113,13 +114,23 @@ func CompressToZip(srcDir, destZip string) error {
 	if err != nil {
 		return err
 	}
-	defer zipFile.Close()
+	defer func(zipFile *os.File) {
+		err := zipFile.Close()
+		if err != nil {
+			log.Errorf("Failed to close zip file: %v", err)
+		}
+	}(zipFile)
 
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
+	writer := zip.NewWriter(zipFile)
+	defer func(zipWriter *zip.Writer) {
+		err := zipWriter.Close()
+		if err != nil {
+			log.Errorf("Failed to close zip writer: %v", err)
+		}
+	}(writer)
 
 	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+		if err != nil || info.IsDir() {
 			return err
 		}
 
@@ -128,17 +139,18 @@ func CompressToZip(srcDir, destZip string) error {
 			return err
 		}
 
-		if info.IsDir() {
-			return nil
-		}
-
 		file, err := os.Open(path)
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				log.Errorf("Failed to close file: %v %v", file.Name(), err)
+			}
+		}(file)
 
-		zipFileWriter, err := zipWriter.Create(relPath)
+		zipFileWriter, err := writer.Create(relPath)
 		if err != nil {
 			return err
 		}
