@@ -62,7 +62,6 @@ func (l *ResourceLogic) Update(ctx context.Context, param UpdateResourceParam) (
 	return l.db.Resource.UpdateOneID(param.ID).
 		SetName(param.Name).
 		SetDescription(param.Description).
-		SetLatestVersion(param.LatestVersion).
 		Save(ctx)
 }
 

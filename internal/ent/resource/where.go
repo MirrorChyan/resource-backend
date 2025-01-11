@@ -65,11 +65,6 @@ func Description(v string) predicate.Resource {
 	return predicate.Resource(sql.FieldEQ(FieldDescription, v))
 }
 
-// LatestVersion applies equality check predicate on the "latest_version" field. It's identical to LatestVersionEQ.
-func LatestVersion(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldEQ(FieldLatestVersion, v))
-}
-
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Resource {
 	return predicate.Resource(sql.FieldEQ(FieldCreatedAt, v))
@@ -203,81 +198,6 @@ func DescriptionEqualFold(v string) predicate.Resource {
 // DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
 func DescriptionContainsFold(v string) predicate.Resource {
 	return predicate.Resource(sql.FieldContainsFold(FieldDescription, v))
-}
-
-// LatestVersionEQ applies the EQ predicate on the "latest_version" field.
-func LatestVersionEQ(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldEQ(FieldLatestVersion, v))
-}
-
-// LatestVersionNEQ applies the NEQ predicate on the "latest_version" field.
-func LatestVersionNEQ(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldNEQ(FieldLatestVersion, v))
-}
-
-// LatestVersionIn applies the In predicate on the "latest_version" field.
-func LatestVersionIn(vs ...string) predicate.Resource {
-	return predicate.Resource(sql.FieldIn(FieldLatestVersion, vs...))
-}
-
-// LatestVersionNotIn applies the NotIn predicate on the "latest_version" field.
-func LatestVersionNotIn(vs ...string) predicate.Resource {
-	return predicate.Resource(sql.FieldNotIn(FieldLatestVersion, vs...))
-}
-
-// LatestVersionGT applies the GT predicate on the "latest_version" field.
-func LatestVersionGT(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldGT(FieldLatestVersion, v))
-}
-
-// LatestVersionGTE applies the GTE predicate on the "latest_version" field.
-func LatestVersionGTE(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldGTE(FieldLatestVersion, v))
-}
-
-// LatestVersionLT applies the LT predicate on the "latest_version" field.
-func LatestVersionLT(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldLT(FieldLatestVersion, v))
-}
-
-// LatestVersionLTE applies the LTE predicate on the "latest_version" field.
-func LatestVersionLTE(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldLTE(FieldLatestVersion, v))
-}
-
-// LatestVersionContains applies the Contains predicate on the "latest_version" field.
-func LatestVersionContains(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldContains(FieldLatestVersion, v))
-}
-
-// LatestVersionHasPrefix applies the HasPrefix predicate on the "latest_version" field.
-func LatestVersionHasPrefix(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldHasPrefix(FieldLatestVersion, v))
-}
-
-// LatestVersionHasSuffix applies the HasSuffix predicate on the "latest_version" field.
-func LatestVersionHasSuffix(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldHasSuffix(FieldLatestVersion, v))
-}
-
-// LatestVersionIsNil applies the IsNil predicate on the "latest_version" field.
-func LatestVersionIsNil() predicate.Resource {
-	return predicate.Resource(sql.FieldIsNull(FieldLatestVersion))
-}
-
-// LatestVersionNotNil applies the NotNil predicate on the "latest_version" field.
-func LatestVersionNotNil() predicate.Resource {
-	return predicate.Resource(sql.FieldNotNull(FieldLatestVersion))
-}
-
-// LatestVersionEqualFold applies the EqualFold predicate on the "latest_version" field.
-func LatestVersionEqualFold(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldEqualFold(FieldLatestVersion, v))
-}
-
-// LatestVersionContainsFold applies the ContainsFold predicate on the "latest_version" field.
-func LatestVersionContainsFold(v string) predicate.Resource {
-	return predicate.Resource(sql.FieldContainsFold(FieldLatestVersion, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

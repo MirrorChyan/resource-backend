@@ -16,7 +16,8 @@ type Version struct {
 // Fields of the Version.
 func (Version) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("name"),
+		field.String("name").
+			NotEmpty(),
 		field.Uint64("number"),
 		field.JSON("file_hashes", map[string]string{}).
 			Optional(),

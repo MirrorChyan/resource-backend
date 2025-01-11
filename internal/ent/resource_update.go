@@ -57,26 +57,6 @@ func (ru *ResourceUpdate) SetNillableDescription(s *string) *ResourceUpdate {
 	return ru
 }
 
-// SetLatestVersion sets the "latest_version" field.
-func (ru *ResourceUpdate) SetLatestVersion(s string) *ResourceUpdate {
-	ru.mutation.SetLatestVersion(s)
-	return ru
-}
-
-// SetNillableLatestVersion sets the "latest_version" field if the given value is not nil.
-func (ru *ResourceUpdate) SetNillableLatestVersion(s *string) *ResourceUpdate {
-	if s != nil {
-		ru.SetLatestVersion(*s)
-	}
-	return ru
-}
-
-// ClearLatestVersion clears the value of the "latest_version" field.
-func (ru *ResourceUpdate) ClearLatestVersion() *ResourceUpdate {
-	ru.mutation.ClearLatestVersion()
-	return ru
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (ru *ResourceUpdate) SetCreatedAt(t time.Time) *ResourceUpdate {
 	ru.mutation.SetCreatedAt(t)
@@ -159,7 +139,20 @@ func (ru *ResourceUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (ru *ResourceUpdate) check() error {
+	if v, ok := ru.mutation.Name(); ok {
+		if err := resource.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Resource.name": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := ru.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(resource.Table, resource.Columns, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt))
 	if ps := ru.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -173,12 +166,6 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := ru.mutation.Description(); ok {
 		_spec.SetField(resource.FieldDescription, field.TypeString, value)
-	}
-	if value, ok := ru.mutation.LatestVersion(); ok {
-		_spec.SetField(resource.FieldLatestVersion, field.TypeString, value)
-	}
-	if ru.mutation.LatestVersionCleared() {
-		_spec.ClearField(resource.FieldLatestVersion, field.TypeString)
 	}
 	if value, ok := ru.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)
@@ -273,26 +260,6 @@ func (ruo *ResourceUpdateOne) SetNillableDescription(s *string) *ResourceUpdateO
 	if s != nil {
 		ruo.SetDescription(*s)
 	}
-	return ruo
-}
-
-// SetLatestVersion sets the "latest_version" field.
-func (ruo *ResourceUpdateOne) SetLatestVersion(s string) *ResourceUpdateOne {
-	ruo.mutation.SetLatestVersion(s)
-	return ruo
-}
-
-// SetNillableLatestVersion sets the "latest_version" field if the given value is not nil.
-func (ruo *ResourceUpdateOne) SetNillableLatestVersion(s *string) *ResourceUpdateOne {
-	if s != nil {
-		ruo.SetLatestVersion(*s)
-	}
-	return ruo
-}
-
-// ClearLatestVersion clears the value of the "latest_version" field.
-func (ruo *ResourceUpdateOne) ClearLatestVersion() *ResourceUpdateOne {
-	ruo.mutation.ClearLatestVersion()
 	return ruo
 }
 
@@ -391,7 +358,20 @@ func (ruo *ResourceUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (ruo *ResourceUpdateOne) check() error {
+	if v, ok := ruo.mutation.Name(); ok {
+		if err := resource.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Resource.name": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err error) {
+	if err := ruo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(resource.Table, resource.Columns, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt))
 	id, ok := ruo.mutation.ID()
 	if !ok {
@@ -422,12 +402,6 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 	}
 	if value, ok := ruo.mutation.Description(); ok {
 		_spec.SetField(resource.FieldDescription, field.TypeString, value)
-	}
-	if value, ok := ruo.mutation.LatestVersion(); ok {
-		_spec.SetField(resource.FieldLatestVersion, field.TypeString, value)
-	}
-	if ruo.mutation.LatestVersionCleared() {
-		_spec.ClearField(resource.FieldLatestVersion, field.TypeString)
 	}
 	if value, ok := ruo.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)

@@ -184,7 +184,20 @@ func (vu *VersionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (vu *VersionUpdate) check() error {
+	if v, ok := vu.mutation.Name(); ok {
+		if err := version.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Version.name": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := vu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(version.Table, version.Columns, sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt))
 	if ps := vu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -472,7 +485,20 @@ func (vuo *VersionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (vuo *VersionUpdateOne) check() error {
+	if v, ok := vuo.mutation.Name(); ok {
+		if err := version.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Version.name": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err error) {
+	if err := vuo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(version.Table, version.Columns, sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt))
 	id, ok := vuo.mutation.ID()
 	if !ok {

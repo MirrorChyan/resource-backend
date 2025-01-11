@@ -16,10 +16,9 @@ type Resource struct {
 // Fields of the Resource.
 func (Resource) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("name"),
+		field.String("name").
+			NotEmpty(),
 		field.String("description"),
-		field.String("latest_version").
-			Optional(),
 		field.Time("created_at").
 			Default(time.Now),
 	}
