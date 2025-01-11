@@ -382,12 +382,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			JSON(response.UnexpectedError())
 	}
 
-	var latestVersion = QueryLatestResponseData{
+	resp := QueryLatestResponseData{
 		VersionName: latest.Name,
 		Number:      latest.Number,
 	}
 	if req.CDK == "" {
-		return c.Status(fiber.StatusOK).JSON(response.Success(latestVersion, "current resource latest version is "+latest.Name))
+		return c.Status(fiber.StatusOK).JSON(response.Success(resp, "current resource latest version is "+latest.Name))
 	}
 
 	if err := h.ValidateCDK(req.CDK, req.SpId); err != nil {
@@ -409,7 +409,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if latest.Name == req.CurrentVersion {
-		resp := response.Success(latestVersion, "current version is latest")
+		resp := response.Success(resp, "current version is latest")
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
@@ -433,8 +433,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
 	} else {
 		db.IRS.Set(CTX, fmt.Sprintf("RES:%v", rk), string(buf), 20*time.Minute)
+
 		url := strings.Join([]string{h.conf.Extra.DownloadPrefix, rk}, "/")
-		return c.Status(fiber.StatusOK).JSON(response.Success(url, "success"))
+		resp.Url = url
+		return c.Status(fiber.StatusOK).JSON(response.Success(resp, "success"))
 	}
 
 }

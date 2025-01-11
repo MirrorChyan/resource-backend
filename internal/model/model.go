@@ -61,7 +61,8 @@ type GetLatestVersionRequest struct {
 
 type QueryLatestResponseData struct {
 	VersionName string `json:"version_name"`
-	Number      uint64 `json:"version_number"`
+	Number      uint64 `json:"number"`
+	Url         string `json:"url"`
 }
 
 type CreateVersionResponseData struct {
