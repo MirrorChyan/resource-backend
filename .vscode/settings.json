@@ -1,0 +1,6 @@
+{
+    "Codegeex.CompletionDelay": 3,
+    "Codegeex.Comment.LanguagePreference": "English",
+    "Codegeex.CommitMessage.LanguagePreference": "English",
+    "Codegeex.RepoIndex": true
+}

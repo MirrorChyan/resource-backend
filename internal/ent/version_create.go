@@ -134,6 +134,11 @@ func (vc *VersionCreate) check() error {
 	if _, ok := vc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Version.name"`)}
 	}
+	if v, ok := vc.mutation.Name(); ok {
+		if err := version.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Version.name": %w`, err)}
+		}
+	}
 	if _, ok := vc.mutation.Number(); !ok {
 		return &ValidationError{Name: "number", err: errors.New(`ent: missing required field "Version.number"`)}
 	}

@@ -39,7 +39,6 @@ type ResourceMutation struct {
 	id              *int
 	name            *string
 	description     *string
-	latest_version  *string
 	created_at      *time.Time
 	clearedFields   map[string]struct{}
 	versions        map[int]struct{}
@@ -220,55 +219,6 @@ func (m *ResourceMutation) ResetDescription() {
 	m.description = nil
 }
 
-// SetLatestVersion sets the "latest_version" field.
-func (m *ResourceMutation) SetLatestVersion(s string) {
-	m.latest_version = &s
-}
-
-// LatestVersion returns the value of the "latest_version" field in the mutation.
-func (m *ResourceMutation) LatestVersion() (r string, exists bool) {
-	v := m.latest_version
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldLatestVersion returns the old "latest_version" field's value of the Resource entity.
-// If the Resource object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ResourceMutation) OldLatestVersion(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLatestVersion is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLatestVersion requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLatestVersion: %w", err)
-	}
-	return oldValue.LatestVersion, nil
-}
-
-// ClearLatestVersion clears the value of the "latest_version" field.
-func (m *ResourceMutation) ClearLatestVersion() {
-	m.latest_version = nil
-	m.clearedFields[resource.FieldLatestVersion] = struct{}{}
-}
-
-// LatestVersionCleared returns if the "latest_version" field was cleared in this mutation.
-func (m *ResourceMutation) LatestVersionCleared() bool {
-	_, ok := m.clearedFields[resource.FieldLatestVersion]
-	return ok
-}
-
-// ResetLatestVersion resets all changes to the "latest_version" field.
-func (m *ResourceMutation) ResetLatestVersion() {
-	m.latest_version = nil
-	delete(m.clearedFields, resource.FieldLatestVersion)
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (m *ResourceMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -393,15 +343,12 @@ func (m *ResourceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ResourceMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 3)
 	if m.name != nil {
 		fields = append(fields, resource.FieldName)
 	}
 	if m.description != nil {
 		fields = append(fields, resource.FieldDescription)
-	}
-	if m.latest_version != nil {
-		fields = append(fields, resource.FieldLatestVersion)
 	}
 	if m.created_at != nil {
 		fields = append(fields, resource.FieldCreatedAt)
@@ -418,8 +365,6 @@ func (m *ResourceMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case resource.FieldDescription:
 		return m.Description()
-	case resource.FieldLatestVersion:
-		return m.LatestVersion()
 	case resource.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -435,8 +380,6 @@ func (m *ResourceMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldName(ctx)
 	case resource.FieldDescription:
 		return m.OldDescription(ctx)
-	case resource.FieldLatestVersion:
-		return m.OldLatestVersion(ctx)
 	case resource.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -461,13 +404,6 @@ func (m *ResourceMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDescription(v)
-		return nil
-	case resource.FieldLatestVersion:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetLatestVersion(v)
 		return nil
 	case resource.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -505,11 +441,7 @@ func (m *ResourceMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ResourceMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(resource.FieldLatestVersion) {
-		fields = append(fields, resource.FieldLatestVersion)
-	}
-	return fields
+	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -522,11 +454,6 @@ func (m *ResourceMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ResourceMutation) ClearField(name string) error {
-	switch name {
-	case resource.FieldLatestVersion:
-		m.ClearLatestVersion()
-		return nil
-	}
 	return fmt.Errorf("unknown Resource nullable field %s", name)
 }
 
@@ -539,9 +466,6 @@ func (m *ResourceMutation) ResetField(name string) error {
 		return nil
 	case resource.FieldDescription:
 		m.ResetDescription()
-		return nil
-	case resource.FieldLatestVersion:
-		m.ResetLatestVersion()
 		return nil
 	case resource.FieldCreatedAt:
 		m.ResetCreatedAt()

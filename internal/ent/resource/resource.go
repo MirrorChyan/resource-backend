@@ -18,8 +18,6 @@ const (
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
-	// FieldLatestVersion holds the string denoting the latest_version field in the database.
-	FieldLatestVersion = "latest_version"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
@@ -40,7 +38,6 @@ var Columns = []string{
 	FieldID,
 	FieldName,
 	FieldDescription,
-	FieldLatestVersion,
 	FieldCreatedAt,
 }
 
@@ -55,6 +52,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// NameValidator is a validator for the "name" field. It is called by the builders before save.
+	NameValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 )
@@ -75,11 +74,6 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByDescription orders the results by the description field.
 func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
-}
-
-// ByLatestVersion orders the results by the latest_version field.
-func ByLatestVersion(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLatestVersion, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

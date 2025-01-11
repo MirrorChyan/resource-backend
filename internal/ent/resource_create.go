@@ -33,20 +33,6 @@ func (rc *ResourceCreate) SetDescription(s string) *ResourceCreate {
 	return rc
 }
 
-// SetLatestVersion sets the "latest_version" field.
-func (rc *ResourceCreate) SetLatestVersion(s string) *ResourceCreate {
-	rc.mutation.SetLatestVersion(s)
-	return rc
-}
-
-// SetNillableLatestVersion sets the "latest_version" field if the given value is not nil.
-func (rc *ResourceCreate) SetNillableLatestVersion(s *string) *ResourceCreate {
-	if s != nil {
-		rc.SetLatestVersion(*s)
-	}
-	return rc
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (rc *ResourceCreate) SetCreatedAt(t time.Time) *ResourceCreate {
 	rc.mutation.SetCreatedAt(t)
@@ -122,6 +108,11 @@ func (rc *ResourceCreate) check() error {
 	if _, ok := rc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Resource.name"`)}
 	}
+	if v, ok := rc.mutation.Name(); ok {
+		if err := resource.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Resource.name": %w`, err)}
+		}
+	}
 	if _, ok := rc.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Resource.description"`)}
 	}
@@ -161,10 +152,6 @@ func (rc *ResourceCreate) createSpec() (*Resource, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.Description(); ok {
 		_spec.SetField(resource.FieldDescription, field.TypeString, value)
 		_node.Description = value
-	}
-	if value, ok := rc.mutation.LatestVersion(); ok {
-		_spec.SetField(resource.FieldLatestVersion, field.TypeString, value)
-		_node.LatestVersion = value
 	}
 	if value, ok := rc.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)

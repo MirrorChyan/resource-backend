@@ -67,17 +67,15 @@ func (l *ResourceLogic) List(ctx context.Context, param ListResourceParam) (int,
 }
 
 type UpdateResourceParam struct {
-	ID            int
-	Name          string
-	Description   string
-	LatestVersion string
+	ID          int
+	Name        string
+	Description string
 }
 
 func (l *ResourceLogic) Update(ctx context.Context, param UpdateResourceParam) (*ent.Resource, error) {
 	return l.db.Resource.UpdateOneID(param.ID).
 		SetName(param.Name).
 		SetDescription(param.Description).
-		SetLatestVersion(param.LatestVersion).
 		Save(ctx)
 }
 
