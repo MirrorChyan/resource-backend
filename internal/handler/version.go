@@ -62,6 +62,12 @@ var (
 	ValidateError = errors.New("cdk validate error")
 )
 
+type RemoteError string
+
+func (r RemoteError) Error() string {
+	return string(r)
+}
+
 func (h *VersionHandler) Register(r fiber.Router) {
 	r.Get("/resources/:rid/versions/latest/query", h.QueryLatest)
 
@@ -327,8 +333,8 @@ func (h *VersionHandler) QueryLatest(c *fiber.Ctx) error {
 	}
 
 	data := QueryLatestResponseData{
-		Name:   latest.Name,
-		Number: latest.Number,
+		VersionName: latest.Name,
+		Number:      latest.Number,
 	}
 	resp := response.Success(data)
 	return c.Status(fiber.StatusOK).JSON(resp)
@@ -367,13 +373,6 @@ func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
 		return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		h.logger.Error("CDK validation request error",
-			zap.Int("status_code", resp.StatusCode),
-		)
-		return err
-	}
-
 	var result ValidateCDKResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		h.logger.Error("Failed to decode response",
@@ -385,11 +384,11 @@ func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
 
 	switch code {
 	case 1:
-		h.logger.Info("CDK validation failed",
+		h.logger.Info("cdk validation failed",
 			zap.Int("code", result.Code),
 			zap.String("msg", result.Msg),
 		)
-		return ValidateError
+		return RemoteError(result.Msg)
 	case -1:
 		h.logger.Error("CDK validation failed",
 			zap.Int("code", result.Code),
@@ -439,15 +438,16 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			JSON(response.UnexpectedError())
 	}
 
-	if req.CurrentVersion != "" && latest.Name == req.CurrentVersion {
-		resp := response.Success(nil, "current version is latest")
-		return c.Status(fiber.StatusOK).JSON(resp)
+	var latestVersion = QueryLatestResponseData{
+		VersionName: latest.Name,
+		Number:      latest.Number,
 	}
 	if req.CDK == "" {
-		return c.Status(fiber.StatusOK).JSON(response.Success(nil, "current resource latest version is "+latest.Name))
+		return c.Status(fiber.StatusOK).JSON(response.Success(latestVersion, "current resource latest version is "+latest.Name))
 	}
 
 	if err := h.ValidateCDK(req.CDK, req.SpId); err != nil {
+		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound):
 			resp := response.BusinessError(err.Error())
@@ -455,13 +455,18 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		case errors.Is(err, SpIdNotfound):
 			resp := response.BusinessError(err.Error())
 			return c.Status(fiber.StatusBadRequest).JSON(resp)
-		case errors.Is(err, ValidateError):
-			resp := response.BusinessError(err.Error())
+		case errors.As(err, &e):
+			resp := response.BusinessError(e.Error())
 			return c.Status(fiber.StatusForbidden).JSON(resp)
 		default:
 			resp := response.UnexpectedError()
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
 		}
+	}
+
+	if latest.Name == req.CurrentVersion {
+		resp := response.Success(latestVersion, "current version is latest")
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
 	h.logger.Info("CDK validation success")
