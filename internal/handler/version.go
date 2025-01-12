@@ -481,6 +481,7 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 
 	resArchivePath := filepath.Join(versionDir, "resource.zip")
 	if info.Full {
+		c.Set("X-Update-Type", "full")
 		return c.Status(fiber.StatusOK).Download(resArchivePath)
 	}
 
