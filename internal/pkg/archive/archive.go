@@ -5,11 +5,12 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"fmt"
-	"github.com/gofiber/fiber/v2/log"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // UnpackZip unpacks a zip archive to the specified destination directory.
@@ -117,7 +118,9 @@ func CompressToZip(srcDir, destZip string) error {
 	defer func(zipFile *os.File) {
 		err := zipFile.Close()
 		if err != nil {
-			log.Errorf("Failed to close zip file: %v", err)
+			zap.L().Error("Failed to close zip file",
+				zap.Error(err),
+			)
 		}
 	}(zipFile)
 
@@ -125,7 +128,9 @@ func CompressToZip(srcDir, destZip string) error {
 	defer func(zipWriter *zip.Writer) {
 		err := zipWriter.Close()
 		if err != nil {
-			log.Errorf("Failed to close zip writer: %v", err)
+			zap.L().Error("Failed to close zip writer",
+				zap.Error(err),
+			)
 		}
 	}(writer)
 
@@ -146,7 +151,10 @@ func CompressToZip(srcDir, destZip string) error {
 		defer func(file *os.File) {
 			err := file.Close()
 			if err != nil {
-				log.Errorf("Failed to close file: %v %v", file.Name(), err)
+				zap.L().Error("Failed to close file",
+					zap.String("file", file.Name()),
+					zap.Error(err),
+				)
 			}
 		}(file)
 

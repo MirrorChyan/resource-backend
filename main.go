@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -27,6 +28,7 @@ func main() {
 	config.GlobalConfig = conf
 
 	l := logger.New(conf)
+	zap.ReplaceGlobals(l)
 
 	db.NewRedis(conf)
 

@@ -1,9 +1,10 @@
 package fileops
 
 import (
-	"github.com/gofiber/fiber/v2/log"
 	"io"
 	"os"
+
+	"go.uber.org/zap"
 )
 
 func CopyFile(src, dst string) error {
@@ -25,7 +26,10 @@ func CopyFile(src, dst string) error {
 	defer func(destFile *os.File) {
 		err := destFile.Close()
 		if err != nil {
-			log.Errorf("Failed to close file: %v %v", destFile.Name(), err)
+			zap.L().Error("Failed to close file",
+				zap.String("file", destFile.Name()),
+				zap.Error(err),
+			)
 		}
 	}(destFile)
 
