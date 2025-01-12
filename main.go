@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 
 	_ "github.com/MirrorChyan/resource-backend/internal/banner"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -32,7 +31,7 @@ func main() {
 
 	db.NewRedis(conf)
 
-	database, err := db.New(conf)
+	mySQL, err := db.NewMySQL(conf)
 
 	if err != nil {
 		l.Fatal("failed to connect to database",
@@ -40,19 +39,19 @@ func main() {
 		)
 	}
 
-	defer func(database *ent.Client) {
-		err := database.Close()
+	defer func(mySQL *ent.Client) {
+		err := mySQL.Close()
 		if err != nil {
 			l.Fatal("failed to close database")
 		}
-	}(database)
+	}(mySQL)
 
-	if err := database.Schema.Create(CTX); err != nil {
+	if err := mySQL.Schema.Create(CTX); err != nil {
 		l.Fatal("failed creating schema resources",
 			zap.Error(err))
 	}
 
-	handlerSet := wire.NewHandlerSet(conf, l, database)
+	handlerSet := wire.NewHandlerSet(conf, l, mySQL)
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: BodyLimit,

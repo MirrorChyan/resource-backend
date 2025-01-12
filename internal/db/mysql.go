@@ -5,9 +5,11 @@ import (
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
-func New(conf *config.Config) (*ent.Client, error) {
+func NewMySQL(conf *config.Config) (*ent.Client, error) {
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=True",
 		conf.Database.Username,
