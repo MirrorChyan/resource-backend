@@ -48,7 +48,8 @@ func main() {
 
 	if err := mySQL.Schema.Create(CTX); err != nil {
 		l.Fatal("failed creating schema resources",
-			zap.Error(err))
+			zap.Error(err),
+		)
 	}
 
 	handlerSet := wire.NewHandlerSet(conf, l, mySQL)
