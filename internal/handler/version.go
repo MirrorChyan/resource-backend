@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,8 +54,6 @@ const (
 )
 
 var (
-	CTX = context.Background()
-
 	CdkNotfound  = errors.New("no cdk")
 	SpIdNotfound = errors.New("no sp_id")
 )
@@ -414,7 +411,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		)
 		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
 	} else {
-		db.IRS.Set(CTX, fmt.Sprintf("RES:%v", rk), string(buf), 20*time.Minute)
+		db.IRS.Set(ctx, fmt.Sprintf("RES:%v", rk), string(buf), 20*time.Minute)
 
 		url := strings.Join([]string{h.conf.Extra.DownloadPrefix, rk}, "/")
 		resp.Url = url
@@ -431,7 +428,9 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("missing key"))
 	}
 
-	val, err := db.IRS.GetDel(CTX, fmt.Sprintf("RES:%v", key)).Result()
+	ctx := c.UserContext()
+
+	val, err := db.IRS.GetDel(ctx, fmt.Sprintf("RES:%v", key)).Result()
 
 	var info TempDownloadInfo
 	if err != nil || val == "" || json.Unmarshal([]byte(val), &info) != nil {
@@ -447,8 +446,6 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 		fileHashes     = info.FileHashes
 		currentVersion = info.CurrentVersion
 	)
-
-	ctx := c.UserContext()
 
 	cwd, err := os.Getwd()
 	if err != nil {
