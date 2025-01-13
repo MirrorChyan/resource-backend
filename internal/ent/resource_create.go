@@ -47,6 +47,12 @@ func (rc *ResourceCreate) SetNillableCreatedAt(t *time.Time) *ResourceCreate {
 	return rc
 }
 
+// SetID sets the "id" field.
+func (rc *ResourceCreate) SetID(s string) *ResourceCreate {
+	rc.mutation.SetID(s)
+	return rc
+}
+
 // AddVersionIDs adds the "versions" edge to the Version entity by IDs.
 func (rc *ResourceCreate) AddVersionIDs(ids ...int) *ResourceCreate {
 	rc.mutation.AddVersionIDs(ids...)
@@ -119,6 +125,11 @@ func (rc *ResourceCreate) check() error {
 	if _, ok := rc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Resource.created_at"`)}
 	}
+	if v, ok := rc.mutation.ID(); ok {
+		if err := resource.IDValidator(v); err != nil {
+			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Resource.id": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -133,8 +144,13 @@ func (rc *ResourceCreate) sqlSave(ctx context.Context) (*Resource, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(string); ok {
+			_node.ID = id
+		} else {
+			return nil, fmt.Errorf("unexpected Resource.ID type: %T", _spec.ID.Value)
+		}
+	}
 	rc.mutation.id = &_node.ID
 	rc.mutation.done = true
 	return _node, nil
@@ -143,8 +159,12 @@ func (rc *ResourceCreate) sqlSave(ctx context.Context) (*Resource, error) {
 func (rc *ResourceCreate) createSpec() (*Resource, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Resource{config: rc.config}
-		_spec = sqlgraph.NewCreateSpec(resource.Table, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(resource.Table, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString))
 	)
+	if id, ok := rc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = id
+	}
 	if value, ok := rc.mutation.Name(); ok {
 		_spec.SetField(resource.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -221,10 +241,6 @@ func (rcb *ResourceCreateBulk) Save(ctx context.Context) ([]*Resource, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

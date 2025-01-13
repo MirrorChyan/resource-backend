@@ -278,7 +278,7 @@ func (c *ResourceClient) UpdateOne(r *Resource) *ResourceUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *ResourceClient) UpdateOneID(id int) *ResourceUpdateOne {
+func (c *ResourceClient) UpdateOneID(id string) *ResourceUpdateOne {
 	mutation := newResourceMutation(c.config, OpUpdateOne, withResourceID(id))
 	return &ResourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -295,7 +295,7 @@ func (c *ResourceClient) DeleteOne(r *Resource) *ResourceDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ResourceClient) DeleteOneID(id int) *ResourceDeleteOne {
+func (c *ResourceClient) DeleteOneID(id string) *ResourceDeleteOne {
 	builder := c.Delete().Where(resource.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -312,12 +312,12 @@ func (c *ResourceClient) Query() *ResourceQuery {
 }
 
 // Get returns a Resource entity by its id.
-func (c *ResourceClient) Get(ctx context.Context, id int) (*Resource, error) {
+func (c *ResourceClient) Get(ctx context.Context, id string) (*Resource, error) {
 	return c.Query().Where(resource.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *ResourceClient) GetX(ctx context.Context, id int) *Resource {
+func (c *ResourceClient) GetX(ctx context.Context, id string) *Resource {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)

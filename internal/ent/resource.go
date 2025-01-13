@@ -16,7 +16,7 @@ import (
 type Resource struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Description holds the value of the "description" field.
@@ -52,9 +52,7 @@ func (*Resource) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case resource.FieldID:
-			values[i] = new(sql.NullInt64)
-		case resource.FieldName, resource.FieldDescription:
+		case resource.FieldID, resource.FieldName, resource.FieldDescription:
 			values[i] = new(sql.NullString)
 		case resource.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -74,11 +72,11 @@ func (r *Resource) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case resource.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value.Valid {
+				r.ID = value.String
 			}
-			r.ID = int(value.Int64)
 		case resource.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])

@@ -36,7 +36,7 @@ type ResourceMutation struct {
 	config
 	op              Op
 	typ             string
-	id              *int
+	id              *string
 	name            *string
 	description     *string
 	created_at      *time.Time
@@ -69,7 +69,7 @@ func newResourceMutation(c config, op Op, opts ...resourceOption) *ResourceMutat
 }
 
 // withResourceID sets the ID field of the mutation.
-func withResourceID(id int) resourceOption {
+func withResourceID(id string) resourceOption {
 	return func(m *ResourceMutation) {
 		var (
 			err   error
@@ -119,9 +119,15 @@ func (m ResourceMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Resource entities.
+func (m *ResourceMutation) SetID(id string) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *ResourceMutation) ID() (id int, exists bool) {
+func (m *ResourceMutation) ID() (id string, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -132,12 +138,12 @@ func (m *ResourceMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *ResourceMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *ResourceMutation) IDs(ctx context.Context) ([]string, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []string{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -1020,7 +1026,7 @@ type VersionMutation struct {
 	storage         map[int]struct{}
 	removedstorage  map[int]struct{}
 	clearedstorage  bool
-	resource        *int
+	resource        *string
 	clearedresource bool
 	done            bool
 	oldValue        func(context.Context) (*Version, error)
@@ -1357,7 +1363,7 @@ func (m *VersionMutation) ResetStorage() {
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by id.
-func (m *VersionMutation) SetResourceID(id int) {
+func (m *VersionMutation) SetResourceID(id string) {
 	m.resource = &id
 }
 
@@ -1372,7 +1378,7 @@ func (m *VersionMutation) ResourceCleared() bool {
 }
 
 // ResourceID returns the "resource" edge ID in the mutation.
-func (m *VersionMutation) ResourceID() (id int, exists bool) {
+func (m *VersionMutation) ResourceID() (id string, exists bool) {
 	if m.resource != nil {
 		return *m.resource, true
 	}
@@ -1382,7 +1388,7 @@ func (m *VersionMutation) ResourceID() (id int, exists bool) {
 // ResourceIDs returns the "resource" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // ResourceID instead. It exists only for internal usage by the builders.
-func (m *VersionMutation) ResourceIDs() (ids []int) {
+func (m *VersionMutation) ResourceIDs() (ids []string) {
 	if id := m.resource; id != nil {
 		ids = append(ids, *id)
 	}

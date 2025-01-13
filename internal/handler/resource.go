@@ -35,8 +35,25 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
+	if req.ID == "" {
+		resp := response.BusinessError("id is required")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
 	if req.Name == "" {
 		resp := response.BusinessError("name is required")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	ctx := c.UserContext()
+
+	exists, err := h.resourceLogic.Exists(ctx, req.ID)
+	if err != nil {
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+	if exists {
+		resp := response.BusinessError("resource id already exists")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
@@ -45,7 +62,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		Description: req.Description,
 	}
 
-	res, err := h.resourceLogic.Create(c.UserContext(), param)
+	res, err := h.resourceLogic.Create(ctx, param)
 	if err != nil {
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)

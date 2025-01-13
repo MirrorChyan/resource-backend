@@ -18,13 +18,17 @@ func init() {
 	resourceFields := schema.Resource{}.Fields()
 	_ = resourceFields
 	// resourceDescName is the schema descriptor for name field.
-	resourceDescName := resourceFields[0].Descriptor()
+	resourceDescName := resourceFields[1].Descriptor()
 	// resource.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	resource.NameValidator = resourceDescName.Validators[0].(func(string) error)
 	// resourceDescCreatedAt is the schema descriptor for created_at field.
-	resourceDescCreatedAt := resourceFields[2].Descriptor()
+	resourceDescCreatedAt := resourceFields[3].Descriptor()
 	// resource.DefaultCreatedAt holds the default value on creation for the created_at field.
 	resource.DefaultCreatedAt = resourceDescCreatedAt.Default.(func() time.Time)
+	// resourceDescID is the schema descriptor for id field.
+	resourceDescID := resourceFields[0].Descriptor()
+	// resource.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	resource.IDValidator = resourceDescID.Validators[0].(func(string) error)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
 	// storageDescCreatedAt is the schema descriptor for created_at field.

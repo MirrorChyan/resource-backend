@@ -486,8 +486,8 @@ func (vq *VersionQuery) loadStorage(ctx context.Context, query *StorageQuery, no
 	return nil
 }
 func (vq *VersionQuery) loadResource(ctx context.Context, query *ResourceQuery, nodes []*Version, init func(*Version), assign func(*Version, *Resource)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Version)
+	ids := make([]string, 0, len(nodes))
+	nodeids := make(map[string][]*Version)
 	for i := range nodes {
 		if nodes[i].resource_versions == nil {
 			continue

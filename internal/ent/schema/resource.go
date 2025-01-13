@@ -16,6 +16,9 @@ type Resource struct {
 // Fields of the Resource.
 func (Resource) Fields() []ent.Field {
 	return []ent.Field{
+		field.String("id").
+			NotEmpty().
+			Unique(),
 		field.String("name").
 			NotEmpty(),
 		field.String("description"),

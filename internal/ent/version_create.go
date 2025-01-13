@@ -70,13 +70,13 @@ func (vc *VersionCreate) AddStorage(s ...*Storage) *VersionCreate {
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
-func (vc *VersionCreate) SetResourceID(id int) *VersionCreate {
+func (vc *VersionCreate) SetResourceID(id string) *VersionCreate {
 	vc.mutation.SetResourceID(id)
 	return vc
 }
 
 // SetNillableResourceID sets the "resource" edge to the Resource entity by ID if the given value is not nil.
-func (vc *VersionCreate) SetNillableResourceID(id *int) *VersionCreate {
+func (vc *VersionCreate) SetNillableResourceID(id *string) *VersionCreate {
 	if id != nil {
 		vc = vc.SetResourceID(*id)
 	}
@@ -211,7 +211,7 @@ func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 			Columns: []string{version.ResourceColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

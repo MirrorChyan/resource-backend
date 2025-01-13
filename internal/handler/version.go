@@ -157,7 +157,7 @@ func (h *VersionHandler) isAllowedMimeType(mime string) bool {
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
-	resIDStr := c.Params(resourceKey)
+	resID := c.Params(resourceKey)
 	name := c.FormValue("name")
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -180,15 +180,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	resID, err := strconv.Atoi(resIDStr)
-	if err != nil {
-		h.logger.Error("Failed to convert resource ID to int",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid resource ID")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
 	versionNameExistsParam := VersionNameExistsParam{
 		ResourceID: resID,
 		Name:       name,
@@ -203,7 +194,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 	if exists {
 		h.logger.Info("Version name already exists",
-			zap.String("resource id", resIDStr),
+			zap.String("resource id", resID),
 			zap.String("version name", name),
 		)
 		resp := response.BusinessError("version name already exists")
@@ -344,16 +335,7 @@ func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	resIDStr := c.Params(resourceKey)
-
-	resourceID, err := strconv.Atoi(resIDStr)
-	if err != nil {
-		h.logger.Error("Failed to convert resource ID to int",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid resource ID")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
+	resID := c.Params(resourceKey)
 
 	req := &GetLatestVersionRequest{}
 	if err := c.QueryParser(req); err != nil {
@@ -366,7 +348,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var ctx = c.UserContext()
 
-	latest, err := h.versionLogic.GetLatest(ctx, resourceID)
+	latest, err := h.versionLogic.GetLatest(ctx, resID)
 
 	if err != nil {
 
@@ -418,7 +400,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	rk := ksuid.New().String()
 
 	info := TempDownloadInfo{
-		ID:             resourceID,
+		ID:             resID,
 		Full:           req.CurrentVersion == "",
 		VersionID:      latest.ID,
 		VersionName:    latest.Name,
@@ -477,7 +459,7 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 	dir := filepath.Join(cwd, "storage")
-	versionDir := filepath.Join(dir, strconv.Itoa(resourceID), strconv.Itoa(versionID))
+	versionDir := filepath.Join(dir, resourceID, strconv.Itoa(versionID))
 
 	resArchivePath := filepath.Join(versionDir, "resource.zip")
 	if info.Full {
@@ -506,7 +488,7 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 	changes, err := patcher.CalculateDiff(fileHashes, current.FileHashes)
 	if err != nil {
 		h.logger.Error("Failed to calculate diff",
-			zap.Int("resource ID", resourceID),
+			zap.String("resource ID", resourceID),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)

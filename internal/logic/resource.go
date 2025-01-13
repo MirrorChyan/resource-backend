@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -29,13 +30,13 @@ func (l *ResourceLogic) Create(ctx context.Context, param CreateResourceParam) (
 		Save(ctx)
 }
 
-func (l *ResourceLogic) Exists(ctx context.Context, id int) (bool, error) {
+func (l *ResourceLogic) Exists(ctx context.Context, id string) (bool, error) {
 	return l.db.Resource.Query().
 		Where(resource.ID(id)).
 		Exist(ctx)
 }
 
-func (l *ResourceLogic) GetByID(ctx context.Context, id int) (*ent.Resource, error) {
+func (l *ResourceLogic) GetByID(ctx context.Context, id string) (*ent.Resource, error) {
 	return l.db.Resource.Get(ctx, id)
 }
 
@@ -65,7 +66,7 @@ func (l *ResourceLogic) Update(ctx context.Context, param UpdateResourceParam) (
 		Save(ctx)
 }
 
-func (l *ResourceLogic) Delete(ctx context.Context, id int) error {
+func (l *ResourceLogic) Delete(ctx context.Context, id string) error {
 	return l.db.Resource.
 		DeleteOneID(id).
 		Exec(ctx)

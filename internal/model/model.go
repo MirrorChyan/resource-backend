@@ -1,7 +1,7 @@
 package model
 
 type UpdateResourceParam struct {
-	ID          int
+	ID          string
 	Name        string
 	Description string
 }
@@ -22,24 +22,24 @@ type CreateStorageParam struct {
 }
 
 type CreateVersionParam struct {
-	ResourceID        int
+	ResourceID        string
 	Name              string
 	UploadArchivePath string
 }
 
 type ListVersionParam struct {
-	ResourceID int
+	ResourceID string
 	Offset     int
 	Limit      int
 }
 
 type GetVersionByNameParam struct {
-	ResourceID int
+	ResourceID string
 	Name       string
 }
 
 type VersionNameExistsParam struct {
-	ResourceID int
+	ResourceID string
 	Name       string
 }
 
@@ -77,18 +77,19 @@ type ValidateUploaderResponse struct {
 }
 
 type CreateResourceRequest struct {
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
 type CreateResourceResponseData struct {
-	ID          int    `json:"id"`
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
 type TempDownloadInfo struct {
-	ID             int               `json:"id"`
+	ID             string            `json:"id"`
 	Full           bool              `json:"full"`
 	VersionID      int               `json:"version_id"`
 	VersionName    string            `json:"version_name"`

@@ -3,6 +3,11 @@ package logic
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -11,10 +16,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"go.uber.org/zap"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 type VersionLogic struct {
@@ -36,7 +37,7 @@ func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsPa
 		Exist(ctx)
 }
 
-func (l *VersionLogic) GetLatest(ctx context.Context, resourceID int) (*ent.Version, error) {
+func (l *VersionLogic) GetLatest(ctx context.Context, resourceID string) (*ent.Version, error) {
 	return l.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(resourceID))).
 		Order(ent.Desc("number")).
@@ -88,7 +89,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return l.createRollback(tx, err)
 	}
 	storageRootDir := filepath.Join(cwd, "storage")
-	versionDir := filepath.Join(storageRootDir, strconv.Itoa(param.ResourceID), strconv.Itoa(v.ID))
+	versionDir := filepath.Join(storageRootDir, param.ResourceID, strconv.Itoa(v.ID))
 	saveDir := filepath.Join(versionDir, "resource")
 	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 		l.logger.Error("Failed to create storage directory",

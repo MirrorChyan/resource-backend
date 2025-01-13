@@ -30,7 +30,7 @@ type Version struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the VersionQuery when eager-loading is set.
 	Edges             VersionEdges `json:"edges"`
-	resource_versions *int
+	resource_versions *string
 	selectValues      sql.SelectValues
 }
 
@@ -79,7 +79,7 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 		case version.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case version.ForeignKeys[0]: // resource_versions
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -128,11 +128,11 @@ func (v *Version) assignValues(columns []string, values []any) error {
 				v.CreatedAt = value.Time
 			}
 		case version.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field resource_versions", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field resource_versions", values[i])
 			} else if value.Valid {
-				v.resource_versions = new(int)
-				*v.resource_versions = int(value.Int64)
+				v.resource_versions = new(string)
+				*v.resource_versions = value.String
 			}
 		default:
 			v.selectValues.Set(columns[i], values[i])

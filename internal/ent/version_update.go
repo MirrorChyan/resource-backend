@@ -107,13 +107,13 @@ func (vu *VersionUpdate) AddStorage(s ...*Storage) *VersionUpdate {
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
-func (vu *VersionUpdate) SetResourceID(id int) *VersionUpdate {
+func (vu *VersionUpdate) SetResourceID(id string) *VersionUpdate {
 	vu.mutation.SetResourceID(id)
 	return vu
 }
 
 // SetNillableResourceID sets the "resource" edge to the Resource entity by ID if the given value is not nil.
-func (vu *VersionUpdate) SetNillableResourceID(id *int) *VersionUpdate {
+func (vu *VersionUpdate) SetNillableResourceID(id *string) *VersionUpdate {
 	if id != nil {
 		vu = vu.SetResourceID(*id)
 	}
@@ -277,7 +277,7 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{version.ResourceColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -290,7 +290,7 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{version.ResourceColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -395,13 +395,13 @@ func (vuo *VersionUpdateOne) AddStorage(s ...*Storage) *VersionUpdateOne {
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
-func (vuo *VersionUpdateOne) SetResourceID(id int) *VersionUpdateOne {
+func (vuo *VersionUpdateOne) SetResourceID(id string) *VersionUpdateOne {
 	vuo.mutation.SetResourceID(id)
 	return vuo
 }
 
 // SetNillableResourceID sets the "resource" edge to the Resource entity by ID if the given value is not nil.
-func (vuo *VersionUpdateOne) SetNillableResourceID(id *int) *VersionUpdateOne {
+func (vuo *VersionUpdateOne) SetNillableResourceID(id *string) *VersionUpdateOne {
 	if id != nil {
 		vuo = vuo.SetResourceID(*id)
 	}
@@ -595,7 +595,7 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 			Columns: []string{version.ResourceColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -608,7 +608,7 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 			Columns: []string{version.ResourceColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

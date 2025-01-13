@@ -107,8 +107,8 @@ func (rq *ResourceQuery) FirstX(ctx context.Context) *Resource {
 
 // FirstID returns the first Resource ID from the query.
 // Returns a *NotFoundError when no Resource ID was found.
-func (rq *ResourceQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (rq *ResourceQuery) FirstID(ctx context.Context) (id string, err error) {
+	var ids []string
 	if ids, err = rq.Limit(1).IDs(setContextOp(ctx, rq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -120,7 +120,7 @@ func (rq *ResourceQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (rq *ResourceQuery) FirstIDX(ctx context.Context) int {
+func (rq *ResourceQuery) FirstIDX(ctx context.Context) string {
 	id, err := rq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -158,8 +158,8 @@ func (rq *ResourceQuery) OnlyX(ctx context.Context) *Resource {
 // OnlyID is like Only, but returns the only Resource ID in the query.
 // Returns a *NotSingularError when more than one Resource ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (rq *ResourceQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (rq *ResourceQuery) OnlyID(ctx context.Context) (id string, err error) {
+	var ids []string
 	if ids, err = rq.Limit(2).IDs(setContextOp(ctx, rq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -175,7 +175,7 @@ func (rq *ResourceQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (rq *ResourceQuery) OnlyIDX(ctx context.Context) int {
+func (rq *ResourceQuery) OnlyIDX(ctx context.Context) string {
 	id, err := rq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -203,7 +203,7 @@ func (rq *ResourceQuery) AllX(ctx context.Context) []*Resource {
 }
 
 // IDs executes the query and returns a list of Resource IDs.
-func (rq *ResourceQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (rq *ResourceQuery) IDs(ctx context.Context) (ids []string, err error) {
 	if rq.ctx.Unique == nil && rq.path != nil {
 		rq.Unique(true)
 	}
@@ -215,7 +215,7 @@ func (rq *ResourceQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (rq *ResourceQuery) IDsX(ctx context.Context) []int {
+func (rq *ResourceQuery) IDsX(ctx context.Context) []string {
 	ids, err := rq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -405,7 +405,7 @@ func (rq *ResourceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Res
 
 func (rq *ResourceQuery) loadVersions(ctx context.Context, query *VersionQuery, nodes []*Resource, init func(*Resource), assign func(*Resource, *Version)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Resource)
+	nodeids := make(map[string]*Resource)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -445,7 +445,7 @@ func (rq *ResourceQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (rq *ResourceQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(resource.Table, resource.Columns, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(resource.Table, resource.Columns, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString))
 	_spec.From = rq.sql
 	if unique := rq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
