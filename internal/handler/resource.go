@@ -49,6 +49,9 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 
 	exists, err := h.resourceLogic.Exists(ctx, req.ID)
 	if err != nil {
+		h.logger.Error("failed to check resource exists",
+			zap.Error(err),
+		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
@@ -58,12 +61,16 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 	}
 
 	param := CreateResourceParam{
+		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
 	}
 
 	res, err := h.resourceLogic.Create(ctx, param)
 	if err != nil {
+		h.logger.Error("failed to create resource",
+			zap.Error(err),
+		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}

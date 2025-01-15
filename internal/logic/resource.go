@@ -25,6 +25,7 @@ func NewResourceLogic(logger *zap.Logger, db *ent.Client) *ResourceLogic {
 
 func (l *ResourceLogic) Create(ctx context.Context, param CreateResourceParam) (*ent.Resource, error) {
 	return l.db.Resource.Create().
+		SetID(param.ID).
 		SetName(param.Name).
 		SetDescription(param.Description).
 		Save(ctx)

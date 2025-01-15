@@ -12,6 +12,7 @@ type ListResourceParam struct {
 }
 
 type CreateResourceParam struct {
+	ID          string
 	Name        string
 	Description string
 }
