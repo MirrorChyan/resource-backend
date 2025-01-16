@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"regexp"
+
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
@@ -35,8 +37,21 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if req.ID == "" {
+	switch idLength := len(req.ID); {
+	case idLength == 0:
 		resp := response.BusinessError("id is required")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	case idLength < 3:
+		resp := response.BusinessError("id must be at least 3 characters long")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	case idLength > 64:
+		resp := response.BusinessError("id must be at most 64 characters long")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	var validID = regexp.MustCompile("^[a-zA-Z0-9_-]+$")
+	if !validID.MatchString(req.ID) {
+		resp := response.BusinessError("id must be alphanumeric, underscore, or hyphen")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
