@@ -167,10 +167,10 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	ctx := c.UserContext()
 
-	if !h.isAllowedMimeType(file.Header.Get("Content-Type")) {
-		resp := response.BusinessError("invalid file type")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
+	// if !h.isAllowedMimeType(file.Header.Get("Content-Type")) {
+	// 	resp := response.BusinessError("invalid file type")
+	// 	return c.Status(fiber.StatusBadRequest).JSON(resp)
+	// }
 
 	if !h.isValidExtension(file.Filename) {
 		resp := response.BusinessError("invalid file extension")
