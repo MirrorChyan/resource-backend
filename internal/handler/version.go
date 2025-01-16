@@ -392,7 +392,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		request := BillingCheckinRequest{
 			CDK:         req.CDK,
 			Application: resourceName,
-			UserAgent:   c.Params("user_agent", ""),
+			UserAgent:   req.UserAgent,
 		}
 		body, err := json.Marshal(request)
 		if err != nil {

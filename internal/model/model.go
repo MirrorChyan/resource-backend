@@ -60,6 +60,7 @@ type GetLatestVersionRequest struct {
 	CurrentVersion string `query:"current_version"`
 	CDK            string `query:"cdk"`
 	SpID           string `query:"sp_id"`
+	UserAgent      string `query:"user_agent"`
 }
 
 type QueryLatestResponseData struct {

@@ -15,7 +15,9 @@ username = "username"
 password = "password"
 name = "name"
 
+[billing]
+billing_checkin_url = "http://billing.checkin.example/check_in"
+
 [auth]
 uploader_validation_url = "https://uploader.validation.example"
 cdk_validation_url = "https://cdk.validation.example"
-billing_checkin_url = "http://billing.checkin.example/check_in"
