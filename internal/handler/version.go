@@ -272,29 +272,29 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
+func (h *VersionHandler) ValidateCDK(cdk, spId, source string) (bool, error) {
 	h.logger.Debug("Validating CDK")
 	if cdk == "" {
 		h.logger.Error("Missing cdk param")
-		return CdkNotfound
+		return false, CdkNotfound
 	}
-	if specificationID == "" {
+	if spId == "" {
 		h.logger.Error("Missing spId param")
-		return SpIdNotfound
+		return false, SpIdNotfound
 	}
 
-	reqData := ValidateCDKRequest{
+	request := ValidateCDKRequest{
 		CDK:             cdk,
-		SpecificationID: specificationID,
+		SpecificationID: spId,
+		Source:          source,
 	}
 
-	jsonData, err := json.Marshal(reqData)
+	jsonData, err := json.Marshal(request)
 	if err != nil {
 		h.logger.Error("Failed to marshal JSON",
 			zap.Error(err),
 		)
-		//resp := response.UnexpectedError()
-		return err
+		return false, err
 	}
 
 	resp, err := http.Post(h.conf.Auth.CDKValidationURL, "application/json", bytes.NewBuffer(jsonData))
@@ -302,7 +302,7 @@ func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
 		)
-		return err
+		return false, err
 	}
 
 	var result ValidateCDKResponse
@@ -310,7 +310,7 @@ func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
 		h.logger.Error("Failed to decode response",
 			zap.Error(err),
 		)
-		return err
+		return false, err
 	}
 	var code = result.Code
 
@@ -320,19 +320,21 @@ func (h *VersionHandler) ValidateCDK(cdk, specificationID string) error {
 			zap.Int("code", result.Code),
 			zap.String("msg", result.Msg),
 		)
-		return RemoteError(result.Msg)
+		return false, RemoteError(result.Msg)
 	case -1:
 		h.logger.Error("CDK validation failed",
 			zap.Int("code", result.Code),
 			zap.String("msg", result.Msg),
 		)
-		return errors.New("unknown error")
+		return false, errors.New("unknown error")
 	}
-	return nil
+
+	return result.Data, nil
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	resID := c.Params(resourceKey)
+	// equal resId
+	resourceName := c.Params(resourceKey)
 
 	req := &GetLatestVersionRequest{}
 	if err := c.QueryParser(req); err != nil {
@@ -345,7 +347,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var ctx = c.UserContext()
 
-	latest, err := h.versionLogic.GetLatest(ctx, resID)
+	latest, err := h.versionLogic.GetLatest(ctx, resourceName)
 
 	if err != nil {
 
@@ -365,11 +367,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		VersionName:   latest.Name,
 		VersionNumber: latest.Number,
 	}
+
 	if req.CDK == "" {
 		return c.Status(fiber.StatusOK).JSON(response.Success(resp, "current resource latest version is "+latest.Name))
 	}
 
-	if err := h.ValidateCDK(req.CDK, req.SpID); err != nil {
+	if isFirstBind, err := h.ValidateCDK(req.CDK, req.SpID, resourceName); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound):
@@ -385,6 +388,20 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			resp := response.UnexpectedError()
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
 		}
+	} else if isFirstBind {
+		request := BillingCheckinRequest{
+			CDK:         req.CDK,
+			Application: resourceName,
+			UserAgent:   c.Params("user_agent", ""),
+		}
+		body, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		_, err = http.Post(h.conf.Billing.CheckinURL, "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
+		}
 	}
 
 	if latest.Name == req.CurrentVersion {
@@ -397,7 +414,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	rk := ksuid.New().String()
 
 	info := TempDownloadInfo{
-		ID:             resID,
+		ID:             resourceName,
 		Full:           req.CurrentVersion == "",
 		VersionID:      latest.ID,
 		VersionName:    latest.Name,

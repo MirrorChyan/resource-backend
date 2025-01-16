@@ -47,11 +47,13 @@ type VersionNameExistsParam struct {
 type ValidateCDKRequest struct {
 	CDK             string `json:"cdk"`
 	SpecificationID string `json:"specificationId"`
+	Source          string `json:"source"`
 }
 
 type ValidateCDKResponse struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
+	Data bool   `json:"data"`
 }
 
 type GetLatestVersionRequest struct {
@@ -96,4 +98,11 @@ type TempDownloadInfo struct {
 	VersionName    string            `json:"version_name"`
 	CurrentVersion string            `json:"current_version"`
 	FileHashes     map[string]string `json:"file_hashes"`
+}
+
+type BillingCheckinRequest struct {
+	CDK         string `json:"cdk"`
+	Application string `json:"application"`
+	Module      string `json:"module"`
+	UserAgent   string `json:"user_agent"`
 }

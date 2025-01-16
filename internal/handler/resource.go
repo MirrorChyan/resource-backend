@@ -2,6 +2,7 @@ package handler
 
 import (
 	"regexp"
+	"sync"
 
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -27,6 +28,12 @@ func (h *ResourceHandler) Register(r fiber.Router) {
 	r.Post("/resources", h.Create)
 }
 
+var validID = sync.Pool{
+	New: func() interface{} {
+		return regexp.MustCompile("^[a-zA-Z0-9_-]+$")
+	},
+}
+
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 	req := &CreateResourceRequest{}
 	if err := c.BodyParser(req); err != nil {
@@ -49,8 +56,10 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	var validID = regexp.MustCompile("^[a-zA-Z0-9_-]+$")
-	if !validID.MatchString(req.ID) {
+	var validator = validID.Get().(*regexp.Regexp)
+	defer validID.Put(validator)
+
+	if !validator.MatchString(req.ID) {
 		resp := response.BusinessError("id must be alphanumeric, underscore, or hyphen")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}

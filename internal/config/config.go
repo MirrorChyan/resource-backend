@@ -13,6 +13,7 @@ type Config struct {
 	Log      LogConfig      `mapstructure:"log"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Auth     AuthConfig     `mapstructure:"auth"`
+	Billing  BillingConfig  `mapstructure:"billing"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	Extra    ExtraConfig    `mapstructure:"extra"`
 }
@@ -52,6 +53,10 @@ type ExtraConfig struct {
 type AuthConfig struct {
 	UploaderValidationURL string `mapstructure:"uploader_validation_url"`
 	CDKValidationURL      string `mapstructure:"cdk_validation_url"`
+}
+
+type BillingConfig struct {
+	CheckinURL string `mapstructure:"billing_checkin_url"`
 }
 
 const DefaultPort = 8000
