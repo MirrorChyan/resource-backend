@@ -131,7 +131,7 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if su.mutation.VersionCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2O,
 			Inverse: true,
 			Table:   storage.VersionTable,
 			Columns: []string{storage.VersionColumn},
@@ -144,7 +144,7 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if nodes := su.mutation.VersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2O,
 			Inverse: true,
 			Table:   storage.VersionTable,
 			Columns: []string{storage.VersionColumn},
@@ -310,7 +310,7 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	}
 	if suo.mutation.VersionCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2O,
 			Inverse: true,
 			Table:   storage.VersionTable,
 			Columns: []string{storage.VersionColumn},
@@ -323,7 +323,7 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	}
 	if nodes := suo.mutation.VersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2O,
 			Inverse: true,
 			Table:   storage.VersionTable,
 			Columns: []string{storage.VersionColumn},

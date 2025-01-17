@@ -92,6 +92,6 @@ func newVersionStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(VersionInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, VersionTable, VersionColumn),
+		sqlgraph.Edge(sqlgraph.O2O, true, VersionTable, VersionColumn),
 	)
 }

@@ -29,7 +29,8 @@ func (Version) Fields() []ent.Field {
 // Edges of the Version.
 func (Version) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("storage", Storage.Type),
+		edge.To("storage", Storage.Type).
+			Unique(),
 		edge.From("resource", Resource.Type).
 			Ref("versions").
 			Unique(),

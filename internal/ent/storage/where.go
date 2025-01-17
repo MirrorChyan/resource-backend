@@ -175,7 +175,7 @@ func HasVersion() predicate.Storage {
 	return predicate.Storage(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, VersionTable, VersionColumn),
+			sqlgraph.Edge(sqlgraph.O2O, true, VersionTable, VersionColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

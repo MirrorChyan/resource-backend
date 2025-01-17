@@ -1023,8 +1023,7 @@ type VersionMutation struct {
 	file_hashes     *map[string]string
 	created_at      *time.Time
 	clearedFields   map[string]struct{}
-	storage         map[int]struct{}
-	removedstorage  map[int]struct{}
+	storage         *int
 	clearedstorage  bool
 	resource        *string
 	clearedresource bool
@@ -1308,14 +1307,9 @@ func (m *VersionMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
-// AddStorageIDs adds the "storage" edge to the Storage entity by ids.
-func (m *VersionMutation) AddStorageIDs(ids ...int) {
-	if m.storage == nil {
-		m.storage = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.storage[ids[i]] = struct{}{}
-	}
+// SetStorageID sets the "storage" edge to the Storage entity by id.
+func (m *VersionMutation) SetStorageID(id int) {
+	m.storage = &id
 }
 
 // ClearStorage clears the "storage" edge to the Storage entity.
@@ -1328,29 +1322,20 @@ func (m *VersionMutation) StorageCleared() bool {
 	return m.clearedstorage
 }
 
-// RemoveStorageIDs removes the "storage" edge to the Storage entity by IDs.
-func (m *VersionMutation) RemoveStorageIDs(ids ...int) {
-	if m.removedstorage == nil {
-		m.removedstorage = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.storage, ids[i])
-		m.removedstorage[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedStorage returns the removed IDs of the "storage" edge to the Storage entity.
-func (m *VersionMutation) RemovedStorageIDs() (ids []int) {
-	for id := range m.removedstorage {
-		ids = append(ids, id)
+// StorageID returns the "storage" edge ID in the mutation.
+func (m *VersionMutation) StorageID() (id int, exists bool) {
+	if m.storage != nil {
+		return *m.storage, true
 	}
 	return
 }
 
 // StorageIDs returns the "storage" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// StorageID instead. It exists only for internal usage by the builders.
 func (m *VersionMutation) StorageIDs() (ids []int) {
-	for id := range m.storage {
-		ids = append(ids, id)
+	if id := m.storage; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
@@ -1359,7 +1344,6 @@ func (m *VersionMutation) StorageIDs() (ids []int) {
 func (m *VersionMutation) ResetStorage() {
 	m.storage = nil
 	m.clearedstorage = false
-	m.removedstorage = nil
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by id.
@@ -1624,11 +1608,9 @@ func (m *VersionMutation) AddedEdges() []string {
 func (m *VersionMutation) AddedIDs(name string) []ent.Value {
 	switch name {
 	case version.EdgeStorage:
-		ids := make([]ent.Value, 0, len(m.storage))
-		for id := range m.storage {
-			ids = append(ids, id)
+		if id := m.storage; id != nil {
+			return []ent.Value{*id}
 		}
-		return ids
 	case version.EdgeResource:
 		if id := m.resource; id != nil {
 			return []ent.Value{*id}
@@ -1640,23 +1622,12 @@ func (m *VersionMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *VersionMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 2)
-	if m.removedstorage != nil {
-		edges = append(edges, version.EdgeStorage)
-	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *VersionMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case version.EdgeStorage:
-		ids := make([]ent.Value, 0, len(m.removedstorage))
-		for id := range m.removedstorage {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
@@ -1688,6 +1659,9 @@ func (m *VersionMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *VersionMutation) ClearEdge(name string) error {
 	switch name {
+	case version.EdgeStorage:
+		m.ClearStorage()
+		return nil
 	case version.EdgeResource:
 		m.ClearResource()
 		return nil

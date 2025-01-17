@@ -104,17 +104,10 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
 }
 
-// ByStorageCount orders the results by storage count.
-func ByStorageCount(opts ...sql.OrderTermOption) OrderOption {
+// ByStorageField orders the results by storage field.
+func ByStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newStorageStep(), opts...)
-	}
-}
-
-// ByStorage orders the results by storage terms.
-func ByStorage(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newStorageStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newStorageStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -128,7 +121,7 @@ func newStorageStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(StorageInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, StorageTable, StorageColumn),
+		sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
 	)
 }
 func newResourceStep() *sqlgraph.Step {

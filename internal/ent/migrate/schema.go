@@ -26,7 +26,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "directory", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "version_storage", Type: field.TypeInt, Nullable: true},
+		{Name: "version_storage", Type: field.TypeInt, Unique: true, Nullable: true},
 	}
 	// StoragesTable holds the schema information for the "storages" table.
 	StoragesTable = &schema.Table{

@@ -78,7 +78,7 @@ func (vq *VersionQuery) QueryStorage() *StorageQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(version.Table, version.FieldID, selector),
 			sqlgraph.To(storage.Table, storage.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, version.StorageTable, version.StorageColumn),
+			sqlgraph.Edge(sqlgraph.O2O, false, version.StorageTable, version.StorageColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(vq.driver.Dialect(), step)
 		return fromU, nil
@@ -439,9 +439,8 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 		return nodes, nil
 	}
 	if query := vq.withStorage; query != nil {
-		if err := vq.loadStorage(ctx, query, nodes,
-			func(n *Version) { n.Edges.Storage = []*Storage{} },
-			func(n *Version, e *Storage) { n.Edges.Storage = append(n.Edges.Storage, e) }); err != nil {
+		if err := vq.loadStorage(ctx, query, nodes, nil,
+			func(n *Version, e *Storage) { n.Edges.Storage = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -460,9 +459,6 @@ func (vq *VersionQuery) loadStorage(ctx context.Context, query *StorageQuery, no
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
 	}
 	query.withFKs = true
 	query.Where(predicate.Storage(func(s *sql.Selector) {

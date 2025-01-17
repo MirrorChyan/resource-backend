@@ -91,19 +91,23 @@ func (vu *VersionUpdate) SetNillableCreatedAt(t *time.Time) *VersionUpdate {
 	return vu
 }
 
-// AddStorageIDs adds the "storage" edge to the Storage entity by IDs.
-func (vu *VersionUpdate) AddStorageIDs(ids ...int) *VersionUpdate {
-	vu.mutation.AddStorageIDs(ids...)
+// SetStorageID sets the "storage" edge to the Storage entity by ID.
+func (vu *VersionUpdate) SetStorageID(id int) *VersionUpdate {
+	vu.mutation.SetStorageID(id)
 	return vu
 }
 
-// AddStorage adds the "storage" edges to the Storage entity.
-func (vu *VersionUpdate) AddStorage(s ...*Storage) *VersionUpdate {
-	ids := make([]int, len(s))
-	for i := range s {
-		ids[i] = s[i].ID
+// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
+func (vu *VersionUpdate) SetNillableStorageID(id *int) *VersionUpdate {
+	if id != nil {
+		vu = vu.SetStorageID(*id)
 	}
-	return vu.AddStorageIDs(ids...)
+	return vu
+}
+
+// SetStorage sets the "storage" edge to the Storage entity.
+func (vu *VersionUpdate) SetStorage(s *Storage) *VersionUpdate {
+	return vu.SetStorageID(s.ID)
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
@@ -130,25 +134,10 @@ func (vu *VersionUpdate) Mutation() *VersionMutation {
 	return vu.mutation
 }
 
-// ClearStorage clears all "storage" edges to the Storage entity.
+// ClearStorage clears the "storage" edge to the Storage entity.
 func (vu *VersionUpdate) ClearStorage() *VersionUpdate {
 	vu.mutation.ClearStorage()
 	return vu
-}
-
-// RemoveStorageIDs removes the "storage" edge to Storage entities by IDs.
-func (vu *VersionUpdate) RemoveStorageIDs(ids ...int) *VersionUpdate {
-	vu.mutation.RemoveStorageIDs(ids...)
-	return vu
-}
-
-// RemoveStorage removes "storage" edges to Storage entities.
-func (vu *VersionUpdate) RemoveStorage(s ...*Storage) *VersionUpdate {
-	ids := make([]int, len(s))
-	for i := range s {
-		ids[i] = s[i].ID
-	}
-	return vu.RemoveStorageIDs(ids...)
 }
 
 // ClearResource clears the "resource" edge to the Resource entity.
@@ -226,7 +215,7 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if vu.mutation.StorageCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
+			Rel:     sqlgraph.O2O,
 			Inverse: false,
 			Table:   version.StorageTable,
 			Columns: []string{version.StorageColumn},
@@ -234,28 +223,12 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := vu.mutation.RemovedStorageIDs(); len(nodes) > 0 && !vu.mutation.StorageCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   version.StorageTable,
-			Columns: []string{version.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := vu.mutation.StorageIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
+			Rel:     sqlgraph.O2O,
 			Inverse: false,
 			Table:   version.StorageTable,
 			Columns: []string{version.StorageColumn},
@@ -379,19 +352,23 @@ func (vuo *VersionUpdateOne) SetNillableCreatedAt(t *time.Time) *VersionUpdateOn
 	return vuo
 }
 
-// AddStorageIDs adds the "storage" edge to the Storage entity by IDs.
-func (vuo *VersionUpdateOne) AddStorageIDs(ids ...int) *VersionUpdateOne {
-	vuo.mutation.AddStorageIDs(ids...)
+// SetStorageID sets the "storage" edge to the Storage entity by ID.
+func (vuo *VersionUpdateOne) SetStorageID(id int) *VersionUpdateOne {
+	vuo.mutation.SetStorageID(id)
 	return vuo
 }
 
-// AddStorage adds the "storage" edges to the Storage entity.
-func (vuo *VersionUpdateOne) AddStorage(s ...*Storage) *VersionUpdateOne {
-	ids := make([]int, len(s))
-	for i := range s {
-		ids[i] = s[i].ID
+// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
+func (vuo *VersionUpdateOne) SetNillableStorageID(id *int) *VersionUpdateOne {
+	if id != nil {
+		vuo = vuo.SetStorageID(*id)
 	}
-	return vuo.AddStorageIDs(ids...)
+	return vuo
+}
+
+// SetStorage sets the "storage" edge to the Storage entity.
+func (vuo *VersionUpdateOne) SetStorage(s *Storage) *VersionUpdateOne {
+	return vuo.SetStorageID(s.ID)
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
@@ -418,25 +395,10 @@ func (vuo *VersionUpdateOne) Mutation() *VersionMutation {
 	return vuo.mutation
 }
 
-// ClearStorage clears all "storage" edges to the Storage entity.
+// ClearStorage clears the "storage" edge to the Storage entity.
 func (vuo *VersionUpdateOne) ClearStorage() *VersionUpdateOne {
 	vuo.mutation.ClearStorage()
 	return vuo
-}
-
-// RemoveStorageIDs removes the "storage" edge to Storage entities by IDs.
-func (vuo *VersionUpdateOne) RemoveStorageIDs(ids ...int) *VersionUpdateOne {
-	vuo.mutation.RemoveStorageIDs(ids...)
-	return vuo
-}
-
-// RemoveStorage removes "storage" edges to Storage entities.
-func (vuo *VersionUpdateOne) RemoveStorage(s ...*Storage) *VersionUpdateOne {
-	ids := make([]int, len(s))
-	for i := range s {
-		ids[i] = s[i].ID
-	}
-	return vuo.RemoveStorageIDs(ids...)
 }
 
 // ClearResource clears the "resource" edge to the Resource entity.
@@ -544,7 +506,7 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 	}
 	if vuo.mutation.StorageCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
+			Rel:     sqlgraph.O2O,
 			Inverse: false,
 			Table:   version.StorageTable,
 			Columns: []string{version.StorageColumn},
@@ -552,28 +514,12 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := vuo.mutation.RemovedStorageIDs(); len(nodes) > 0 && !vuo.mutation.StorageCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   version.StorageTable,
-			Columns: []string{version.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := vuo.mutation.StorageIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
+			Rel:     sqlgraph.O2O,
 			Inverse: false,
 			Table:   version.StorageTable,
 			Columns: []string{version.StorageColumn},

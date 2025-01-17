@@ -145,7 +145,7 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 	}
 	if nodes := sc.mutation.VersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2O,
 			Inverse: true,
 			Table:   storage.VersionTable,
 			Columns: []string{storage.VersionColumn},

@@ -54,19 +54,23 @@ func (vc *VersionCreate) SetNillableCreatedAt(t *time.Time) *VersionCreate {
 	return vc
 }
 
-// AddStorageIDs adds the "storage" edge to the Storage entity by IDs.
-func (vc *VersionCreate) AddStorageIDs(ids ...int) *VersionCreate {
-	vc.mutation.AddStorageIDs(ids...)
+// SetStorageID sets the "storage" edge to the Storage entity by ID.
+func (vc *VersionCreate) SetStorageID(id int) *VersionCreate {
+	vc.mutation.SetStorageID(id)
 	return vc
 }
 
-// AddStorage adds the "storage" edges to the Storage entity.
-func (vc *VersionCreate) AddStorage(s ...*Storage) *VersionCreate {
-	ids := make([]int, len(s))
-	for i := range s {
-		ids[i] = s[i].ID
+// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
+func (vc *VersionCreate) SetNillableStorageID(id *int) *VersionCreate {
+	if id != nil {
+		vc = vc.SetStorageID(*id)
 	}
-	return vc.AddStorageIDs(ids...)
+	return vc
+}
+
+// SetStorage sets the "storage" edge to the Storage entity.
+func (vc *VersionCreate) SetStorage(s *Storage) *VersionCreate {
+	return vc.SetStorageID(s.ID)
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
@@ -189,7 +193,7 @@ func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 	}
 	if nodes := vc.mutation.StorageIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
+			Rel:     sqlgraph.O2O,
 			Inverse: false,
 			Table:   version.StorageTable,
 			Columns: []string{version.StorageColumn},

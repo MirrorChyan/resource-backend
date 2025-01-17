@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -37,7 +38,7 @@ type Version struct {
 // VersionEdges holds the relations/edges for other nodes in the graph.
 type VersionEdges struct {
 	// Storage holds the value of the storage edge.
-	Storage []*Storage `json:"storage,omitempty"`
+	Storage *Storage `json:"storage,omitempty"`
 	// Resource holds the value of the resource edge.
 	Resource *Resource `json:"resource,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -46,10 +47,12 @@ type VersionEdges struct {
 }
 
 // StorageOrErr returns the Storage value or an error if the edge
-// was not loaded in eager-loading.
-func (e VersionEdges) StorageOrErr() ([]*Storage, error) {
-	if e.loadedTypes[0] {
+// was not loaded in eager-loading, or loaded but was not found.
+func (e VersionEdges) StorageOrErr() (*Storage, error) {
+	if e.Storage != nil {
 		return e.Storage, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: storage.Label}
 	}
 	return nil, &NotLoadedError{edge: "storage"}
 }

@@ -75,7 +75,7 @@ func (sq *StorageQuery) QueryVersion() *VersionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(storage.Table, storage.FieldID, selector),
 			sqlgraph.To(version.Table, version.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, storage.VersionTable, storage.VersionColumn),
+			sqlgraph.Edge(sqlgraph.O2O, true, storage.VersionTable, storage.VersionColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
 		return fromU, nil

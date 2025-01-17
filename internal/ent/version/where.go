@@ -230,7 +230,7 @@ func HasStorage() predicate.Version {
 	return predicate.Version(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, StorageTable, StorageColumn),
+			sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
