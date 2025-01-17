@@ -12,21 +12,27 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"go.uber.org/zap"
 )
 
 type VersionLogic struct {
-	logger *zap.Logger
-	db     *ent.Client
+	logger       *zap.Logger
+	db           *ent.Client
+	storage      *stg.Storage
+	storageLogic *StorageLogic
 }
 
-func NewVersionLogic(logger *zap.Logger, db *ent.Client) *VersionLogic {
+func NewVersionLogic(logger *zap.Logger, db *ent.Client, storage *stg.Storage, storageLogic *StorageLogic) *VersionLogic {
 	return &VersionLogic{
-		logger: logger,
-		db:     db,
+		logger:       logger,
+		db:           db,
+		storage:      storage,
+		storageLogic: storageLogic,
 	}
 }
 
@@ -229,4 +235,58 @@ func (l *VersionLogic) Delete(ctx context.Context, id int) error {
 	return l.db.Version.
 		DeleteOneID(id).
 		Exec(ctx)
+}
+
+func (l *VersionLogic) GetResourcePath(param GetResourcePathParam) string {
+	return l.storage.ResourcePath(param.ResourceID, param.VersionID)
+}
+
+func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchParam) (string, error) {
+	changes, err := patcher.CalculateDiff(param.TargetVersionFileHashes, param.CurrentVersionFileHashes)
+	if err != nil {
+		l.logger.Error("Failed to calculate diff",
+			zap.String("resource ID", param.ResourceID),
+			zap.Int("target version ID", param.TargetVersionID),
+			zap.Int("current version ID", param.CurrentVersionID),
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	exists, err := l.storage.PatchExists(param.ResourceID, param.TargetVersionID, param.CurrentVersionID)
+	if err != nil {
+		l.logger.Error("Failed to check patch file exists",
+			zap.String("resource ID", param.ResourceID),
+			zap.Int("target version ID", param.TargetVersionID),
+			zap.Int("current version ID", param.CurrentVersionID),
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	if exists {
+		patchPath := l.storage.PatchPath(param.ResourceID, param.TargetVersionID, param.CurrentVersionID)
+		return patchPath, nil
+	}
+
+	patchDir := l.storage.PatchDir(param.ResourceID, param.TargetVersionID)
+	latestStorage, err := l.storageLogic.GetByVersionID(ctx, param.TargetVersionID)
+	if err != nil {
+		l.logger.Error("Failed to get storage",
+			zap.Error(err),
+		)
+		return "", err
+
+	}
+	patchName, err := patcher.Generate(strconv.Itoa(param.CurrentVersionID), latestStorage.Directory, patchDir, changes)
+	if err != nil {
+		l.logger.Error("Failed to generate patch package",
+			zap.Error(err),
+		)
+		return "", err
+
+	}
+
+	patchPath := filepath.Join(patchDir, patchName)
+	return patchPath, nil
 }

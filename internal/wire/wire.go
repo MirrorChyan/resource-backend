@@ -8,6 +8,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/google/wire"
 	"go.uber.org/zap"
 )
@@ -35,6 +36,6 @@ func newHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *han
 	}
 }
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, storage *stg.Storage) *HandlerSet {
 	panic(wire.Build(logicSet, handlerSet, newHandlerSet))
 }

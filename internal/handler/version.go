@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
-	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
@@ -333,8 +331,7 @@ func (h *VersionHandler) ValidateCDK(cdk, spId, source string) (bool, error) {
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	// equal resId
-	resourceName := c.Params(resourceKey)
+	resID := c.Params(resourceKey)
 
 	req := &GetLatestVersionRequest{}
 	if err := c.QueryParser(req); err != nil {
@@ -347,7 +344,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var ctx = c.UserContext()
 
-	latest, err := h.versionLogic.GetLatest(ctx, resourceName)
+	latest, err := h.versionLogic.GetLatest(ctx, resID)
 
 	if err != nil {
 
@@ -363,16 +360,17 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			JSON(response.UnexpectedError())
 	}
 
-	resp := QueryLatestResponseData{
+	data := QueryLatestResponseData{
 		VersionName:   latest.Name,
 		VersionNumber: latest.Number,
 	}
 
 	if req.CDK == "" {
-		return c.Status(fiber.StatusOK).JSON(response.Success(resp, "current resource latest version is "+latest.Name))
+		resp := response.Success(data, "current resource latest version is "+latest.Name)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.ValidateCDK(req.CDK, req.SpID, resourceName); err != nil {
+	if isFirstBind, err := h.ValidateCDK(req.CDK, req.SpID, resID); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound):
@@ -391,7 +389,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	} else if isFirstBind {
 		request := BillingCheckinRequest{
 			CDK:         req.CDK,
-			Application: resourceName,
+			Application: resID,
 			UserAgent:   req.UserAgent,
 		}
 		body, err := json.Marshal(request)
@@ -405,22 +403,54 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if latest.Name == req.CurrentVersion {
-		resp := response.Success(resp, "current version is latest")
+		resp := response.Success(data, "current version is latest")
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
 	h.logger.Info("CDK validation success")
 
-	rk := ksuid.New().String()
+	var info TempDownloadInfo
+	isFull := req.CurrentVersion == ""
 
-	info := TempDownloadInfo{
-		ID:             resourceName,
-		Full:           req.CurrentVersion == "",
-		VersionID:      latest.ID,
-		VersionName:    latest.Name,
-		CurrentVersion: req.CurrentVersion,
-		FileHashes:     latest.FileHashes,
+	// if current version is not provided, we will download the full version
+	var current *ent.Version
+	if !isFull {
+		getVersionByNameParam := GetVersionByNameParam{
+			ResourceID: resID,
+			Name:       req.CurrentVersion,
+		}
+		current, err = h.versionLogic.GetByName(ctx, getVersionByNameParam)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				isFull = true
+			} else {
+				h.logger.Error("Failed to get current version",
+					zap.Error(err),
+				)
+				resp := response.UnexpectedError()
+				return c.Status(fiber.StatusInternalServerError).JSON(resp)
+			}
+		}
 	}
+
+	if isFull {
+		info = TempDownloadInfo{
+			ResourceID:      resID,
+			Full:            isFull,
+			TargetVersionID: latest.ID,
+		}
+	} else {
+		info = TempDownloadInfo{
+			ResourceID:               resID,
+			Full:                     isFull,
+			TargetVersionID:          latest.ID,
+			TargetVersionFileHashes:  latest.FileHashes,
+			CurrentVersionID:         current.ID,
+			CurrentVersionFileHashes: current.FileHashes,
+		}
+	}
+
+	rk := ksuid.New().String()
 
 	if buf, err := json.Marshal(info); err != nil {
 		h.logger.Error("Failed to marshal JSON",
@@ -431,14 +461,13 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		db.IRS.Set(ctx, fmt.Sprintf("RES:%v", rk), string(buf), 20*time.Minute)
 
 		url := strings.Join([]string{h.conf.Extra.DownloadPrefix, rk}, "/")
-		resp.Url = url
-		return c.Status(fiber.StatusOK).JSON(response.Success(resp, "success"))
+		data.Url = url
+		return c.Status(fiber.StatusOK).JSON(response.Success(data, "success"))
 	}
 
 }
 
 func (h *VersionHandler) Download(c *fiber.Ctx) error {
-
 	key := c.Params("key", "")
 
 	if key == "" {
@@ -451,83 +480,45 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 
 	var info TempDownloadInfo
 	if err != nil || val == "" || json.Unmarshal([]byte(val), &info) != nil {
-		h.logger.Error("invalid key or resource not found", zap.String("key", key))
-		return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("invalid key or resource not found"))
-	}
-
-	var (
-		resourceID  = info.ID
-		versionID   = info.VersionID
-		versionName = info.VersionName
-
-		fileHashes     = info.FileHashes
-		currentVersion = info.CurrentVersion
-	)
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		h.logger.Error("Failed to get current directory",
-			zap.Error(err),
+		h.logger.Error("invalid key or resource not found",
+			zap.String("key", key),
 		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		resp := response.BusinessError("invalid key or resource not found")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
 	}
-	dir := filepath.Join(cwd, "storage")
-	versionDir := filepath.Join(dir, resourceID, strconv.Itoa(versionID))
 
-	resArchivePath := filepath.Join(versionDir, "resource.zip")
+	// full update
+	getResourcePathParam := GetResourcePathParam{
+		ResourceID: info.ResourceID,
+		VersionID:  info.TargetVersionID,
+	}
+	resArchivePath := h.versionLogic.GetResourcePath(getResourcePathParam)
 	if info.Full {
 		c.Set("X-Update-Type", "full")
 		return c.Status(fiber.StatusOK).Download(resArchivePath)
 	}
 
-	param := GetVersionByNameParam{
-		ResourceID: resourceID,
-		Name:       currentVersion,
+	// incremental update
+	getPatchPathParam := GetVersionPatchParam{
+		ResourceID:               info.ResourceID,
+		TargetVersionID:          info.TargetVersionID,
+		TargetVersionFileHashes:  info.TargetVersionFileHashes,
+		CurrentVersionID:         info.CurrentVersionID,
+		CurrentVersionFileHashes: info.CurrentVersionFileHashes,
 	}
-	current, err := h.versionLogic.GetByName(ctx, param)
-	if ent.IsNotFound(err) {
-		c.Set("X-Update-Type", "full")
-		return c.Status(fiber.StatusOK).Download(resArchivePath)
-
-	} else if err != nil {
-		h.logger.Error("Failed to get current version",
-			zap.String("version name", currentVersion),
+	patchPath, err := h.versionLogic.GetPatchPath(ctx, getPatchPathParam)
+	if err != nil {
+		h.logger.Error("Failed to get patch",
+			zap.String("resource id", info.ResourceID),
+			zap.Int("target version id", info.TargetVersionID),
+			zap.Int("current version id", info.CurrentVersionID),
 			zap.Error(err),
 		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	changes, err := patcher.CalculateDiff(fileHashes, current.FileHashes)
-	if err != nil {
-		h.logger.Error("Failed to calculate diff",
-			zap.String("resource ID", resourceID),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	patchDir := filepath.Join(versionDir, "patch")
-	patchName := fmt.Sprintf("%s-%s", current.Name, versionName)
-	latestStorage, err := h.storageLogic.GetByVersionID(ctx, versionID)
-	if err != nil {
-		h.logger.Error("Failed to get storage",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	archiving, err := patcher.Generate(patchName, latestStorage.Directory, patchDir, changes)
-	if err != nil {
-		h.logger.Error("Failed to generate patch package",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		resp := response.UnexpectedError
+		return c.Status(fiber.StatusInternalServerError).JSON(resp())
 	}
 
 	c.Set("X-New-Version-Available", "true")
 	c.Set("X-Update-Type", "incremental")
-	return c.Status(fiber.StatusOK).Download(filepath.Join(patchDir, archiving))
+	return c.Status(fiber.StatusOK).Download(patchPath, "ota.zip")
 }

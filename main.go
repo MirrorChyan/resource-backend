@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +26,11 @@ var (
 const BodyLimit = 50 * 1024 * 1024
 
 func main() {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get current working directory, %v", err)
+	}
+
 	conf := config.New()
 	config.GlobalConfig = conf
 
@@ -52,7 +60,9 @@ func main() {
 		)
 	}
 
-	handlerSet := wire.NewHandlerSet(conf, l, mySQL)
+	storage := stg.New(cwd)
+
+	handlerSet := wire.NewHandlerSet(conf, l, mySQL, storage)
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: BodyLimit,

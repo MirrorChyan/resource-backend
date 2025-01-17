@@ -93,12 +93,12 @@ type CreateResourceResponseData struct {
 }
 
 type TempDownloadInfo struct {
-	ID             string            `json:"id"`
-	Full           bool              `json:"full"`
-	VersionID      int               `json:"version_id"`
-	VersionName    string            `json:"version_name"`
-	CurrentVersion string            `json:"current_version"`
-	FileHashes     map[string]string `json:"file_hashes"`
+	ResourceID               string            `json:"resource_id"`
+	Full                     bool              `json:"full"`
+	TargetVersionID          int               `json:"target_version_id"`
+	TargetVersionFileHashes  map[string]string `json:"target_version_file_hashes"`
+	CurrentVersionID         int               `json:"current_version_id"`
+	CurrentVersionFileHashes map[string]string `json:"current_version_file_hashes"`
 }
 
 type BillingCheckinRequest struct {
@@ -106,4 +106,17 @@ type BillingCheckinRequest struct {
 	Application string `json:"application"`
 	Module      string `json:"module"`
 	UserAgent   string `json:"user_agent"`
+}
+
+type GetResourcePathParam struct {
+	ResourceID string
+	VersionID  int
+}
+
+type GetVersionPatchParam struct {
+	ResourceID               string
+	CurrentVersionID         int
+	CurrentVersionFileHashes map[string]string
+	TargetVersionID          int
+	TargetVersionFileHashes  map[string]string
 }

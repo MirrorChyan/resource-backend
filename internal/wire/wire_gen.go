@@ -11,17 +11,18 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/google/wire"
 	"go.uber.org/zap"
 )
 
 // Injectors from wire.go:
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, storage *stg.Storage) *HandlerSet {
 	resourceLogic := logic.NewResourceLogic(logger, db)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
-	versionLogic := logic.NewVersionLogic(logger, db)
 	storageLogic := logic.NewStorageLogic(logger, db)
+	versionLogic := logic.NewVersionLogic(logger, db, storage, storageLogic)
 	versionHandler := handler.NewVersionHandler(conf, logger, resourceLogic, versionLogic, storageLogic)
 	wireHandlerSet := newHandlerSet(resourceHandler, versionHandler)
 	return wireHandlerSet
