@@ -48,6 +48,7 @@ type ValidateCDKRequest struct {
 	CDK             string `json:"cdk"`
 	SpecificationID string `json:"specificationId"`
 	Source          string `json:"source"`
+	UA              string `json:"ua"`
 }
 
 type ValidateCDKResponse struct {

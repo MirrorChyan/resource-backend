@@ -270,7 +270,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-func (h *VersionHandler) ValidateCDK(cdk, spId, source string) (bool, error) {
+func (h *VersionHandler) ValidateCDK(cdk, spId, ua, source string) (bool, error) {
 	h.logger.Debug("Validating CDK")
 	if cdk == "" {
 		h.logger.Error("Missing cdk param")
@@ -285,6 +285,7 @@ func (h *VersionHandler) ValidateCDK(cdk, spId, source string) (bool, error) {
 		CDK:             cdk,
 		SpecificationID: spId,
 		Source:          source,
+		UA:              ua,
 	}
 
 	jsonData, err := json.Marshal(request)
@@ -295,7 +296,7 @@ func (h *VersionHandler) ValidateCDK(cdk, spId, source string) (bool, error) {
 		return false, err
 	}
 
-	resp, err := http.Post(h.conf.Auth.CDKValidationURL, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(h.conf.Auth.CDKValidationURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(jsonData))
 	if err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
@@ -370,13 +371,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.ValidateCDK(req.CDK, req.SpID, resID); err != nil {
+	if isFirstBind, err := h.ValidateCDK(req.CDK, req.SpID, req.UserAgent, resID); err != nil {
 		var e RemoteError
 		switch {
-		case errors.Is(err, CdkNotfound):
-			resp := response.BusinessError(err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(resp)
-		case errors.Is(err, SpIdNotfound):
+		case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
 			resp := response.BusinessError(err.Error())
 			return c.Status(fiber.StatusBadRequest).JSON(resp)
 		case errors.As(err, &e):
@@ -387,19 +385,23 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
 		}
 	} else if isFirstBind {
-		request := BillingCheckinRequest{
-			CDK:         req.CDK,
-			Application: resID,
-			UserAgent:   req.UserAgent,
-		}
-		body, err := json.Marshal(request)
-		if err != nil {
-			return err
-		}
-		_, err = http.Post(h.conf.Billing.CheckinURL, "application/json", bytes.NewBuffer(body))
-		if err != nil {
-			h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
-		}
+		// at-most-once callback
+		go func() {
+			request := BillingCheckinRequest{
+				CDK:         req.CDK,
+				Application: resID,
+				UserAgent:   req.UserAgent,
+			}
+			body, err := json.Marshal(request)
+			if err != nil {
+				h.logger.Warn("Checkin callback Failed to marshal JSON")
+				return
+			}
+			_, err = http.Post(h.conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
+			if err != nil {
+				h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
+			}
+		}()
 	}
 
 	if latest.Name == req.CurrentVersion {
@@ -409,8 +411,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	var info TempDownloadInfo
-	isFull := req.CurrentVersion == ""
+	var isFull = req.CurrentVersion == ""
 
 	// if current version is not provided, we will download the full version
 	var current *ent.Version
@@ -421,33 +422,27 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		}
 		current, err = h.versionLogic.GetByName(ctx, getVersionByNameParam)
 		if err != nil {
-			if ent.IsNotFound(err) {
-				isFull = true
-			} else {
+			if !ent.IsNotFound(err) {
 				h.logger.Error("Failed to get current version",
 					zap.Error(err),
 				)
 				resp := response.UnexpectedError()
 				return c.Status(fiber.StatusInternalServerError).JSON(resp)
 			}
+			isFull = true
 		}
 	}
 
-	if isFull {
-		info = TempDownloadInfo{
-			ResourceID:      resID,
-			Full:            isFull,
-			TargetVersionID: latest.ID,
-		}
-	} else {
-		info = TempDownloadInfo{
-			ResourceID:               resID,
-			Full:                     isFull,
-			TargetVersionID:          latest.ID,
-			TargetVersionFileHashes:  latest.FileHashes,
-			CurrentVersionID:         current.ID,
-			CurrentVersionFileHashes: current.FileHashes,
-		}
+	var info = TempDownloadInfo{
+		ResourceID:      resID,
+		Full:            isFull,
+		TargetVersionID: latest.ID,
+	}
+
+	if !isFull {
+		info.TargetVersionFileHashes = latest.FileHashes
+		info.CurrentVersionID = current.ID
+		info.CurrentVersionFileHashes = current.FileHashes
 	}
 
 	rk := ksuid.New().String()
@@ -480,7 +475,7 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 
 	var info TempDownloadInfo
 	if err != nil || val == "" || json.Unmarshal([]byte(val), &info) != nil {
-		h.logger.Error("invalid key or resource not found",
+		h.logger.Warn("invalid key or resource not found",
 			zap.String("key", key),
 		)
 		resp := response.BusinessError("invalid key or resource not found")
