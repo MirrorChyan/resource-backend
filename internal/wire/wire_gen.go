@@ -12,6 +12,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
+	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/google/wire"
 	"go.uber.org/zap"
 )
@@ -19,27 +20,31 @@ import (
 // Injectors from wire.go:
 
 func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, storage *stg.Storage) *HandlerSet {
-	resourceLogic := logic.NewResourceLogic(logger, db)
+	resource := repo.NewResource(db)
+	resourceLogic := logic.NewResourceLogic(logger, resource)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
-	storageLogic := logic.NewStorageLogic(logger, db)
-	versionLogic := logic.NewVersionLogic(logger, db, storage, storageLogic)
-	versionHandler := handler.NewVersionHandler(conf, logger, resourceLogic, versionLogic, storageLogic)
-	wireHandlerSet := newHandlerSet(resourceHandler, versionHandler)
-	return wireHandlerSet
+	version := repo.NewVersion(db)
+	repoStorage := repo.NewStorage(db)
+	versionLogic := logic.NewVersionLogic(logger, version, repoStorage, storage)
+	versionHandler := handler.NewVersionHandler(conf, logger, resourceLogic, versionLogic)
+	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
+	return handlerSet
 }
 
 // wire.go:
 
-var logicSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewStorageLogic)
+var repoProviderSet = wire.NewSet(repo.NewResource, repo.NewVersion, repo.NewStorage)
 
-var handlerSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler)
+var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic)
+
+var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler)
 
 type HandlerSet struct {
 	ResourceHandler *handler.ResourceHandler
 	VersionHandler  *handler.VersionHandler
 }
 
-func newHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *handler.VersionHandler) *HandlerSet {
+func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *handler.VersionHandler) *HandlerSet {
 	return &HandlerSet{
 		ResourceHandler: resourceHandler,
 		VersionHandler:  versionHandler,

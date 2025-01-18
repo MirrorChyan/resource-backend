@@ -22,6 +22,10 @@ func (s *Storage) ResourcePath(resID string, verID int) string {
 	return filepath.Join(s.rootDir, resID, strconv.Itoa(verID), "resource.zip")
 }
 
+func (s *Storage) VersionDir(resID string, verID int) string {
+	return filepath.Join(s.rootDir, resID, strconv.Itoa(verID))
+}
+
 func (s *Storage) PatchDir(resID string, targetVerID int) string {
 	return filepath.Join(s.rootDir, resID, strconv.Itoa(targetVerID), "patch")
 }

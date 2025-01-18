@@ -9,17 +9,23 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
+	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/google/wire"
 	"go.uber.org/zap"
 )
 
-var logicSet = wire.NewSet(
-	logic.NewResourceLogic,
-	logic.NewVersionLogic,
-	logic.NewStorageLogic,
+var repoProviderSet = wire.NewSet(
+	repo.NewResource,
+	repo.NewVersion,
+	repo.NewStorage,
 )
 
-var handlerSet = wire.NewSet(
+var logicProviderSet = wire.NewSet(
+	logic.NewResourceLogic,
+	logic.NewVersionLogic,
+)
+
+var handlerProviderSet = wire.NewSet(
 	handler.NewResourceHandler,
 	handler.NewVersionHandler,
 )
@@ -29,7 +35,7 @@ type HandlerSet struct {
 	VersionHandler  *handler.VersionHandler
 }
 
-func newHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *handler.VersionHandler) *HandlerSet {
+func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *handler.VersionHandler) *HandlerSet {
 	return &HandlerSet{
 		ResourceHandler: resourceHandler,
 		VersionHandler:  versionHandler,
@@ -37,5 +43,5 @@ func newHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *han
 }
 
 func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, storage *stg.Storage) *HandlerSet {
-	panic(wire.Build(logicSet, handlerSet, newHandlerSet))
+	panic(wire.Build(repoProviderSet, logicProviderSet, handlerProviderSet, provideHandlerSet))
 }

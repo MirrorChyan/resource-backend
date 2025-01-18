@@ -28,7 +28,6 @@ type VersionHandler struct {
 	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
-	storageLogic  *logic.StorageLogic
 }
 
 func NewVersionHandler(
@@ -36,14 +35,12 @@ func NewVersionHandler(
 	logger *zap.Logger,
 	resourceLogic *logic.ResourceLogic,
 	versionLogic *logic.VersionLogic,
-	storageLogic *logic.StorageLogic,
 ) *VersionHandler {
 	return &VersionHandler{
 		conf:          conf,
 		logger:        logger,
 		resourceLogic: resourceLogic,
 		versionLogic:  versionLogic,
-		storageLogic:  storageLogic,
 	}
 }
 
@@ -239,22 +236,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		Name:              name,
 		UploadArchivePath: tempPath,
 	}
-	version, saveDir, err := h.versionLogic.Create(ctx, createVersionParam)
+	version, err := h.versionLogic.Create(ctx, createVersionParam)
 	if err != nil {
 		h.logger.Error("Failed to create version",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	createStorageParam := CreateStorageParam{
-		VersionID: version.ID,
-		Directory: saveDir,
-	}
-	_, err = h.storageLogic.Create(ctx, createStorageParam)
-	if err != nil {
-		h.logger.Error("Failed to create storage",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
