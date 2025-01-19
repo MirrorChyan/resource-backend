@@ -251,7 +251,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-func (h *VersionHandler) ValidateCDK(cdk, spId, ua, source string) (bool, error) {
+func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error) {
 	h.logger.Debug("Validating CDK")
 	if cdk == "" {
 		h.logger.Error("Missing cdk param")
@@ -369,7 +369,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.ValidateCDK(req.CDK, req.SpID, req.UserAgent, resID); err != nil {
+	if isFirstBind, err := h.validateCDK(req.CDK, req.SpID, req.UserAgent, resID); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
