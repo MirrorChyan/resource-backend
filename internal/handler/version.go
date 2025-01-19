@@ -10,16 +10,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
-	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/gofiber/fiber/v2"
-	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
 )
 
@@ -395,70 +392,39 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	var isFull = req.CurrentVersion == ""
-
-	// if current version is not provided, we will download the full version
-	var current *ent.Version
-	if !isFull {
-		getVersionByNameParam := GetVersionByNameParam{
-			ResourceID: resID,
-			Name:       req.CurrentVersion,
-		}
-		current, err = h.versionLogic.GetByName(ctx, getVersionByNameParam)
-		if err != nil {
-			if !ent.IsNotFound(err) {
-				h.logger.Error("Failed to get current version",
-					zap.Error(err),
-				)
-				resp := response.UnexpectedError()
-				return c.Status(fiber.StatusInternalServerError).JSON(resp)
-			}
-			isFull = true
-		}
+	storeTempDownloadInfoParam := StoreTempDownloadInfoParam{
+		ResourceID:         resID,
+		CurrentVersionName: req.CurrentVersion,
+		LatestVersion:      latest,
 	}
 
-	var info = TempDownloadInfo{
-		ResourceID:      resID,
-		Full:            isFull,
-		TargetVersionID: latest.ID,
-	}
-
-	if !isFull {
-		info.TargetVersionFileHashes = latest.FileHashes
-		info.CurrentVersionID = current.ID
-		info.CurrentVersionFileHashes = current.FileHashes
-	}
-
-	rk := ksuid.New().String()
-
-	if buf, err := json.Marshal(info); err != nil {
-		h.logger.Error("Failed to marshal JSON",
+	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, storeTempDownloadInfoParam)
+	if err != nil {
+		h.logger.Error("Failed to store temp download info",
 			zap.Error(err),
 		)
-		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
-	} else {
-		db.IRS.Set(ctx, fmt.Sprintf("RES:%v", rk), string(buf), 20*time.Minute)
-
-		url := strings.Join([]string{h.conf.Extra.DownloadPrefix, rk}, "/")
-		data.Url = url
-		return c.Status(fiber.StatusOK).JSON(response.Success(data, "success"))
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
+	url := strings.Join([]string{h.conf.Extra.DownloadPrefix, key}, "/")
+	data.Url = url
+	resp := response.Success(data)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
 func (h *VersionHandler) Download(c *fiber.Ctx) error {
 	key := c.Params("key", "")
 
 	if key == "" {
-		return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("missing key"))
+		resp := response.BusinessError("missing key")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
 	}
 
 	ctx := c.UserContext()
 
-	val, err := db.IRS.GetDel(ctx, fmt.Sprintf("RES:%v", key)).Result()
-
-	var info TempDownloadInfo
-	if err != nil || val == "" || json.Unmarshal([]byte(val), &info) != nil {
+	info, err := h.versionLogic.GetTempDownloadInfo(ctx, key)
+	if err != nil {
 		h.logger.Warn("invalid key or resource not found",
 			zap.String("key", key),
 		)

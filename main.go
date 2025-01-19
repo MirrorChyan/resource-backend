@@ -37,8 +37,6 @@ func main() {
 	l := logger.New(conf)
 	zap.ReplaceGlobals(l)
 
-	db.NewRedis(conf)
-
 	mySQL, err := db.NewMySQL(conf)
 
 	if err != nil {
@@ -60,9 +58,11 @@ func main() {
 		)
 	}
 
+	redis := db.NewRedis(conf)
+
 	storage := stg.New(cwd)
 
-	handlerSet := wire.NewHandlerSet(conf, l, mySQL, storage)
+	handlerSet := wire.NewHandlerSet(conf, l, mySQL, redis, storage)
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: BodyLimit,

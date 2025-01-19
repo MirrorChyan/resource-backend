@@ -11,6 +11,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/google/wire"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -18,6 +19,7 @@ var repoProviderSet = wire.NewSet(
 	repo.NewResource,
 	repo.NewVersion,
 	repo.NewStorage,
+	repo.NewTempDownloadInfo,
 )
 
 var logicProviderSet = wire.NewSet(
@@ -42,6 +44,6 @@ func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler 
 	}
 }
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, storage *stg.Storage) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, storage *stg.Storage) *HandlerSet {
 	panic(wire.Build(repoProviderSet, logicProviderSet, handlerProviderSet, provideHandlerSet))
 }

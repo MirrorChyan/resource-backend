@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
@@ -16,22 +17,31 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
 )
 
 type VersionLogic struct {
-	logger      *zap.Logger
-	versionRepo *repo.Version
-	storageRepo *repo.Storage
-	storage     *stg.Storage
+	logger               *zap.Logger
+	versionRepo          *repo.Version
+	storageRepo          *repo.Storage
+	tempDownloadInfoRepo *repo.TempDownloadInfo
+	storage              *stg.Storage
 }
 
-func NewVersionLogic(logger *zap.Logger, versionRepo *repo.Version, storageRepo *repo.Storage, storage *stg.Storage) *VersionLogic {
+func NewVersionLogic(
+	logger *zap.Logger,
+	versionRepo *repo.Version,
+	storageRepo *repo.Storage,
+	tempDownloadInfoRepo *repo.TempDownloadInfo,
+	storage *stg.Storage,
+) *VersionLogic {
 	return &VersionLogic{
-		logger:      logger,
-		versionRepo: versionRepo,
-		storageRepo: storageRepo,
-		storage:     storage,
+		logger:               logger,
+		versionRepo:          versionRepo,
+		storageRepo:          storageRepo,
+		tempDownloadInfoRepo: tempDownloadInfoRepo,
+		storage:              storage,
 	}
 }
 
@@ -194,6 +204,71 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 
 func (l *VersionLogic) GetByName(ctx context.Context, param GetVersionByNameParam) (*ent.Version, error) {
 	return l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
+}
+
+func (l *VersionLogic) StoreTempDownloadInfo(ctx context.Context, param StoreTempDownloadInfoParam) (string, error) {
+	isFull := param.CurrentVersionName == ""
+
+	// if current version is not provided, we will download the full version
+	var (
+		current *ent.Version
+		err     error
+	)
+	if !isFull {
+		getVersionByNameParam := GetVersionByNameParam{
+			ResourceID: param.ResourceID,
+			Name:       param.CurrentVersionName,
+		}
+		current, err = l.GetByName(ctx, getVersionByNameParam)
+		if err != nil {
+			if !ent.IsNotFound(err) {
+				l.logger.Error("Failed to get current version",
+					zap.Error(err),
+				)
+				return "", err
+			}
+			isFull = true
+		}
+	}
+
+	var info = &TempDownloadInfo{
+		ResourceID:      param.ResourceID,
+		Full:            isFull,
+		TargetVersionID: param.LatestVersion.ID,
+	}
+
+	if !isFull {
+		info.TargetVersionFileHashes = param.LatestVersion.FileHashes
+		info.CurrentVersionID = current.ID
+		info.CurrentVersionFileHashes = current.FileHashes
+	}
+
+	key := ksuid.New().String()
+	rk := fmt.Sprintf("RES:%v", key)
+
+	err = l.tempDownloadInfoRepo.SetTempDownloadInfo(ctx, rk, info, 20*time.Minute)
+	if err != nil {
+		l.logger.Error("Failed to set temp download info",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	return key, nil
+}
+
+func (l *VersionLogic) GetTempDownloadInfo(ctx context.Context, key string) (*TempDownloadInfo, error) {
+	rk := fmt.Sprintf("RES:%v", key)
+
+	info, err := l.tempDownloadInfoRepo.GetDelTempDownloadInfo(ctx, rk)
+	if err != nil {
+		l.logger.Error("Failed to get temp download info",
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	return info, nil
 }
 
 func (l *VersionLogic) GetResourcePath(param GetResourcePathParam) string {

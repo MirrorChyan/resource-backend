@@ -1,5 +1,7 @@
 package model
 
+import "github.com/MirrorChyan/resource-backend/internal/ent"
+
 type UpdateResourceParam struct {
 	ID          string
 	Name        string
@@ -107,6 +109,12 @@ type BillingCheckinRequest struct {
 	Application string `json:"application"`
 	Module      string `json:"module"`
 	UserAgent   string `json:"user_agent"`
+}
+
+type StoreTempDownloadInfoParam struct {
+	ResourceID         string
+	CurrentVersionName string
+	LatestVersion      *ent.Version
 }
 
 type GetResourcePathParam struct {
