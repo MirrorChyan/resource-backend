@@ -312,6 +312,23 @@ func (h *VersionHandler) ValidateCDK(cdk, spId, ua, source string) (bool, error)
 	return result.Data, nil
 }
 
+func (h VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string) {
+	request := BillingCheckinRequest{
+		CDK:         cdk,
+		Application: resID,
+		UserAgent:   userAgent,
+	}
+	body, err := json.Marshal(request)
+	if err != nil {
+		h.logger.Warn("Checkin callback Failed to marshal JSON")
+		return
+	}
+	_, err = http.Post(h.conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
+	if err != nil {
+		h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
+	}
+}
+
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	resID := c.Params(resourceKey)
 
@@ -367,22 +384,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		}
 	} else if isFirstBind {
 		// at-most-once callback
-		go func() {
-			request := BillingCheckinRequest{
-				CDK:         req.CDK,
-				Application: resID,
-				UserAgent:   req.UserAgent,
-			}
-			body, err := json.Marshal(request)
-			if err != nil {
-				h.logger.Warn("Checkin callback Failed to marshal JSON")
-				return
-			}
-			_, err = http.Post(h.conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
-			if err != nil {
-				h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
-			}
-		}()
+		go h.sendBillingCheckinRequest(resID, req.CDK, req.UserAgent)
 	}
 
 	if latest.Name == req.CurrentVersion {
