@@ -15,6 +15,16 @@ username = "username"
 password = "password"
 name = "name"
 
+[redis]
+addr = "localhost:6379"
+username = "username"
+password = "password"
+name = "name"
+db = 0
+
+[extra]
+download_prefix = "https://download.prefix.example"
+
 [billing]
 billing_checkin_url = "http://billing.checkin.example/check_in"
 
