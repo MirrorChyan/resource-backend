@@ -312,7 +312,7 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 	return result.Data, nil
 }
 
-func (h VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string) {
+func (h *VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string) {
 	request := BillingCheckinRequest{
 		CDK:         cdk,
 		Application: resID,

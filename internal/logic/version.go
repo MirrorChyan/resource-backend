@@ -3,6 +3,8 @@ package logic
 import (
 	"context"
 	"fmt"
+
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,7 +19,9 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/ksuid"
+
 	"go.uber.org/zap"
 )
 
@@ -262,9 +266,11 @@ func (l *VersionLogic) GetTempDownloadInfo(ctx context.Context, key string) (*Te
 
 	info, err := l.tempDownloadInfoRepo.GetDelTempDownloadInfo(ctx, rk)
 	if err != nil {
-		l.logger.Error("Failed to get temp download info",
-			zap.Error(err),
-		)
+		if !errors.Is(err, redis.Nil) {
+			l.logger.Error("redis err failed to get temp download info",
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
