@@ -20,7 +20,7 @@ func NewTempDownloadInfo(rdb *redis.Client) *TempDownloadInfo {
 }
 
 func (r *TempDownloadInfo) GetDelTempDownloadInfo(ctx context.Context, key string) (*model.TempDownloadInfo, error) {
-	val, err := r.rdb.GetDel(ctx, key).Result()
+	val, err := r.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}

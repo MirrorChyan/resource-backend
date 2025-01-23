@@ -65,7 +65,8 @@ func main() {
 	handlerSet := wire.NewHandlerSet(conf, l, mySQL, redis, storage)
 
 	app := fiber.New(fiber.Config{
-		BodyLimit: BodyLimit,
+		BodyLimit:   BodyLimit,
+		ProxyHeader: fiber.HeaderXForwardedFor,
 	})
 	app.Use(fiberzap.New(fiberzap.Config{
 		Logger: l,

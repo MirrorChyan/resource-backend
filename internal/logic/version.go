@@ -101,8 +101,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			l.logger.Error("Unknown archive extension",
 				zap.String("archive path", param.UploadArchivePath),
 			)
-			err = fmt.Errorf("Unknown archive extension")
-			return err
+			return errors.New("unknown archive extension")
 		}
 
 		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
@@ -250,7 +249,7 @@ func (l *VersionLogic) StoreTempDownloadInfo(ctx context.Context, param StoreTem
 	key := ksuid.New().String()
 	rk := fmt.Sprintf("RES:%v", key)
 
-	err = l.tempDownloadInfoRepo.SetTempDownloadInfo(ctx, rk, info, 20*time.Minute)
+	err = l.tempDownloadInfoRepo.SetTempDownloadInfo(ctx, rk, info, 10*time.Minute)
 	if err != nil {
 		l.logger.Error("Failed to set temp download info",
 			zap.Error(err),

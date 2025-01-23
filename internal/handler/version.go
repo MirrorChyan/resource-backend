@@ -434,6 +434,8 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(resp)
 	}
 
+	h.logger.Info("start download resources", zap.String("ip", c.IP()))
+
 	// full update
 	getResourcePathParam := GetResourcePathParam{
 		ResourceID: info.ResourceID,
