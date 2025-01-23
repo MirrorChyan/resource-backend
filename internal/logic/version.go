@@ -282,17 +282,6 @@ func (l *VersionLogic) GetResourcePath(param GetResourcePathParam) string {
 }
 
 func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchParam) (string, error) {
-	changes, err := patcher.CalculateDiff(param.TargetVersionFileHashes, param.CurrentVersionFileHashes)
-	if err != nil {
-		l.logger.Error("Failed to calculate diff",
-			zap.String("resource ID", param.ResourceID),
-			zap.Int("target version ID", param.TargetVersionID),
-			zap.Int("current version ID", param.CurrentVersionID),
-			zap.Error(err),
-		)
-		return "", err
-	}
-
 	exists, err := l.storage.PatchExists(param.ResourceID, param.TargetVersionID, param.CurrentVersionID)
 	if err != nil {
 		l.logger.Error("Failed to check patch file exists",
@@ -307,6 +296,17 @@ func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchPa
 	if exists {
 		patchPath := l.storage.PatchPath(param.ResourceID, param.TargetVersionID, param.CurrentVersionID)
 		return patchPath, nil
+	}
+
+	changes, err := patcher.CalculateDiff(param.TargetVersionFileHashes, param.CurrentVersionFileHashes)
+	if err != nil {
+		l.logger.Error("Failed to calculate diff",
+			zap.String("resource ID", param.ResourceID),
+			zap.Int("target version ID", param.TargetVersionID),
+			zap.Int("current version ID", param.CurrentVersionID),
+			zap.Error(err),
+		)
+		return "", err
 	}
 
 	patchDir := l.storage.PatchDir(param.ResourceID, param.TargetVersionID)
