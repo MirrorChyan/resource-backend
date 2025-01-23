@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/metrics"
 	"log"
 	"os"
 
@@ -91,5 +90,5 @@ func initRoute(app *fiber.App, handlerSet *wire.HandlerSet) {
 
 	handlerSet.VersionHandler.Register(r)
 
-	metrics.NewMetrics(r)
+	handlerSet.MetricsHandler.Register(r)
 }
