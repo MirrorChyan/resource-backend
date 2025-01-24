@@ -467,7 +467,6 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp())
 	}
 
-	c.Set("X-New-Version-Available", "true")
 	c.Set("X-Update-Type", "incremental")
 	return c.Status(fiber.StatusOK).Download(patchPath, "ota.zip")
 }
