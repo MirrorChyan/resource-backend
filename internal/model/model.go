@@ -48,7 +48,7 @@ type VersionNameExistsParam struct {
 
 type ValidateCDKRequest struct {
 	CDK             string `json:"cdk"`
-	SpecificationID string `json:"specificationId"`
+	SpecificationID string `json:"specificationId,omitempty"`
 	Source          string `json:"source"`
 	UA              string `json:"ua"`
 }

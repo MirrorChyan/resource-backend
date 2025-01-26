@@ -254,14 +254,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error) {
 	h.logger.Debug("Validating CDK")
 	if cdk == "" {
-		h.logger.Error("Missing cdk param")
+		h.logger.Warn("Missing cdk param")
 		return false, CdkNotfound
 	}
-	if spId == "" {
-		h.logger.Error("Missing spId param")
-		return false, SpIdNotfound
-	}
-
 	request := ValidateCDKRequest{
 		CDK:             cdk,
 		SpecificationID: spId,
@@ -394,13 +389,13 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	storeTempDownloadInfoParam := StoreTempDownloadInfoParam{
+	info := StoreTempDownloadInfoParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		LatestVersion:      latest,
 	}
 
-	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, storeTempDownloadInfoParam)
+	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, info)
 	if err != nil {
 		h.logger.Error("Failed to store temp download info",
 			zap.Error(err),
@@ -437,25 +432,25 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 	h.logger.Info("start download resources", zap.String("ip", c.IP()))
 
 	// full update
-	getResourcePathParam := GetResourcePathParam{
-		ResourceID: info.ResourceID,
-		VersionID:  info.TargetVersionID,
-	}
-	resArchivePath := h.versionLogic.GetResourcePath(getResourcePathParam)
 	if info.Full {
+		param := GetResourcePathParam{
+			ResourceID: info.ResourceID,
+			VersionID:  info.TargetVersionID,
+		}
+		resArchivePath := h.versionLogic.GetResourcePath(param)
 		c.Set("X-Update-Type", "full")
 		return c.Status(fiber.StatusOK).Download(resArchivePath)
 	}
 
 	// incremental update
-	getPatchPathParam := GetVersionPatchParam{
+	param := GetVersionPatchParam{
 		ResourceID:               info.ResourceID,
 		TargetVersionID:          info.TargetVersionID,
 		TargetVersionFileHashes:  info.TargetVersionFileHashes,
 		CurrentVersionID:         info.CurrentVersionID,
 		CurrentVersionFileHashes: info.CurrentVersionFileHashes,
 	}
-	patchPath, err := h.versionLogic.GetPatchPath(ctx, getPatchPathParam)
+	patchPath, err := h.versionLogic.GetPatchPath(ctx, param)
 	if err != nil {
 		h.logger.Error("Failed to get patch",
 			zap.String("resource id", info.ResourceID),
