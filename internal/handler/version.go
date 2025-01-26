@@ -82,8 +82,8 @@ func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+	defer func(b io.ReadCloser) {
+		err := b.Close()
 		if err != nil {
 			h.logger.Error("Failed to close response body")
 		}
@@ -157,7 +157,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	ctx := c.UserContext()
+	var ctx = c.UserContext()
 
 	// if !h.isAllowedMimeType(file.Header.Get("Content-Type")) {
 	// 	resp := response.BusinessError("invalid file type")
@@ -169,19 +169,18 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	versionNameExistsParam := VersionNameExistsParam{
+	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
 		ResourceID: resID,
 		Name:       name,
-	}
-	exists, err := h.versionLogic.NameExists(ctx, versionNameExistsParam)
-	if err != nil {
+	})
+	switch {
+	case err != nil:
 		h.logger.Error("Failed to check if version name exists",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	if exists {
+	case exists:
 		h.logger.Info("Version name already exists",
 			zap.String("resource id", resID),
 			zap.String("version name", name),
@@ -190,50 +189,37 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusConflict).JSON(resp)
 	}
 
-	cwd, err := os.Getwd()
+	// create temp root dir
+	root, err := os.MkdirTemp(os.TempDir(), "process-temp")
 	if err != nil {
-		h.logger.Error("Failed to get current directory",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	tempRootDir := filepath.Join(cwd, "temp")
-	if err := os.MkdirAll(tempRootDir, os.ModePerm); err != nil {
 		h.logger.Error("Failed to create temp root directory",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-	tempDir, err := os.MkdirTemp(tempRootDir, "version")
-	if err != nil {
-		h.logger.Error("Failed to create temp directory", zap.Error(err))
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
+	// remove temp root dir
 	defer func(path string) {
-		err := os.RemoveAll(path)
-		if err != nil {
+		if err := os.RemoveAll(path); err != nil {
 			h.logger.Error("Failed to remove temp directory")
 		}
-	}(tempDir)
+	}(root)
 
-	tempPath := fmt.Sprintf("%s/%s", tempDir, file.Filename)
-	if err := c.SaveFile(file, tempPath); err != nil {
-		h.logger.Error("Failed to save file",
+	dest := strings.Join([]string{root, file.Filename}, string(os.PathSeparator))
+	if err := c.SaveFile(file, dest); err != nil {
+		h.logger.Error("failed to save file",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	createVersionParam := CreateVersionParam{
+	version, err := h.versionLogic.Create(ctx, CreateVersionParam{
 		ResourceID:        resID,
 		Name:              name,
-		UploadArchivePath: tempPath,
-	}
-	version, err := h.versionLogic.Create(ctx, createVersionParam)
+		UploadArchivePath: dest,
+	})
+
 	if err != nil {
 		h.logger.Error("Failed to create version",
 			zap.Error(err),
@@ -247,8 +233,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		Name:   version.Name,
 		Number: version.Number,
 	}
-	resp := response.Success(data)
-	return c.Status(fiber.StatusCreated).JSON(resp)
+	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
 }
 
 func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error) {

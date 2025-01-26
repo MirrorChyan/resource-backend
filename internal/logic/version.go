@@ -2,9 +2,8 @@ package logic
 
 import (
 	"context"
-	"fmt"
-
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -49,6 +48,13 @@ func NewVersionLogic(
 	}
 }
 
+const (
+	actualResourcePath = "resource"
+	archiveZip         = "resource.zip"
+	zipSuffix          = ".zip"
+	tarGzSuffix        = ".tar.gz"
+)
+
 func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
 	return l.versionRepo.CheckVersionExistsByName(ctx, param.ResourceID, param.Name)
 }
@@ -58,11 +64,9 @@ func (l *VersionLogic) GetLatest(ctx context.Context, resourceID string) (*ent.V
 }
 
 func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*ent.Version, error) {
-	var number uint64
+	var number uint64 = 1
 	latest, err := l.versionRepo.GetLatestVersion(ctx, param.ResourceID)
-	if ent.IsNotFound(err) {
-		number = 1
-	} else if err != nil {
+	if err != nil && ent.IsNotFound(err) {
 		l.logger.Error("Failed to query latest version",
 			zap.Error(err),
 		)
@@ -84,7 +88,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		}
 
 		versionDir := l.storage.VersionDir(param.ResourceID, ver.ID)
-		saveDir := filepath.Join(versionDir, "resource")
+		saveDir := filepath.Join(versionDir, actualResourcePath)
 		if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 			l.logger.Error("Failed to create storage directory",
 				zap.String("directory", saveDir),
@@ -93,11 +97,12 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return err
 		}
 
-		if strings.HasSuffix(param.UploadArchivePath, ".zip") {
+		switch {
+		case strings.HasSuffix(param.UploadArchivePath, zipSuffix):
 			err = archive.UnpackZip(param.UploadArchivePath, saveDir)
-		} else if strings.HasSuffix(param.UploadArchivePath, ".tar.gz") {
+		case strings.HasSuffix(param.UploadArchivePath, tarGzSuffix):
 			err = archive.UnpackTarGz(param.UploadArchivePath, saveDir)
-		} else {
+		default:
 			l.logger.Error("Unknown archive extension",
 				zap.String("archive path", param.UploadArchivePath),
 			)
@@ -108,10 +113,9 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 				// Code before the actual rollback.
 
-				rmErr := os.RemoveAll(saveDir)
-				if rmErr != nil {
+				if err := os.RemoveAll(saveDir); err != nil {
 					l.logger.Error("Failed to remove storage directory",
-						zap.Error(rmErr),
+						zap.Error(err),
 					)
 				}
 
@@ -130,8 +134,8 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return err
 		}
 
-		archivePath := filepath.Join(versionDir, "resource.zip")
-		if strings.HasSuffix(param.UploadArchivePath, ".zip") {
+		archivePath := filepath.Join(versionDir, archiveZip)
+		if strings.HasSuffix(param.UploadArchivePath, zipSuffix) {
 			err = fileops.MoveFile(param.UploadArchivePath, archivePath)
 			if err != nil {
 				l.logger.Error("Failed to move archive file",
@@ -142,12 +146,6 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 				return err
 			}
 		} else {
-			if err := os.Remove(param.UploadArchivePath); err != nil {
-				l.logger.Error("Failed to remove temp file",
-					zap.Error(err),
-				)
-				return err
-			}
 			err = archive.CompressToZip(saveDir, archivePath)
 			if err != nil {
 				l.logger.Error("Failed to compress to zip",
@@ -176,7 +174,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return err
 		}
 
-		stg, err := l.storageRepo.CreateStorage(ctx, tx, saveDir)
+		s, err := l.storageRepo.CreateStorage(ctx, tx, saveDir)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
 				zap.Error(err),
@@ -184,7 +182,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return err
 		}
 
-		ver, err = l.versionRepo.SetVersionStorageByOne(ctx, tx, ver, stg)
+		ver, err = l.versionRepo.SetVersionStorageByOne(ctx, tx, ver, s)
 		if err != nil {
 			l.logger.Error("Failed to add storage to version",
 				zap.Error(err),

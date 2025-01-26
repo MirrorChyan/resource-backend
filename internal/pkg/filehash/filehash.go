@@ -1,8 +1,9 @@
 package filehash
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
+	"github.com/MirrorChyan/resource-backend/internal/pkg"
+	"github.com/minio/sha256-simd"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,11 +16,13 @@ func Calculate(filePath string) (string, error) {
 	}
 	defer file.Close()
 
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
+	h := sha256.New()
+	buf := pkg.GetBuffer()
+	defer pkg.PutBuffer(buf)
+	if _, err := io.CopyBuffer(h, file, buf); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func GetAll(targetDir string) (map[string]string, error) {

@@ -56,7 +56,5 @@ func (r *Version) SetVersionFileHashesByOne(ctx context.Context, tx *ent.Tx, ver
 }
 
 func (r *Version) SetVersionStorageByOne(ctx context.Context, tx *ent.Tx, ver *ent.Version, stg *ent.Storage) (*ent.Version, error) {
-	return tx.Version.UpdateOne(ver).
-		SetStorage(stg).
-		Save(ctx)
+	return tx.Version.UpdateOne(ver).SetStorage(stg).Save(ctx)
 }

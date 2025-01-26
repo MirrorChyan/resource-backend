@@ -117,7 +117,7 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 	defer changesFile.Close()
 
 	changesMap := groupChangesByType(changes)
-	jsonData, err := json.MarshalIndent(changesMap, "", "  ")
+	jsonData, err := json.Marshal(changesMap)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal changes to JSON: %w", err)
 	}
