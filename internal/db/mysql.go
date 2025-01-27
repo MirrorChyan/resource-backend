@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/gofiber/fiber/v2/log"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -18,5 +19,8 @@ func NewMySQL(conf *config.Config) (*ent.Client, error) {
 		conf.Database.Port,
 		conf.Database.Name,
 	)
-	return ent.Open("mysql", dsn)
+
+	return ent.Open("mysql", dsn, ent.Debug(), ent.Log(func(a ...any) {
+		log.Info(a...)
+	}))
 }

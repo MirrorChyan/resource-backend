@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 )
 
 type Config struct {
@@ -47,7 +48,8 @@ type RedisConfig struct {
 }
 
 type ExtraConfig struct {
-	DownloadPrefix string `mapstructure:"download_prefix"`
+	DownloadPrefix        string        `mapstructure:"download_prefix"`
+	DownloadEffectiveTime time.Duration `mapstructure:"download_effective_time"`
 }
 
 type AuthConfig struct {

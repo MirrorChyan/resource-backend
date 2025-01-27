@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/bytedance/sonic"
 	"strings"
 	"time"
 
@@ -120,7 +120,7 @@ func (v *Version) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field file_hashes", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &v.FileHashes); err != nil {
+				if err := sonic.Unmarshal(*value, &v.FileHashes); err != nil {
 					return fmt.Errorf("unmarshal field file_hashes: %w", err)
 				}
 			}

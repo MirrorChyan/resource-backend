@@ -8,26 +8,26 @@ import (
 )
 
 type Storage struct {
-	rootDir string
+	RootDir string
 }
 
 func New(cwd string) *Storage {
 	rootDir := filepath.Join(cwd, "storage")
 	return &Storage{
-		rootDir: rootDir,
+		RootDir: rootDir,
 	}
 }
 
 func (s *Storage) ResourcePath(resID string, verID int) string {
-	return filepath.Join(s.rootDir, resID, strconv.Itoa(verID), "resource.zip")
+	return filepath.Join(s.RootDir, resID, strconv.Itoa(verID), "resource.zip")
 }
 
 func (s *Storage) VersionDir(resID string, verID int) string {
-	return filepath.Join(s.rootDir, resID, strconv.Itoa(verID))
+	return filepath.Join(s.RootDir, resID, strconv.Itoa(verID))
 }
 
 func (s *Storage) PatchDir(resID string, targetVerID int) string {
-	return filepath.Join(s.rootDir, resID, strconv.Itoa(targetVerID), "patch")
+	return filepath.Join(s.RootDir, resID, strconv.Itoa(targetVerID), "patch")
 }
 
 func (s *Storage) PatchPath(resID string, targetVerID, currentVerID int) string {
@@ -48,5 +48,5 @@ func (s *Storage) PatchExists(resID string, targetVerID, currentVerID int) (bool
 }
 
 func (s *Storage) buildPatchPath(resID string, targetVerID, currentVerID int) string {
-	return filepath.Join(s.rootDir, resID, strconv.Itoa(targetVerID), "patch", fmt.Sprintf("%d.zip", currentVerID))
+	return filepath.Join(s.RootDir, resID, strconv.Itoa(targetVerID), "patch", fmt.Sprintf("%d.zip", currentVerID))
 }

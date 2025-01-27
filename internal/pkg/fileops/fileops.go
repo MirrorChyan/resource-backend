@@ -13,11 +13,8 @@ func CopyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer func(sourceFile *os.File) {
-		err := sourceFile.Close()
-		if err != nil {
-
-		}
+	defer func(f *os.File) {
+		_ = f.Close()
 	}(sourceFile)
 
 	destFile, err := os.Create(dst)
@@ -46,6 +43,9 @@ func MoveFile(src, dst string) error {
 		return err
 	}
 
-	err = os.Remove(src)
-	return err
+	go func(src string) {
+		_ = os.Remove(src)
+	}(src)
+
+	return nil
 }

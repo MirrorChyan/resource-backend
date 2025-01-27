@@ -7,12 +7,14 @@
 package wire
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -20,14 +22,14 @@ import (
 
 // Injectors from wire.go:
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, storage *stg.Storage) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync2 *redsync.Redsync, storage *stg.Storage, cg *cache.VersionCacheGroup) *HandlerSet {
 	resource := repo.NewResource(db)
 	resourceLogic := logic.NewResourceLogic(logger, resource)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
 	version := repo.NewVersion(db)
 	repoStorage := repo.NewStorage(db)
 	tempDownloadInfo := repo.NewTempDownloadInfo(rdb)
-	versionLogic := logic.NewVersionLogic(logger, version, repoStorage, tempDownloadInfo, storage)
+	versionLogic := logic.NewVersionLogic(logger, version, repoStorage, tempDownloadInfo, storage, redsync2, rdb, cg)
 	versionHandler := handler.NewVersionHandler(conf, logger, resourceLogic, versionLogic)
 	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
 	return handlerSet

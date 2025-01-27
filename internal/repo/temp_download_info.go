@@ -2,7 +2,7 @@ package repo
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/bytedance/sonic"
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/model"
@@ -26,7 +26,7 @@ func (r *TempDownloadInfo) GetDelTempDownloadInfo(ctx context.Context, key strin
 	}
 
 	info := &model.TempDownloadInfo{}
-	err = json.Unmarshal([]byte(val), info)
+	err = sonic.Unmarshal([]byte(val), info)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (r *TempDownloadInfo) GetDelTempDownloadInfo(ctx context.Context, key strin
 }
 
 func (r *TempDownloadInfo) SetTempDownloadInfo(ctx context.Context, key string, info *model.TempDownloadInfo, expiration time.Duration) error {
-	buf, err := json.Marshal(info)
+	buf, err := sonic.Marshal(info)
 	if err != nil {
 		return err
 	}

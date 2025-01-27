@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bytedance/sonic"
 	"io"
 	"net/http"
 	"os"
@@ -249,7 +250,7 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 		UA:              ua,
 	}
 
-	jsonData, err := json.Marshal(request)
+	jsonData, err := sonic.Marshal(request)
 	if err != nil {
 		h.logger.Error("Failed to marshal JSON",
 			zap.Error(err),
@@ -298,7 +299,7 @@ func (h *VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string)
 		Application: resID,
 		UserAgent:   userAgent,
 	}
-	body, err := json.Marshal(request)
+	body, err := sonic.Marshal(request)
 	if err != nil {
 		h.logger.Warn("Checkin callback Failed to marshal JSON")
 		return
@@ -323,7 +324,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var ctx = c.UserContext()
 
-	latest, err := h.versionLogic.GetLatest(ctx, resID)
+	cg := h.versionLogic.GetCacheGroup()
+	val, err := cg.VersionLatestCache.ComputeIfAbsent(resID, func() (*ent.Version, error) {
+		return h.versionLogic.GetLatest(ctx, resID)
+	})
 
 	if err != nil {
 
@@ -338,6 +342,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).
 			JSON(response.UnexpectedError())
 	}
+	latest := *val
 
 	data := QueryLatestResponseData{
 		VersionName:   latest.Name,
@@ -374,13 +379,11 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	info := StoreTempDownloadInfoParam{
+	url, err := h.versionLogic.GetDownloadUrl(ctx, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		LatestVersion:      latest,
-	}
-
-	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, info)
+	})
 	if err != nil {
 		h.logger.Error("Failed to store temp download info",
 			zap.Error(err),
@@ -389,10 +392,9 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	url := strings.Join([]string{h.conf.Extra.DownloadPrefix, key}, "/")
 	data.Url = url
-	resp := response.Success(data)
-	return c.Status(fiber.StatusOK).JSON(resp)
+
+	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 }
 
 func (h *VersionHandler) Download(c *fiber.Ctx) error {
@@ -428,14 +430,14 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 	}
 
 	// incremental update
-	param := GetVersionPatchParam{
+	patchPath, err := h.versionLogic.GetPatchPath(ctx, GetVersionPatchParam{
 		ResourceID:               info.ResourceID,
 		TargetVersionID:          info.TargetVersionID,
 		TargetVersionFileHashes:  info.TargetVersionFileHashes,
 		CurrentVersionID:         info.CurrentVersionID,
 		CurrentVersionFileHashes: info.CurrentVersionFileHashes,
-	}
-	patchPath, err := h.versionLogic.GetPatchPath(ctx, param)
+	})
+
 	if err != nil {
 		h.logger.Error("Failed to get patch",
 			zap.String("resource id", info.ResourceID),

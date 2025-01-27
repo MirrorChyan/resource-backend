@@ -4,12 +4,14 @@
 package wire
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -46,6 +48,6 @@ func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler 
 	}
 }
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, storage *stg.Storage) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync *redsync.Redsync, storage *stg.Storage, cg *cache.VersionCacheGroup) *HandlerSet {
 	panic(wire.Build(repoProviderSet, logicProviderSet, handlerProviderSet, provideHandlerSet))
 }

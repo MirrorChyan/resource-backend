@@ -4,12 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
-
+	"github.com/MirrorChyan/resource-backend/internal/cache"
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
@@ -18,10 +14,14 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/ksuid"
-
 	"go.uber.org/zap"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type VersionLogic struct {
@@ -30,6 +30,9 @@ type VersionLogic struct {
 	storageRepo          *repo.Storage
 	tempDownloadInfoRepo *repo.TempDownloadInfo
 	storage              *stg.Storage
+	rdb                  *redis.Client
+	sync                 *redsync.Redsync
+	cacheGroup           *cache.VersionCacheGroup
 }
 
 func NewVersionLogic(
@@ -38,6 +41,9 @@ func NewVersionLogic(
 	storageRepo *repo.Storage,
 	tempDownloadInfoRepo *repo.TempDownloadInfo,
 	storage *stg.Storage,
+	redsync *redsync.Redsync,
+	rdb *redis.Client,
+	cacheGroup *cache.VersionCacheGroup,
 ) *VersionLogic {
 	return &VersionLogic{
 		logger:               logger,
@@ -45,14 +51,21 @@ func NewVersionLogic(
 		storageRepo:          storageRepo,
 		tempDownloadInfoRepo: tempDownloadInfoRepo,
 		storage:              storage,
+		sync:                 redsync,
+		rdb:                  rdb,
+		cacheGroup:           cacheGroup,
 	}
 }
 
 const (
 	actualResourcePath = "resource"
 	archiveZip         = "resource.zip"
-	zipSuffix          = ".zip"
-	tarGzSuffix        = ".tar.gz"
+
+	resourcePrefix = "Res"
+
+	zipSuffix         = ".zip"
+	tarGzSuffix       = ".tar.gz"
+	specificSeparator = "$#@"
 )
 
 func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
@@ -200,6 +213,8 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return nil, err
 	}
 
+	l.cacheGroup.VersionLatestCache.Delete(param.ResourceID)
+
 	return ver, nil
 }
 
@@ -207,55 +222,87 @@ func (l *VersionLogic) GetByName(ctx context.Context, param GetVersionByNamePara
 	return l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
 }
 
-func (l *VersionLogic) StoreTempDownloadInfo(ctx context.Context, param StoreTempDownloadInfoParam) (string, error) {
-	isFull := param.CurrentVersionName == ""
+func (l *VersionLogic) StoreTempDownloadInfo(p string) (string, error) {
 
+	return "", nil
+}
+
+func (l *VersionLogic) ProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (string, error) {
 	// if current version is not provided, we will download the full version
 	var (
-		current *ent.Version
-		err     error
+		current    *ent.Version
+		err        error
+		isFull     = param.CurrentVersionName == ""
+		resourceID = param.ResourceID
 	)
-	if !isFull {
-		getVersionByNameParam := GetVersionByNameParam{
-			ResourceID: param.ResourceID,
+
+	// full update
+	if isFull {
+		return l.GetResourcePath(GetResourcePathParam{
+			ResourceID: resourceID,
+			VersionID:  param.LatestVersion.ID,
+		}), nil
+	}
+
+	key := strings.Join([]string{resourceID, param.CurrentVersionName}, ":")
+
+	val, err := l.cacheGroup.VersionNameCache.ComputeIfAbsent(key, func() (*ent.Version, error) {
+		return l.GetByName(ctx, GetVersionByNameParam{
+			ResourceID: resourceID,
 			Name:       param.CurrentVersionName,
-		}
-		current, err = l.GetByName(ctx, getVersionByNameParam)
-		if err != nil {
-			if !ent.IsNotFound(err) {
-				l.logger.Error("Failed to get current version",
-					zap.Error(err),
-				)
-				return "", err
-			}
-			isFull = true
-		}
-	}
-
-	var info = &TempDownloadInfo{
-		ResourceID:      param.ResourceID,
-		Full:            isFull,
-		TargetVersionID: param.LatestVersion.ID,
-	}
-
-	if !isFull {
-		info.TargetVersionFileHashes = param.LatestVersion.FileHashes
-		info.CurrentVersionID = current.ID
-		info.CurrentVersionFileHashes = current.FileHashes
-	}
-
-	key := ksuid.New().String()
-	rk := fmt.Sprintf("RES:%v", key)
-
-	err = l.tempDownloadInfoRepo.SetTempDownloadInfo(ctx, rk, info, 10*time.Minute)
+		})
+	})
 	if err != nil {
-		l.logger.Error("Failed to set temp download info",
+		if !ent.IsNotFound(err) {
+			l.logger.Error("Failed to get current version",
+				zap.Error(err),
+			)
+			return "", err
+		}
+		isFull = true
+	}
+	current = *val
+	var (
+		currentVersionID         = current.ID
+		currentVersionFileHashes = current.FileHashes
+	)
+
+	// incremental update
+	patchPath, err := l.GetPatchPath(ctx, GetVersionPatchParam{
+		ResourceID:               resourceID,
+		TargetVersionID:          param.LatestVersion.ID,
+		TargetVersionFileHashes:  param.LatestVersion.FileHashes,
+		CurrentVersionID:         currentVersionID,
+		CurrentVersionFileHashes: currentVersionFileHashes,
+	})
+
+	if err != nil {
+		l.logger.Error("Failed to get patch",
+			zap.String("resource id", resourceID),
+			zap.Int("target version id", param.LatestVersion.ID),
+			zap.Int("current version id", currentVersionID),
 			zap.Error(err),
 		)
-		return "", err
 	}
 
-	return key, nil
+	return patchPath, nil
+}
+
+func (l *VersionLogic) GetDownloadUrl(ctx context.Context, param ProcessUpdateParam) (string, error) {
+	var (
+		cfg = config.GlobalConfig
+	)
+	p, err := l.ProcessPatchOrFullUpdate(ctx, param)
+	if err != nil {
+		return "", err
+	}
+	key := ksuid.New().String()
+	sk := strings.Join([]string{resourcePrefix, key}, ":")
+	_, err = l.rdb.Set(ctx, sk, p, cfg.Extra.DownloadEffectiveTime).Result()
+	if err != nil {
+		return "", err
+	}
+	return strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/"), nil
 }
 
 func (l *VersionLogic) GetTempDownloadInfo(ctx context.Context, key string) (*TempDownloadInfo, error) {
@@ -295,6 +342,101 @@ func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchPa
 		return patchPath, nil
 	}
 
+	var (
+		target   = strconv.Itoa(param.TargetVersionID)
+		origin   = strconv.Itoa(param.CurrentVersionID)
+		mutexKey = strings.Join([]string{"Patch", param.ResourceID, origin, target}, ":")
+
+		cacheKey = strings.Join([]string{"Load", param.ResourceID, origin, target}, ":")
+	)
+
+	val, done, err := l.isPatchLoaded(ctx, cacheKey)
+	l.logger.Info("val",
+		zap.String("val", val),
+		zap.Bool("done", done),
+		zap.Error(err),
+	)
+	switch {
+	case err != nil:
+		return "", err
+	case done:
+		return val, nil
+	}
+
+	mutex := l.sync.NewMutex(mutexKey)
+
+	if err := mutex.Lock(); err != nil {
+		return "", err
+	}
+	defer func() {
+		if ok, err := mutex.Unlock(); !ok || err != nil {
+			l.logger.Error("Failed to unlock patch mutex",
+				zap.String("resource id", param.ResourceID),
+				zap.Int("target version id", param.TargetVersionID),
+				zap.Int("current version id", param.CurrentVersionID),
+				zap.Error(err),
+			)
+		}
+	}()
+
+	val, done, err = l.isPatchLoaded(ctx, cacheKey)
+	l.logger.Info("val",
+		zap.String("val", val),
+		zap.Bool("done", done),
+		zap.Error(err),
+	)
+	switch {
+	case err != nil:
+		return "", err
+	case done:
+		return val, nil
+	}
+
+	p, err := l.doGetPatchPath(ctx, param, err)
+
+	var e string
+	if err != nil {
+		e = err.Error()
+	}
+
+	if err := l.LoadPatchInfo(ctx, cacheKey, p, e); err != nil {
+		return "", err
+	}
+
+	return p, nil
+}
+
+func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (string, bool, error) {
+	result, err := l.rdb.Get(ctx, cacheKey).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return "", false, nil
+	}
+
+	if result != "" {
+		r := strings.Split(result, specificSeparator)
+		if len(r) > 2 {
+			return "", false, errors.New("patch cache error")
+		}
+
+		if len(r) == 1 || r[1] == "" {
+			return r[0], true, nil
+		}
+
+		return r[0], true, errors.New(r[1])
+	}
+	return "", false, nil
+}
+
+func (l *VersionLogic) LoadPatchInfo(ctx context.Context, cacheKey, p, e string) error {
+	strings.Join([]string{"Load", cacheKey, e}, specificSeparator)
+	_, err := l.rdb.Set(ctx, cacheKey, p, 0).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *VersionLogic) doGetPatchPath(ctx context.Context, param GetVersionPatchParam, err error) (string, error) {
 	changes, err := patcher.CalculateDiff(param.TargetVersionFileHashes, param.CurrentVersionFileHashes)
 	if err != nil {
 		l.logger.Error("Failed to calculate diff",
@@ -307,6 +449,7 @@ func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchPa
 	}
 
 	patchDir := l.storage.PatchDir(param.ResourceID, param.TargetVersionID)
+
 	latestStorage, err := l.storageRepo.GetStorageByVersionID(ctx, param.TargetVersionID)
 	if err != nil {
 		l.logger.Error("Failed to get storage",
@@ -315,6 +458,7 @@ func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchPa
 		return "", err
 
 	}
+
 	patchName, err := patcher.Generate(strconv.Itoa(param.CurrentVersionID), latestStorage.Directory, patchDir, changes)
 	if err != nil {
 		l.logger.Error("Failed to generate patch package",
@@ -324,6 +468,13 @@ func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchPa
 
 	}
 
-	patchPath := filepath.Join(patchDir, patchName)
-	return patchPath, nil
+	return filepath.Join(patchDir, patchName), nil
+}
+
+func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
+	return l.cacheGroup
+}
+
+func (l *VersionLogic) GetStorageRootDir() string {
+	return l.storage.RootDir
 }

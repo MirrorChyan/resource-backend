@@ -111,7 +111,7 @@ type BillingCheckinRequest struct {
 	UserAgent   string `json:"user_agent"`
 }
 
-type StoreTempDownloadInfoParam struct {
+type ProcessUpdateParam struct {
 	ResourceID         string
 	CurrentVersionName string
 	LatestVersion      *ent.Version
