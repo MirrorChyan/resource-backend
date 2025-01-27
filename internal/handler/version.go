@@ -145,24 +145,64 @@ func (h *VersionHandler) isValidExtension(filename string) bool {
 // 	return false
 // }
 
-func (h *VersionHandler) validateOS(os string) bool {
-	allowList := []string{"", "linux", "windows", "darwin", "android"}
-	for _, allowed := range allowList {
-		if allowed == os {
-			return true
-		}
-	}
-	return false
+var osMap = map[string]string{
+	// any
+	"": "",
+
+	// windows
+	"windows": "windows",
+	"win":     "windows",
+	"win32":   "windows",
+
+	// linux
+	"linux": "linux",
+
+	// darwin
+	"darwin": "darwin",
+	"macos":  "darwin",
+	"mac":    "darwin",
+	"osx":    "darwin",
+
+	// android
+	"android": "android",
 }
 
-func (h *VersionHandler) validateArch(arch string) bool {
-	allowList := []string{"", "amd64", "386", "arm64", "arm"}
-	for _, allowed := range allowList {
-		if allowed == arch {
-			return true
-		}
+var archMap = map[string]string{
+	// any
+	"": "",
+
+	// 386
+	"386":    "386",
+	"x86":    "386",
+	"x86_32": "386",
+	"i386":   "386",
+
+	// amd64
+	"amd64":   "amd64",
+	"x64":     "amd64",
+	"x86_64":  "amd64",
+	"intel64": "amd64",
+
+	// arm
+	"arm": "arm",
+
+	// arm64
+	"arm64":   "arm64",
+	"aarch64": "arm64",
+}
+
+func (h *VersionHandler) handleOSParam(os string) (string, bool) {
+	if standardOS, ok := osMap[os]; ok {
+		return standardOS, true
 	}
-	return false
+	return "", false
+}
+
+func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
+	if standardArch, ok := archMap[arch]; ok {
+		return standardArch, true
+	}
+	return "", false
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
@@ -176,13 +216,17 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		resp := response.BusinessError("invalid file")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
+
 	resOS := c.FormValue("os")
-	if !h.validateOS(resOS) {
+	resOS, ok := h.handleOSParam(resOS)
+	if !ok {
 		resp := response.BusinessError("invalid os")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
+
 	resArch := c.FormValue("arch")
-	if !h.validateArch(resArch) {
+	resArch, ok = h.handleArchParam(resArch)
+	if !ok {
 		resp := response.BusinessError("invalid arch")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
@@ -372,14 +416,19 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if !h.validateOS(req.OS) {
+	resOS, ok := h.handleOSParam(req.OS)
+	if !ok {
 		resp := response.BusinessError("invalid os")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
-	if !h.validateArch(req.Arch) {
+	req.OS = resOS
+
+	resArch, ok := h.handleArchParam(req.Arch)
+	if !ok {
 		resp := response.BusinessError("invalid arch")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
+	req.Arch = resArch
 
 	var ctx = c.UserContext()
 
