@@ -329,14 +329,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error) {
 	h.logger.Debug("Validating CDK")
 	if cdk == "" {
-		h.logger.Error("Missing cdk param")
+		h.logger.Warn("Missing cdk param")
 		return false, CdkNotfound
 	}
-	if spId == "" {
-		h.logger.Error("Missing spId param")
-		return false, SpIdNotfound
-	}
-
 	request := ValidateCDKRequest{
 		CDK:             cdk,
 		SpecificationID: spId,
@@ -483,7 +478,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	storeTempDownloadInfoParam := StoreTempDownloadInfoParam{
+	info := StoreTempDownloadInfoParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		LatestVersion:      latest,
@@ -491,7 +486,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Arch:               req.Arch,
 	}
 
-	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, storeTempDownloadInfoParam)
+	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, info)
 	if err != nil {
 		h.logger.Error("Failed to store temp download info",
 			zap.Error(err),
@@ -529,13 +524,13 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 
 	// full update
 	if info.Full {
-		getFullUpdatePackagePathParam := GetFullUpdatePackagePathParam{
+		param := GetFullUpdatePackagePathParam{
 			ResourceID: info.ResourceID,
 			VersionID:  info.TargetVersionID,
 			OS:         info.OS,
 			Arch:       info.Arch,
 		}
-		resArchivePath, err := h.versionLogic.GetFullUpdatePackagePath(ctx, getFullUpdatePackagePathParam)
+		resArchivePath, err := h.versionLogic.GetFullUpdatePackagePath(ctx, param)
 		if err != nil {
 			h.logger.Error("Failed to get full update package",
 				zap.String("resource id", info.ResourceID),
@@ -551,14 +546,14 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 	}
 
 	// incremental update
-	getIncrementalUpdatePackagePathParam := GetIncrementalUpdatePackagePathParam{
+	param := GetIncrementalUpdatePackagePathParam{
 		ResourceID:   info.ResourceID,
 		VersionID:    info.TargetVersionID,
 		OldVersionID: info.CurrentVersionID,
 		OS:           info.OS,
 		Arch:         info.Arch,
 	}
-	patchPath, err := h.versionLogic.GetIncrementalUpdatePackagePath(ctx, getIncrementalUpdatePackagePathParam)
+	patchPath, err := h.versionLogic.GetIncrementalUpdatePackagePath(ctx, param)
 	if err != nil {
 		h.logger.Error("Failed to get patch",
 			zap.String("resource id", info.ResourceID),
