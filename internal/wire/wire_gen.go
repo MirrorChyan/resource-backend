@@ -11,7 +11,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
@@ -20,14 +19,16 @@ import (
 
 // Injectors from wire.go:
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, storage *stg.Storage) *HandlerSet {
+func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, cwd string) *HandlerSet {
 	resource := repo.NewResource(db)
 	resourceLogic := logic.NewResourceLogic(logger, resource)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
+	storage := repo.NewStorage(db)
+	storageLogic := logic.NewStorageLogic(logger, storage, cwd)
+	repoRepo := repo.NewRepo(db)
 	version := repo.NewVersion(db)
-	repoStorage := repo.NewStorage(db)
 	tempDownloadInfo := repo.NewTempDownloadInfo(rdb)
-	versionLogic := logic.NewVersionLogic(logger, version, repoStorage, tempDownloadInfo, storage)
+	versionLogic := logic.NewVersionLogic(logger, storageLogic, repoRepo, version, tempDownloadInfo)
 	versionHandler := handler.NewVersionHandler(conf, logger, resourceLogic, versionLogic)
 	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
 	return handlerSet
@@ -35,9 +36,9 @@ func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb 
 
 // wire.go:
 
-var repoProviderSet = wire.NewSet(repo.NewResource, repo.NewVersion, repo.NewStorage, repo.NewTempDownloadInfo)
+var repoProviderSet = wire.NewSet(repo.NewRepo, repo.NewResource, repo.NewVersion, repo.NewStorage, repo.NewTempDownloadInfo)
 
-var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic)
+var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewStorageLogic)
 
 var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler, handler.NewMetricsHandler)
 

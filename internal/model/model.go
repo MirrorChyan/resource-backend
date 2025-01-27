@@ -27,6 +27,8 @@ type CreateStorageParam struct {
 type CreateVersionParam struct {
 	ResourceID        string
 	Name              string
+	OS                string
+	Arch              string
 	UploadArchivePath string
 }
 
@@ -44,6 +46,8 @@ type GetVersionByNameParam struct {
 type VersionNameExistsParam struct {
 	ResourceID string
 	Name       string
+	OS         string
+	Arch       string
 }
 
 type ValidateCDKRequest struct {
@@ -61,6 +65,8 @@ type ValidateCDKResponse struct {
 
 type GetLatestVersionRequest struct {
 	CurrentVersion string `query:"current_version"`
+	OS             string `query:"os"`
+	Arch           string `query:"arch"`
 	CDK            string `query:"cdk"`
 	SpID           string `query:"sp_id"`
 	UserAgent      string `query:"user_agent"`
@@ -96,12 +102,12 @@ type CreateResourceResponseData struct {
 }
 
 type TempDownloadInfo struct {
-	ResourceID               string            `json:"resource_id"`
-	Full                     bool              `json:"full"`
-	TargetVersionID          int               `json:"target_version_id"`
-	TargetVersionFileHashes  map[string]string `json:"target_version_file_hashes"`
-	CurrentVersionID         int               `json:"current_version_id"`
-	CurrentVersionFileHashes map[string]string `json:"current_version_file_hashes"`
+	ResourceID       string `json:"resource_id"`
+	Full             bool   `json:"full"`
+	TargetVersionID  int    `json:"target_version_id"`
+	CurrentVersionID int    `json:"current_version_id"`
+	OS               string `json:"os"`
+	Arch             string `json:"arch"`
 }
 
 type BillingCheckinRequest struct {
@@ -115,17 +121,21 @@ type StoreTempDownloadInfoParam struct {
 	ResourceID         string
 	CurrentVersionName string
 	LatestVersion      *ent.Version
+	OS                 string
+	Arch               string
 }
 
-type GetResourcePathParam struct {
+type GetFullUpdatePackagePathParam struct {
 	ResourceID string
 	VersionID  int
+	OS         string
+	Arch       string
 }
 
-type GetVersionPatchParam struct {
-	ResourceID               string
-	CurrentVersionID         int
-	CurrentVersionFileHashes map[string]string
-	TargetVersionID          int
-	TargetVersionFileHashes  map[string]string
+type GetIncrementalUpdatePackagePathParam struct {
+	ResourceID       string
+	CurrentVersionID int
+	TargetVersionID  int
+	OS               string
+	Arch             string
 }
