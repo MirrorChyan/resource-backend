@@ -92,8 +92,8 @@ func (l *StorageLogic) GetFullUpdatePath(ctx context.Context, verID int, os, arc
 	return storage.PackagePath, nil
 }
 
-func (l *StorageLogic) GetIncrementalUpdatePath(ctx context.Context, targetVerID, currentVerID int, os, arch string) (string, error) {
-	storage, err := l.storageRepo.GetIncrementalUpdateStorage(ctx, targetVerID, currentVerID, os, arch)
+func (l *StorageLogic) GetIncrementalUpdatePath(ctx context.Context, verID, oldVerID int, os, arch string) (string, error) {
+	storage, err := l.storageRepo.GetIncrementalUpdateStorage(ctx, verID, oldVerID, os, arch)
 	if err != nil {
 		l.logger.Error("get incremental update storage failed",
 			zap.Error(err),

@@ -552,11 +552,11 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 
 	// incremental update
 	getIncrementalUpdatePackagePathParam := GetIncrementalUpdatePackagePathParam{
-		ResourceID:       info.ResourceID,
-		TargetVersionID:  info.TargetVersionID,
-		CurrentVersionID: info.CurrentVersionID,
-		OS:               info.OS,
-		Arch:             info.Arch,
+		ResourceID:   info.ResourceID,
+		VersionID:    info.TargetVersionID,
+		OldVersionID: info.CurrentVersionID,
+		OS:           info.OS,
+		Arch:         info.Arch,
 	}
 	patchPath, err := h.versionLogic.GetIncrementalUpdatePackagePath(ctx, getIncrementalUpdatePackagePathParam)
 	if err != nil {

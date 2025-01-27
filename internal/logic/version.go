@@ -376,10 +376,10 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, resID
 }
 
 func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param GetIncrementalUpdatePackagePathParam) (string, error) {
-	packagePath, err := l.storageLogic.GetIncrementalUpdatePath(ctx, param.TargetVersionID, param.CurrentVersionID, param.OS, param.Arch)
+	packagePath, err := l.storageLogic.GetIncrementalUpdatePath(ctx, param.VersionID, param.OldVersionID, param.OS, param.Arch)
 	if err != nil && ent.IsNotFound(err) {
 
-		packagePath, err = l.CreateIncrementalUpdatePackage(ctx, param.ResourceID, param.TargetVersionID, param.CurrentVersionID, param.OS, param.Arch)
+		packagePath, err = l.CreateIncrementalUpdatePackage(ctx, param.ResourceID, param.VersionID, param.OldVersionID, param.OS, param.Arch)
 		if err != nil {
 			l.logger.Error("Failed to generate incremental update package",
 				zap.Error(err),

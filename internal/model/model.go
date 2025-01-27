@@ -133,9 +133,9 @@ type GetFullUpdatePackagePathParam struct {
 }
 
 type GetIncrementalUpdatePackagePathParam struct {
-	ResourceID       string
-	CurrentVersionID int
-	TargetVersionID  int
-	OS               string
-	Arch             string
+	ResourceID   string
+	VersionID    int
+	OldVersionID int
+	OS           string
+	Arch         string
 }
