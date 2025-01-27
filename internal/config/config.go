@@ -50,6 +50,7 @@ type RedisConfig struct {
 type ExtraConfig struct {
 	DownloadPrefix        string        `mapstructure:"download_prefix"`
 	DownloadEffectiveTime time.Duration `mapstructure:"download_effective_time"`
+	SqlDebugMode          bool          `mapstructure:"sql_debug_mode"`
 }
 
 type AuthConfig struct {
@@ -64,7 +65,7 @@ type BillingConfig struct {
 const DefaultPort = 8000
 
 var (
-	GlobalConfig *Config
+	CFG *Config
 )
 
 func New() *Config {

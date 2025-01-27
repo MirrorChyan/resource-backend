@@ -23,7 +23,9 @@ name = "name"
 db = 0
 
 [extra]
-download_prefix = "https://download.prefix.example"
+sql_debug_mode = false
+download_effective_time = "23m"
+download_prefix = "https://download.prefix.example/download"
 
 [billing]
 billing_checkin_url = "http://billing.checkin.example/check_in"

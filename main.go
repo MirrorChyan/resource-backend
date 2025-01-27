@@ -4,11 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/MirrorChyan/resource-backend/internal/cache"
-	"log"
-	"net/http"
-	"os"
-	"runtime"
-
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -23,79 +18,65 @@ import (
 	_ "net/http/pprof"
 )
 
-var (
-	CTX = context.Background()
-)
-
 const BodyLimit = 50 * 1024 * 1024
 
 func main() {
 
-	go func() {
-		runtime.SetBlockProfileRate(1)     // 开启对阻塞操作的跟踪，block
-		runtime.SetMutexProfileFraction(1) // 开启对锁调用的跟踪，mutex
-		log.Println(http.ListenAndServe(":6061", nil))
-	}()
+	setUpConfigAndLog()
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("failed to get current working directory, %v", err)
-	}
-
-	conf := config.New()
-	config.GlobalConfig = conf
-
-	l := logger.New(conf)
-	zap.ReplaceGlobals(l)
-
-	mysql, err := db.NewMySQL(conf)
+	mysql, err := db.NewDataSource()
 
 	if err != nil {
-		l.Fatal("failed to connect to database",
+		zap.L().Fatal("failed to connect to database",
 			zap.Error(err),
 		)
 	}
 
 	defer func(m *ent.Client) {
 		if err := m.Close(); err != nil {
-			l.Fatal("failed to close database")
+			zap.L().Fatal("failed to close database")
 		}
 	}(mysql)
 
-	if err := mysql.Schema.Create(CTX); err != nil {
-		l.Fatal("failed creating schema resources",
+	if err := mysql.Schema.Create(context.Background()); err != nil {
+		zap.L().Fatal("failed creating schema resources",
 			zap.Error(err),
 		)
 	}
 
-	redis := db.NewRedis(conf)
+	// deps
+	var (
+		redis   = db.NewRedis()
+		redSync = db.NewRedSync(redis)
+		storage = stg.New()
+		group   = cache.NewVersionCacheGroup()
+		app     = fiber.New(fiber.Config{
+			BodyLimit:   BodyLimit,
+			ProxyHeader: fiber.HeaderXForwardedFor,
+		})
+	)
 
-	redsync := db.NewRedSync(redis)
+	handlerSet := wire.NewHandlerSet(zap.L(), mysql, redis, redSync, storage, group)
 
-	storage := stg.New(cwd)
-
-	group := cache.NewVersionCacheGroup()
-
-	handlerSet := wire.NewHandlerSet(conf, l, mysql, redis, redsync, storage, group)
-
-	app := fiber.New(fiber.Config{
-		BodyLimit:   BodyLimit,
-		ProxyHeader: fiber.HeaderXForwardedFor,
-	})
 	app.Use(fiberzap.New(fiberzap.Config{
-		Logger: l,
+		Logger: zap.L(),
 	}))
 
 	initRoute(app, handlerSet)
 
-	addr := fmt.Sprintf(":%d", conf.Server.Port)
+	addr := fmt.Sprintf(":%d", config.CFG.Server.Port)
 
 	if err := app.Listen(addr); err != nil {
-		l.Fatal("failed to start server",
+		zap.L().Fatal("failed to start server",
 			zap.Error(err),
 		)
 	}
 
+}
+
+func setUpConfigAndLog() {
+	config.CFG = config.New()
+	zap.ReplaceGlobals(logger.New())
 }
 
 func initRoute(app *fiber.App, handlerSet *wire.HandlerSet) {

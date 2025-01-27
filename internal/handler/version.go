@@ -2,9 +2,9 @@ package handler
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/bytedance/sonic"
 	"io"
 	"net/http"
@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -22,20 +21,17 @@ import (
 )
 
 type VersionHandler struct {
-	conf          *config.Config
 	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
 }
 
 func NewVersionHandler(
-	conf *config.Config,
 	logger *zap.Logger,
 	resourceLogic *logic.ResourceLogic,
 	versionLogic *logic.VersionLogic,
 ) *VersionHandler {
 	return &VersionHandler{
-		conf:          conf,
 		logger:        logger,
 		resourceLogic: resourceLogic,
 		versionLogic:  versionLogic,
@@ -60,7 +56,6 @@ func (r RemoteError) Error() string {
 func (h *VersionHandler) Register(r fiber.Router) {
 
 	r.Get("/resources/:rid/latest", h.GetLatest)
-	r.Get("/resources/download/:key", h.Download)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", h.ValidateUploader)
@@ -74,7 +69,9 @@ func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(resp)
 	}
 
-	url := fmt.Sprintf("%s?token=%s", h.conf.Auth.UploaderValidationURL, token)
+	var conf = config.CFG
+
+	url := fmt.Sprintf("%s?token=%s", conf.Auth.UploaderValidationURL, token)
 	resp, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		h.logger.Error("Failed to request uploader validation",
@@ -99,7 +96,11 @@ func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
 	}
 
 	var res ValidateUploaderResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := sonic.Unmarshal(buf, &res); err != nil {
 		h.logger.Error("Failed to decode response body",
 			zap.Error(err),
 		)
@@ -258,7 +259,8 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 		return false, err
 	}
 
-	resp, err := http.Post(h.conf.Auth.CDKValidationURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(jsonData))
+	var conf = config.CFG
+	resp, err := http.Post(conf.Auth.CDKValidationURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(jsonData))
 	if err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
@@ -267,7 +269,11 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 	}
 
 	var result ValidateCDKResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+	if err := sonic.Unmarshal(buf, &result); err != nil {
 		h.logger.Error("Failed to decode response",
 			zap.Error(err),
 		)
@@ -304,7 +310,10 @@ func (h *VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string)
 		h.logger.Warn("Checkin callback Failed to marshal JSON")
 		return
 	}
-	_, err = http.Post(h.conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
+
+	var conf = config.CFG
+
+	_, err = http.Post(conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
 	if err != nil {
 		h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
 	}
@@ -395,61 +404,4 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.Url = url
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
-}
-
-func (h *VersionHandler) Download(c *fiber.Ctx) error {
-	key := c.Params("key", "")
-
-	if key == "" {
-		resp := response.BusinessError("missing key")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	}
-
-	ctx := c.UserContext()
-
-	info, err := h.versionLogic.GetTempDownloadInfo(ctx, key)
-	if err != nil {
-		h.logger.Warn("invalid key or resource not found",
-			zap.String("key", key),
-		)
-		resp := response.BusinessError("invalid key or resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	}
-
-	h.logger.Info("start download resources", zap.String("ip", c.IP()))
-
-	// full update
-	if info.Full {
-		param := GetResourcePathParam{
-			ResourceID: info.ResourceID,
-			VersionID:  info.TargetVersionID,
-		}
-		resArchivePath := h.versionLogic.GetResourcePath(param)
-		c.Set("X-Update-Type", "full")
-		return c.Status(fiber.StatusOK).Download(resArchivePath)
-	}
-
-	// incremental update
-	patchPath, err := h.versionLogic.GetPatchPath(ctx, GetVersionPatchParam{
-		ResourceID:               info.ResourceID,
-		TargetVersionID:          info.TargetVersionID,
-		TargetVersionFileHashes:  info.TargetVersionFileHashes,
-		CurrentVersionID:         info.CurrentVersionID,
-		CurrentVersionFileHashes: info.CurrentVersionFileHashes,
-	})
-
-	if err != nil {
-		h.logger.Error("Failed to get patch",
-			zap.String("resource id", info.ResourceID),
-			zap.Int("target version id", info.TargetVersionID),
-			zap.Int("current version id", info.CurrentVersionID),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError
-		return c.Status(fiber.StatusInternalServerError).JSON(resp())
-	}
-
-	c.Set("X-New-Version-Available", "true")
-	c.Set("X-Update-Type", "incremental")
-	return c.Status(fiber.StatusOK).Download(patchPath, "ota.zip")
 }

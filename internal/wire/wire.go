@@ -5,7 +5,6 @@ package wire
 
 import (
 	"github.com/MirrorChyan/resource-backend/internal/cache"
-	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -21,7 +20,6 @@ var repoProviderSet = wire.NewSet(
 	repo.NewResource,
 	repo.NewVersion,
 	repo.NewStorage,
-	repo.NewTempDownloadInfo,
 )
 
 var logicProviderSet = wire.NewSet(
@@ -48,6 +46,6 @@ func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler 
 	}
 }
 
-func NewHandlerSet(conf *config.Config, logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync *redsync.Redsync, storage *stg.Storage, cg *cache.VersionCacheGroup) *HandlerSet {
+func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync *redsync.Redsync, storage *stg.Storage, cg *cache.VersionCacheGroup) *HandlerSet {
 	panic(wire.Build(repoProviderSet, logicProviderSet, handlerProviderSet, provideHandlerSet))
 }

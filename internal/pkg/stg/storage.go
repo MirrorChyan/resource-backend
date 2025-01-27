@@ -2,6 +2,7 @@ package stg
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,10 +12,13 @@ type Storage struct {
 	RootDir string
 }
 
-func New(cwd string) *Storage {
-	rootDir := filepath.Join(cwd, "storage")
+func New() *Storage {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get current working directory, %v", err)
+	}
 	return &Storage{
-		RootDir: rootDir,
+		RootDir: filepath.Join(cwd, "storage"),
 	}
 }
 
