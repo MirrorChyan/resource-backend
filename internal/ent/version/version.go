@@ -18,23 +18,21 @@ const (
 	FieldName = "name"
 	// FieldNumber holds the string denoting the number field in the database.
 	FieldNumber = "number"
-	// FieldFileHashes holds the string denoting the file_hashes field in the database.
-	FieldFileHashes = "file_hashes"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
-	// EdgeStorage holds the string denoting the storage edge name in mutations.
-	EdgeStorage = "storage"
+	// EdgeStorages holds the string denoting the storages edge name in mutations.
+	EdgeStorages = "storages"
 	// EdgeResource holds the string denoting the resource edge name in mutations.
 	EdgeResource = "resource"
 	// Table holds the table name of the version in the database.
 	Table = "versions"
-	// StorageTable is the table that holds the storage relation/edge.
-	StorageTable = "storages"
-	// StorageInverseTable is the table name for the Storage entity.
+	// StoragesTable is the table that holds the storages relation/edge.
+	StoragesTable = "storages"
+	// StoragesInverseTable is the table name for the Storage entity.
 	// It exists in this package in order to avoid circular dependency with the "storage" package.
-	StorageInverseTable = "storages"
-	// StorageColumn is the table column denoting the storage relation/edge.
-	StorageColumn = "version_storage"
+	StoragesInverseTable = "storages"
+	// StoragesColumn is the table column denoting the storages relation/edge.
+	StoragesColumn = "version_storages"
 	// ResourceTable is the table that holds the resource relation/edge.
 	ResourceTable = "versions"
 	// ResourceInverseTable is the table name for the Resource entity.
@@ -49,7 +47,6 @@ var Columns = []string{
 	FieldID,
 	FieldName,
 	FieldNumber,
-	FieldFileHashes,
 	FieldCreatedAt,
 }
 
@@ -104,10 +101,17 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
 }
 
-// ByStorageField orders the results by storage field.
-func ByStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByStoragesCount orders the results by storages count.
+func ByStoragesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newStorageStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborsCount(s, newStoragesStep(), opts...)
+	}
+}
+
+// ByStorages orders the results by storages terms.
+func ByStorages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newStoragesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -117,11 +121,11 @@ func ByResourceField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newResourceStep(), sql.OrderByField(field, opts...))
 	}
 }
-func newStorageStep() *sqlgraph.Step {
+func newStoragesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(StorageInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
+		sqlgraph.To(StoragesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, StoragesTable, StoragesColumn),
 	)
 }
 func newResourceStep() *sqlgraph.Step {

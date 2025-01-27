@@ -130,24 +130,84 @@ func (h *VersionHandler) isValidExtension(filename string) bool {
 	return ext == ".zip" || strings.HasSuffix(filename, ".tar.gz")
 }
 
-func (h *VersionHandler) isAllowedMimeType(mime string) bool {
-	allowedTypes := []string{
-		"application/zip",
-		"application/x-zip-compressed",
-		"application/x-gzip",
-		"application/gzip",
+// func (h *VersionHandler) isAllowedMimeType(mime string) bool {
+// 	allowedTypes := []string{
+// 		"application/zip",
+// 		"application/x-zip-compressed",
+// 		"application/x-gzip",
+// 		"application/gzip",
+// 	}
+// 	for _, allowedType := range allowedTypes {
+// 		if strings.EqualFold(mime, allowedType) {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
+
+var osMap = map[string]string{
+	// any
+	"": "",
+
+	// windows
+	"windows": "windows",
+	"win":     "windows",
+	"win32":   "windows",
+
+	// linux
+	"linux": "linux",
+
+	// darwin
+	"darwin": "darwin",
+	"macos":  "darwin",
+	"mac":    "darwin",
+	"osx":    "darwin",
+
+	// android
+	"android": "android",
+}
+
+var archMap = map[string]string{
+	// any
+	"": "",
+
+	// 386
+	"386":    "386",
+	"x86":    "386",
+	"x86_32": "386",
+	"i386":   "386",
+
+	// amd64
+	"amd64":   "amd64",
+	"x64":     "amd64",
+	"x86_64":  "amd64",
+	"intel64": "amd64",
+
+	// arm
+	"arm": "arm",
+
+	// arm64
+	"arm64":   "arm64",
+	"aarch64": "arm64",
+}
+
+func (h *VersionHandler) handleOSParam(os string) (string, bool) {
+	if standardOS, ok := osMap[os]; ok {
+		return standardOS, true
 	}
-	for _, allowedType := range allowedTypes {
-		if strings.EqualFold(mime, allowedType) {
-			return true
-		}
+	return "", false
+}
+
+func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
+	if standardArch, ok := archMap[arch]; ok {
+		return standardArch, true
 	}
-	return false
+	return "", false
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	resID := c.Params(resourceKey)
-	name := c.FormValue("name")
+	verName := c.FormValue("name")
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.logger.Error("Failed to get file from form",
@@ -157,12 +217,21 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	ctx := c.UserContext()
+	resOS := c.FormValue("os")
+	resOS, ok := h.handleOSParam(resOS)
+	if !ok {
+		resp := response.BusinessError("invalid os")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
 
-	// if !h.isAllowedMimeType(file.Header.Get("Content-Type")) {
-	// 	resp := response.BusinessError("invalid file type")
-	// 	return c.Status(fiber.StatusBadRequest).JSON(resp)
-	// }
+	resArch := c.FormValue("arch")
+	resArch, ok = h.handleArchParam(resArch)
+	if !ok {
+		resp := response.BusinessError("invalid arch")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	ctx := c.UserContext()
 
 	if !h.isValidExtension(file.Filename) {
 		resp := response.BusinessError("invalid file extension")
@@ -171,7 +240,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	versionNameExistsParam := VersionNameExistsParam{
 		ResourceID: resID,
-		Name:       name,
+		Name:       verName,
+		OS:         resOS,
+		Arch:       resArch,
 	}
 	exists, err := h.versionLogic.NameExists(ctx, versionNameExistsParam)
 	if err != nil {
@@ -184,7 +255,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	if exists {
 		h.logger.Info("Version name already exists",
 			zap.String("resource id", resID),
-			zap.String("version name", name),
+			zap.String("version name", verName),
+			zap.String("res os", resOS),
+			zap.String("res arch", resArch),
 		)
 		resp := response.BusinessError("version name already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
@@ -230,8 +303,10 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	createVersionParam := CreateVersionParam{
 		ResourceID:        resID,
-		Name:              name,
+		Name:              verName,
 		UploadArchivePath: tempPath,
+		OS:                resOS,
+		Arch:              resArch,
 	}
 	version, err := h.versionLogic.Create(ctx, createVersionParam)
 	if err != nil {
@@ -336,6 +411,20 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
+	resOS, ok := h.handleOSParam(req.OS)
+	if !ok {
+		resp := response.BusinessError("invalid os")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+	req.OS = resOS
+
+	resArch, ok := h.handleArchParam(req.Arch)
+	if !ok {
+		resp := response.BusinessError("invalid arch")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+	req.Arch = resArch
+
 	var ctx = c.UserContext()
 
 	latest, err := h.versionLogic.GetLatest(ctx, resID)
@@ -393,6 +482,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		LatestVersion:      latest,
+		OS:                 req.OS,
+		Arch:               req.Arch,
 	}
 
 	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, info)
@@ -433,24 +524,36 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 
 	// full update
 	if info.Full {
-		param := GetResourcePathParam{
+		param := GetFullUpdatePackagePathParam{
 			ResourceID: info.ResourceID,
 			VersionID:  info.TargetVersionID,
+			OS:         info.OS,
+			Arch:       info.Arch,
 		}
-		resArchivePath := h.versionLogic.GetResourcePath(param)
+		resArchivePath, err := h.versionLogic.GetFullUpdatePackagePath(ctx, param)
+		if err != nil {
+			h.logger.Error("Failed to get full update package",
+				zap.String("resource id", info.ResourceID),
+				zap.Int("version id", info.TargetVersionID),
+				zap.Error(err),
+			)
+			resp := response.UnexpectedError()
+			return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		}
+
 		c.Set("X-Update-Type", "full")
 		return c.Status(fiber.StatusOK).Download(resArchivePath)
 	}
 
 	// incremental update
-	param := GetVersionPatchParam{
-		ResourceID:               info.ResourceID,
-		TargetVersionID:          info.TargetVersionID,
-		TargetVersionFileHashes:  info.TargetVersionFileHashes,
-		CurrentVersionID:         info.CurrentVersionID,
-		CurrentVersionFileHashes: info.CurrentVersionFileHashes,
+	param := GetIncrementalUpdatePackagePathParam{
+		ResourceID:   info.ResourceID,
+		VersionID:    info.TargetVersionID,
+		OldVersionID: info.CurrentVersionID,
+		OS:           info.OS,
+		Arch:         info.Arch,
 	}
-	patchPath, err := h.versionLogic.GetPatchPath(ctx, param)
+	patchPath, err := h.versionLogic.GetIncrementalUpdatePackagePath(ctx, param)
 	if err != nil {
 		h.logger.Error("Failed to get patch",
 			zap.String("resource id", info.ResourceID),
@@ -458,11 +561,10 @@ func (h *VersionHandler) Download(c *fiber.Ctx) error {
 			zap.Int("current version id", info.CurrentVersionID),
 			zap.Error(err),
 		)
-		resp := response.UnexpectedError
-		return c.Status(fiber.StatusInternalServerError).JSON(resp())
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	c.Set("X-New-Version-Available", "true")
 	c.Set("X-Update-Type", "incremental")
 	return c.Status(fiber.StatusOK).Download(patchPath, "ota.zip")
 }

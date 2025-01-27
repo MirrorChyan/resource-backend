@@ -31,8 +31,12 @@ func init() {
 	resource.IDValidator = resourceDescID.Validators[0].(func(string) error)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
+	// storageDescPackagePath is the schema descriptor for package_path field.
+	storageDescPackagePath := storageFields[3].Descriptor()
+	// storage.PackagePathValidator is a validator for the "package_path" field. It is called by the builders before save.
+	storage.PackagePathValidator = storageDescPackagePath.Validators[0].(func(string) error)
 	// storageDescCreatedAt is the schema descriptor for created_at field.
-	storageDescCreatedAt := storageFields[1].Descriptor()
+	storageDescCreatedAt := storageFields[6].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.
 	storage.DefaultCreatedAt = storageDescCreatedAt.Default.(time.Time)
 	versionFields := schema.Version{}.Fields()
@@ -42,7 +46,7 @@ func init() {
 	// version.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	version.NameValidator = versionDescName.Validators[0].(func(string) error)
 	// versionDescCreatedAt is the schema descriptor for created_at field.
-	versionDescCreatedAt := versionFields[3].Descriptor()
+	versionDescCreatedAt := versionFields[2].Descriptor()
 	// version.DefaultCreatedAt holds the default value on creation for the created_at field.
 	version.DefaultCreatedAt = versionDescCreatedAt.Default.(time.Time)
 }

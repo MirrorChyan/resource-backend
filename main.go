@@ -10,7 +10,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
@@ -60,9 +59,7 @@ func main() {
 
 	redis := db.NewRedis(conf)
 
-	storage := stg.New(cwd)
-
-	handlerSet := wire.NewHandlerSet(conf, l, mySQL, redis, storage)
+	handlerSet := wire.NewHandlerSet(conf, l, mySQL, redis, cwd)
 
 	app := fiber.New(fiber.Config{
 		BodyLimit:   BodyLimit,

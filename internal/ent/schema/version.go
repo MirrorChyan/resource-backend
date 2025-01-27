@@ -19,8 +19,6 @@ func (Version) Fields() []ent.Field {
 		field.String("name").
 			NotEmpty(),
 		field.Uint64("number"),
-		field.JSON("file_hashes", map[string]string{}).
-			Optional(),
 		field.Time("created_at").
 			Default(time.Now()),
 	}
@@ -29,8 +27,7 @@ func (Version) Fields() []ent.Field {
 // Edges of the Version.
 func (Version) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("storage", Storage.Type).
-			Unique(),
+		edge.To("storages", Storage.Type),
 		edge.From("resource", Resource.Type).
 			Ref("versions").
 			Unique(),
