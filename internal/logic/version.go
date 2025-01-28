@@ -3,6 +3,11 @@ package logic
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -17,10 +22,6 @@ import (
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 type VersionLogic struct {
@@ -68,7 +69,17 @@ const (
 )
 
 func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
-	return l.versionRepo.CheckVersionExistsByName(ctx, param.ResourceID, param.Name)
+	ver, err := l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+		l.logger.Error("Failed to check version name exists",
+			zap.Error(err),
+		)
+		return false, err
+	}
+	return l.storageLogic.CheckStorageExist(ctx, ver.ID, param.OS, param.Arch)
 }
 
 func (l *VersionLogic) GetLatest(ctx context.Context, resourceID string) (*ent.Version, error) {
