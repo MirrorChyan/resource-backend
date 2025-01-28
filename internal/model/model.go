@@ -114,3 +114,9 @@ type UpdateProcessInfo struct {
 	OS               string
 	Arch             string
 }
+
+type ActualUpdateProcessInfo struct {
+	Info    UpdateProcessInfo
+	Target  *ent.Storage
+	Current *ent.Storage
+}

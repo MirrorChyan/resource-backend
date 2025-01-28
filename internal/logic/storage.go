@@ -72,6 +72,9 @@ func (l *StorageLogic) CheckStorageExist(ctx context.Context, verID int, os, arc
 func (l *StorageLogic) GetFullUpdateStorage(ctx context.Context, versionId int, os, arch string) (*ent.Storage, error) {
 	storage, err := l.storageRepo.GetFullUpdateStorage(ctx, versionId, os, arch)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, err
+		}
 		l.logger.Error("get full update storage failed",
 			zap.Error(err),
 		)

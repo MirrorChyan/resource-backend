@@ -3,11 +3,6 @@ package logic
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -22,6 +17,10 @@ import (
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type VersionLogic struct {
@@ -68,6 +67,10 @@ const (
 	specificSeparator = "$#@"
 )
 
+var (
+	StorageInfoNotFound = errors.New("storage info not found")
+)
+
 func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
 	ver, err := l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
 	if err != nil {
@@ -93,21 +96,33 @@ func (l *VersionLogic) GetLatest(ctx context.Context, resourceID string) (*ent.V
 }
 
 func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*ent.Version, error) {
-	var number uint64 = 1
-	latest, err := l.versionRepo.GetLatestVersion(ctx, param.ResourceID)
+	var (
+		number  uint64 = 1
+		version *ent.Version
+	)
+	version, err := l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
 	if err != nil && !ent.IsNotFound(err) {
-		l.logger.Error("version create failed",
-			zap.Error(err),
-		)
 		return nil, err
-	}
+	} else if ent.IsNotFound(err) {
+		latest, err := l.versionRepo.GetLatestVersion(ctx, param.ResourceID)
+		if err != nil && !ent.IsNotFound(err) {
+			return nil, err
+		}
 
-	if latest != nil {
-		number = latest.Number + 1
-	}
+		if latest != nil {
+			number = latest.Number + 1
+		}
 
-	// external closure variable
-	var version *ent.Version
+		version, err = l.versionRepo.CreateVersion(ctx, param.ResourceID, param.Name, number)
+		if err != nil {
+			l.logger.Error("Failed to create new version",
+				zap.String("resource id", param.ResourceID),
+				zap.String("version name", param.Name),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+	}
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
 		var (
@@ -115,16 +130,6 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			saveDir     string
 			archivePath string
 		)
-		// version and storage must be consistent
-		version, err = l.versionRepo.CreateVersionTx(ctx, tx, param.ResourceID, param.Name, number)
-		if err != nil {
-			l.logger.Error("Failed to create version",
-				zap.String("resource id", param.ResourceID),
-				zap.String("version name", param.Name),
-				zap.Error(err),
-			)
-			return err
-		}
 
 		saveDir = l.storageLogic.BuildVersionResourceStorageDirPath(param.ResourceID, version.ID, param.OS, param.Arch)
 		if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
@@ -275,13 +280,30 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 
 	}
 
-	result, err := l.GetIncrementalUpdatePackagePath(ctx, UpdateProcessInfo{
-		ResourceID:       resourceID,
-		CurrentVersionID: currentVersion.ID,
-		TargetVersionID:  targetVersion.ID,
-		OS:               param.OS,
-		Arch:             param.Arch,
-	})
+	info := ActualUpdateProcessInfo{
+		Info: UpdateProcessInfo{
+			ResourceID:       resourceID,
+			CurrentVersionID: currentVersion.ID,
+			TargetVersionID:  targetVersion.ID,
+			OS:               param.OS,
+			Arch:             param.Arch,
+		},
+		Target:  nil,
+		Current: nil,
+	}
+
+	info.Target, info.Current, err = l.fetchStorageInfoTuple(ctx, targetVersion.ID, currentVersion.ID, param.OS, param.Arch)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", StorageInfoNotFound
+		}
+		l.logger.Error("failed to get storage info",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	result, err := l.GetIncrementalUpdatePackagePath(ctx, info)
 	if err != nil {
 		l.logger.Error("failed to get incremental update package path",
 			zap.Error(err),
@@ -342,9 +364,9 @@ func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (stri
 	return "", false, nil
 }
 
-func (l *VersionLogic) LoadPatchInfo(ctx context.Context, cacheKey, p, e string) error {
-	strings.Join([]string{"Load", cacheKey, e}, specificSeparator)
-	_, err := l.rdb.Set(ctx, cacheKey, p, 0).Result()
+func (l *VersionLogic) StorePatchInfo(ctx context.Context, cacheKey, p, e string) error {
+	val := strings.Join([]string{p, e}, specificSeparator)
+	_, err := l.rdb.Set(ctx, cacheKey, val, 0).Result()
 	if err != nil {
 		return err
 	}
@@ -373,7 +395,6 @@ func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, curren
 		return nil
 	})
 	currentStorage, err := l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
-
 	wge := wg.Wait()
 
 	if err != nil || wge != nil {
@@ -385,12 +406,13 @@ func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, curren
 	return targetStorage, currentStorage, nil
 }
 
-func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param UpdateProcessInfo) (string, error) {
+func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param ActualUpdateProcessInfo) (string, error) {
 	return l.doGetIncrementalUpdatePackagePath(ctx, param)
 }
 
-func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, param UpdateProcessInfo) (string, error) {
+func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
 	var (
+		param          = info.Info
 		targetVersion  = strconv.Itoa(param.TargetVersionID)
 		currentVersion = strconv.Itoa(param.CurrentVersionID)
 		resourceID     = param.ResourceID
@@ -399,6 +421,7 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, param
 		cacheKey = strings.Join([]string{"Load", resourceID, targetVersion, currentVersion}, ":")
 	)
 
+	// fast return avoid flooding the entire service
 	val, done, err := l.isPatchLoaded(ctx, cacheKey)
 	switch {
 	case err != nil:
@@ -426,21 +449,25 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, param
 		return val, nil
 	}
 
-	p, err := l.doCreateIncrementalUpdatePackage(ctx, param)
+	p, err := l.doCreateIncrementalUpdatePackage(ctx, info)
 
 	var e string
 	if err != nil {
 		e = err.Error()
 	}
 
-	if err := l.LoadPatchInfo(ctx, cacheKey, p, e); err != nil {
+	if err := l.StorePatchInfo(ctx, cacheKey, p, e); err != nil {
 		return "", err
 	}
 
-	return p, nil
+	return p, err
 }
 
-func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, param UpdateProcessInfo) (string, error) {
+func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
+
+	var (
+		param = info.Info
+	)
 
 	// find existing incremental update
 	cacheKey := strings.Join([]string{
@@ -465,7 +492,7 @@ func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, pa
 		// create not existed incremental update
 	}
 
-	packagePath, err := l.CreateIncrementalUpdatePackage(ctx, param)
+	packagePath, err := l.CreateIncrementalUpdatePackage(ctx, info)
 	if err != nil {
 		l.logger.Error("Failed to generate incremental update package",
 			zap.Error(err),
@@ -476,24 +503,21 @@ func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, pa
 	return packagePath, nil
 }
 
-func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, param UpdateProcessInfo) (string, error) {
+func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
 
 	var (
-		resourceID  = param.ResourceID
-		target      = param.TargetVersionID
-		current     = param.CurrentVersionID
-		resOS       = param.OS
-		resArch     = param.Arch
-		packagePath string
-	)
+		param      = info.Info
+		resourceID = param.ResourceID
+		target     = param.TargetVersionID
+		current    = param.CurrentVersionID
+		resOS      = param.OS
+		resArch    = param.Arch
 
-	targetStorage, currentStorage, err := l.fetchStorageInfoTuple(ctx, target, current, resOS, resArch)
-	if err != nil {
-		l.logger.Error("Failed to get storage info",
-			zap.Error(err),
-		)
-		return "", err
-	}
+		packagePath string
+
+		targetStorage  = info.Target
+		currentStorage = info.Current
+	)
 
 	changes, err := patcher.CalculateDiff(targetStorage.FileHashes, currentStorage.FileHashes)
 	if err != nil {

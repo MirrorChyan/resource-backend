@@ -257,7 +257,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 			zap.String("resource os", resourceOS),
 			zap.String("resource arch", resourceArch),
 		)
-		resp := response.BusinessError("version name already exists")
+		resp := response.BusinessError("version name under the current platform architecture already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
 	}
 
@@ -470,6 +470,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
+
+		if errors.Is(err, logic.StorageInfoNotFound) {
+			resp := response.BusinessError("the corresponding resource does not exist")
+			return c.Status(fiber.StatusNotFound).JSON(resp)
+		}
+
 		h.logger.Error("failed to get download url",
 			zap.Error(err),
 		)
