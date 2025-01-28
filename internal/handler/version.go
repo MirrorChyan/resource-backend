@@ -224,8 +224,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	var ctx = c.UserContext()
-
 	if !h.isValidExtension(file.Filename) {
 		resp := response.BusinessError("invalid file extension")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
@@ -236,6 +234,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
+
+	var ctx = c.UserContext()
 
 	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
 		ResourceID: resID,
