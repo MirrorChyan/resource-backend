@@ -402,8 +402,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	var ctx = c.UserContext()
-
 	rOS, rArch, err := h.doProcessOsAndArch(c)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
@@ -411,6 +409,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	req.OS, req.Arch = rOS, rArch
+
+	var ctx = c.UserContext()
 
 	latest, err := h.versionLogic.GetLatest(ctx, resourceID)
 	if err != nil {
