@@ -55,6 +55,8 @@ type CreateVersionResponseData struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Number uint64 `json:"number"`
+	OS     string `json:"os,omitempty"`
+	Arch   string `json:"arch,omitempty"`
 }
 
 type ValidateUploaderResponse struct {
