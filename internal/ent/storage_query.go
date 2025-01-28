@@ -19,12 +19,13 @@ import (
 // StorageQuery is the builder for querying Storage entities.
 type StorageQuery struct {
 	config
-	ctx         *QueryContext
-	order       []storage.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Storage
-	withVersion *VersionQuery
-	withFKs     bool
+	ctx            *QueryContext
+	order          []storage.OrderOption
+	inters         []Interceptor
+	predicates     []predicate.Storage
+	withVersion    *VersionQuery
+	withOldVersion *VersionQuery
+	withFKs        bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -75,7 +76,29 @@ func (sq *StorageQuery) QueryVersion() *VersionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(storage.Table, storage.FieldID, selector),
 			sqlgraph.To(version.Table, version.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, storage.VersionTable, storage.VersionColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, storage.VersionTable, storage.VersionColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryOldVersion chains the current query on the "old_version" edge.
+func (sq *StorageQuery) QueryOldVersion() *VersionQuery {
+	query := (&VersionClient{config: sq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := sq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := sq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(storage.Table, storage.FieldID, selector),
+			sqlgraph.To(version.Table, version.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, storage.OldVersionTable, storage.OldVersionColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
 		return fromU, nil
@@ -270,12 +293,13 @@ func (sq *StorageQuery) Clone() *StorageQuery {
 		return nil
 	}
 	return &StorageQuery{
-		config:      sq.config,
-		ctx:         sq.ctx.Clone(),
-		order:       append([]storage.OrderOption{}, sq.order...),
-		inters:      append([]Interceptor{}, sq.inters...),
-		predicates:  append([]predicate.Storage{}, sq.predicates...),
-		withVersion: sq.withVersion.Clone(),
+		config:         sq.config,
+		ctx:            sq.ctx.Clone(),
+		order:          append([]storage.OrderOption{}, sq.order...),
+		inters:         append([]Interceptor{}, sq.inters...),
+		predicates:     append([]predicate.Storage{}, sq.predicates...),
+		withVersion:    sq.withVersion.Clone(),
+		withOldVersion: sq.withOldVersion.Clone(),
 		// clone intermediate query.
 		sql:  sq.sql.Clone(),
 		path: sq.path,
@@ -293,18 +317,29 @@ func (sq *StorageQuery) WithVersion(opts ...func(*VersionQuery)) *StorageQuery {
 	return sq
 }
 
+// WithOldVersion tells the query-builder to eager-load the nodes that are connected to
+// the "old_version" edge. The optional arguments are used to configure the query builder of the edge.
+func (sq *StorageQuery) WithOldVersion(opts ...func(*VersionQuery)) *StorageQuery {
+	query := (&VersionClient{config: sq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	sq.withOldVersion = query
+	return sq
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
 //
 //	var v []struct {
-//		Directory string `json:"directory,omitempty"`
+//		UpdateType storage.UpdateType `json:"update_type,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Storage.Query().
-//		GroupBy(storage.FieldDirectory).
+//		GroupBy(storage.FieldUpdateType).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (sq *StorageQuery) GroupBy(field string, fields ...string) *StorageGroupBy {
@@ -322,11 +357,11 @@ func (sq *StorageQuery) GroupBy(field string, fields ...string) *StorageGroupBy 
 // Example:
 //
 //	var v []struct {
-//		Directory string `json:"directory,omitempty"`
+//		UpdateType storage.UpdateType `json:"update_type,omitempty"`
 //	}
 //
 //	client.Storage.Query().
-//		Select(storage.FieldDirectory).
+//		Select(storage.FieldUpdateType).
 //		Scan(ctx, &v)
 func (sq *StorageQuery) Select(fields ...string) *StorageSelect {
 	sq.ctx.Fields = append(sq.ctx.Fields, fields...)
@@ -372,11 +407,12 @@ func (sq *StorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stor
 		nodes       = []*Storage{}
 		withFKs     = sq.withFKs
 		_spec       = sq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			sq.withVersion != nil,
+			sq.withOldVersion != nil,
 		}
 	)
-	if sq.withVersion != nil {
+	if sq.withVersion != nil || sq.withOldVersion != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -406,6 +442,12 @@ func (sq *StorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stor
 			return nil, err
 		}
 	}
+	if query := sq.withOldVersion; query != nil {
+		if err := sq.loadOldVersion(ctx, query, nodes, nil,
+			func(n *Storage, e *Version) { n.Edges.OldVersion = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
@@ -413,10 +455,10 @@ func (sq *StorageQuery) loadVersion(ctx context.Context, query *VersionQuery, no
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Storage)
 	for i := range nodes {
-		if nodes[i].version_storage == nil {
+		if nodes[i].version_storages == nil {
 			continue
 		}
-		fk := *nodes[i].version_storage
+		fk := *nodes[i].version_storages
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -433,7 +475,39 @@ func (sq *StorageQuery) loadVersion(ctx context.Context, query *VersionQuery, no
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "version_storage" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "version_storages" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (sq *StorageQuery) loadOldVersion(ctx context.Context, query *VersionQuery, nodes []*Storage, init func(*Storage), assign func(*Storage, *Version)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Storage)
+	for i := range nodes {
+		if nodes[i].storage_old_version == nil {
+			continue
+		}
+		fk := *nodes[i].storage_old_version
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(version.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "storage_old_version" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

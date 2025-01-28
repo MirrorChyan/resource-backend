@@ -11,12 +11,12 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,32 +24,35 @@ import (
 )
 
 type VersionLogic struct {
-	logger      *zap.Logger
-	versionRepo *repo.Version
-	storageRepo *repo.Storage
-	storage     *stg.Storage
-	rdb         *redis.Client
-	sync        *redsync.Redsync
-	cacheGroup  *cache.VersionCacheGroup
+	logger       *zap.Logger
+	repo         *repo.Repo
+	versionRepo  *repo.Version
+	storageRepo  *repo.Storage
+	storageLogic *StorageLogic
+	rdb          *redis.Client
+	sync         *redsync.Redsync
+	cacheGroup   *cache.VersionCacheGroup
 }
 
 func NewVersionLogic(
 	logger *zap.Logger,
+	repo *repo.Repo,
 	versionRepo *repo.Version,
 	storageRepo *repo.Storage,
-	storage *stg.Storage,
-	redSync *redsync.Redsync,
+	storageLogic *StorageLogic,
 	rdb *redis.Client,
+	sync *redsync.Redsync,
 	cacheGroup *cache.VersionCacheGroup,
 ) *VersionLogic {
 	return &VersionLogic{
-		logger:      logger,
-		versionRepo: versionRepo,
-		storageRepo: storageRepo,
-		storage:     storage,
-		sync:        redSync,
-		rdb:         rdb,
-		cacheGroup:  cacheGroup,
+		logger:       logger,
+		repo:         repo,
+		versionRepo:  versionRepo,
+		storageRepo:  storageRepo,
+		storageLogic: storageLogic,
+		rdb:          rdb,
+		sync:         sync,
+		cacheGroup:   cacheGroup,
 	}
 }
 
@@ -69,35 +72,50 @@ func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsPa
 }
 
 func (l *VersionLogic) GetLatest(ctx context.Context, resourceID string) (*ent.Version, error) {
-	return l.versionRepo.GetLatestVersion(ctx, resourceID)
+	val, err := l.cacheGroup.VersionLatestCache.ComputeIfAbsent(resourceID, func() (*ent.Version, error) {
+		return l.versionRepo.GetLatestVersion(ctx, resourceID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return *val, err
 }
 
 func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*ent.Version, error) {
 	var number uint64 = 1
 	latest, err := l.versionRepo.GetLatestVersion(ctx, param.ResourceID)
-	if err != nil && ent.IsNotFound(err) {
-		l.logger.Error("Failed to query latest version",
+	if err != nil && !ent.IsNotFound(err) {
+		l.logger.Error("version create failed",
 			zap.Error(err),
 		)
 		return nil, err
 	}
+
 	if latest != nil {
 		number = latest.Number + 1
 	}
 
-	var ver *ent.Version
+	// external closure variable
+	var version *ent.Version
 
-	err = l.versionRepo.WithTx(ctx, func(tx *ent.Tx) error {
-		ver, err = l.versionRepo.CreateVersion(ctx, tx, param.ResourceID, param.Name, number)
+	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
+		var (
+			err         error
+			saveDir     string
+			archivePath string
+		)
+		// version and storage must be consistent
+		version, err = l.versionRepo.CreateVersionTx(ctx, tx, param.ResourceID, param.Name, number)
 		if err != nil {
-			l.logger.Error("Failed to start transaction",
+			l.logger.Error("Failed to create version",
+				zap.String("resource id", param.ResourceID),
+				zap.String("version name", param.Name),
 				zap.Error(err),
 			)
 			return err
 		}
 
-		versionDir := l.storage.VersionDir(param.ResourceID, ver.ID)
-		saveDir := filepath.Join(versionDir, actualResourcePath)
+		saveDir = l.storageLogic.BuildVersionResourceStorageDirPath(param.ResourceID, version.ID, param.OS, param.Arch)
 		if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 			l.logger.Error("Failed to create storage directory",
 				zap.String("directory", saveDir),
@@ -122,9 +140,9 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 				// Code before the actual rollback.
 
-				if err := os.RemoveAll(saveDir); err != nil {
+				if e := os.RemoveAll(saveDir); e != nil {
 					l.logger.Error("Failed to remove storage directory",
-						zap.Error(err),
+						zap.Error(e),
 					)
 				}
 
@@ -143,7 +161,8 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return err
 		}
 
-		archivePath := filepath.Join(versionDir, archiveZip)
+		archivePath = l.storageLogic.BuildVersionResourceStoragePath(param.ResourceID, version.ID, param.OS, param.Arch)
+
 		if strings.HasSuffix(param.UploadArchivePath, zipSuffix) {
 			err = fileops.MoveFile(param.UploadArchivePath, archivePath)
 			if err != nil {
@@ -155,8 +174,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 				return err
 			}
 		} else {
-			err = archive.CompressToZip(saveDir, archivePath)
-			if err != nil {
+			if err = archive.CompressToZip(saveDir, archivePath); err != nil {
 				l.logger.Error("Failed to compress to zip",
 					zap.String("src dir", saveDir),
 					zap.String("dst file", archivePath),
@@ -167,7 +185,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 
 		}
 
-		fileHashes, err := filehash.GetAll(saveDir)
+		hashes, err := filehash.GetAll(saveDir)
 		if err != nil {
 			l.logger.Error("Failed to get file hashes",
 				zap.String("version name", param.Name),
@@ -175,25 +193,10 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			)
 			return err
 		}
-		ver, err = l.versionRepo.SetVersionFileHashesByOne(ctx, tx, ver, fileHashes)
-		if err != nil {
-			l.logger.Error("Failed to add file hashes to version",
-				zap.Error(err),
-			)
-			return err
-		}
 
-		s, err := l.storageRepo.CreateStorage(ctx, tx, saveDir)
+		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, version.ID, param.OS, param.Arch, archivePath, saveDir, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
-				zap.Error(err),
-			)
-			return err
-		}
-
-		ver, err = l.versionRepo.SetVersionStorageByOne(ctx, tx, ver, s)
-		if err != nil {
-			l.logger.Error("Failed to add storage to version",
 				zap.Error(err),
 			)
 			return err
@@ -202,188 +205,109 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return nil
 	})
 
-	if err != nil {
-		l.logger.Error("Failed to commit transaction",
-			zap.Error(err),
-		)
-		return nil, err
-	}
+	l.doPostCreateResources(param.ResourceID)
 
-	l.cacheGroup.VersionLatestCache.Delete(param.ResourceID)
-
-	return ver, nil
+	return version, nil
 }
 
-func (l *VersionLogic) GetByName(ctx context.Context, param GetVersionByNameParam) (*ent.Version, error) {
-	return l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
+func (l *VersionLogic) doPostCreateResources(rid string) {
+	l.cacheGroup.VersionLatestCache.Delete(rid)
 }
 
-func (l *VersionLogic) ProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (string, error) {
+func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (string, error) {
 	// if current version is not provided, we will download the full version
 	var (
-		current    *ent.Version
-		err        error
-		isFull     = param.CurrentVersionName == ""
-		resourceID = param.ResourceID
+		err            error
+		cacheGroup     = l.cacheGroup
+		isFull         = param.CurrentVersionName == ""
+		resourceID     = param.ResourceID
+		targetVersion  = param.TargetVersion
+		currentVersion *ent.Version
 	)
 
 	// full update
-	if isFull {
-		return l.GetResourcePath(GetResourcePathParam{
-			ResourceID: resourceID,
-			VersionID:  param.LatestVersion.ID,
-		}), nil
+
+	if !isFull {
+		var cacheKey = cacheGroup.GetCacheKey(param.ResourceID, param.CurrentVersionName)
+		val, err := cacheGroup.VersionNameCache.ComputeIfAbsent(cacheKey, func() (*ent.Version, error) {
+			return l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.CurrentVersionName)
+		})
+		switch {
+		case err == nil:
+			currentVersion = *val
+		case !ent.IsNotFound(err):
+			return "", err
+		default:
+			isFull = true
+		}
+
 	}
 
-	key := strings.Join([]string{resourceID, param.CurrentVersionName}, ":")
-
-	val, err := l.cacheGroup.VersionNameCache.ComputeIfAbsent(key, func() (*ent.Version, error) {
-		return l.GetByName(ctx, GetVersionByNameParam{
-			ResourceID: resourceID,
-			Name:       param.CurrentVersionName,
+	if isFull {
+		cacheKey := cacheGroup.GetCacheKey(
+			param.OS,
+			param.Arch,
+			strconv.Itoa(param.TargetVersion.ID),
+		)
+		val, err := cacheGroup.FullUpdatePathCache.ComputeIfAbsent(cacheKey, func() (string, error) {
+			return l.GetFullUpdatePackagePath(ctx, GetFullUpdatePackagePathParam{
+				ResourceID: resourceID,
+				VersionID:  param.TargetVersion.ID,
+				OS:         param.OS,
+				Arch:       param.Arch,
+			})
 		})
-	})
-	if err != nil {
-		if !ent.IsNotFound(err) {
-			l.logger.Error("Failed to get current version",
-				zap.Error(err),
-			)
+		if err != nil {
 			return "", err
 		}
-		isFull = true
+		return *val, nil
+
 	}
-	current = *val
-	var (
-		currentVersionID         = current.ID
-		currentVersionFileHashes = current.FileHashes
-	)
 
-	// incremental update
-	patchPath, err := l.GetPatchPath(ctx, GetVersionPatchParam{
-		ResourceID:               resourceID,
-		TargetVersionID:          param.LatestVersion.ID,
-		TargetVersionFileHashes:  param.LatestVersion.FileHashes,
-		CurrentVersionID:         currentVersionID,
-		CurrentVersionFileHashes: currentVersionFileHashes,
+	result, err := l.GetIncrementalUpdatePackagePath(ctx, UpdateProcessInfo{
+		ResourceID:       resourceID,
+		CurrentVersionID: currentVersion.ID,
+		TargetVersionID:  targetVersion.ID,
+		OS:               param.OS,
+		Arch:             param.Arch,
 	})
-
 	if err != nil {
-		l.logger.Error("Failed to get patch",
-			zap.String("resource id", resourceID),
-			zap.Int("target version id", param.LatestVersion.ID),
-			zap.Int("current version id", currentVersionID),
+		l.logger.Error("failed to get incremental update package path",
 			zap.Error(err),
 		)
+		return "", err
 	}
 
-	return patchPath, nil
+	return result, nil
 }
 
 func (l *VersionLogic) GetDownloadUrl(ctx context.Context, param ProcessUpdateParam) (string, error) {
 	var (
 		cfg = config.CFG
 	)
-	p, err := l.ProcessPatchOrFullUpdate(ctx, param)
+	p, err := l.doProcessPatchOrFullUpdate(ctx, param)
 	if err != nil {
 		return "", err
 	}
 
-	rel := strings.TrimPrefix(p, l.storage.RootDir)
-	rel = strings.TrimPrefix(rel, string(os.PathSeparator))
-	rel = strings.ReplaceAll(rel, string(os.PathSeparator), "/")
+	rel := l.cleanPath(p)
 
 	key := ksuid.New().String()
 	sk := strings.Join([]string{resourcePrefix, key}, ":")
+
 	_, err = l.rdb.Set(ctx, sk, rel, cfg.Extra.DownloadEffectiveTime).Result()
 	if err != nil {
 		return "", err
 	}
+
 	return strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/"), nil
 }
 
-func (l *VersionLogic) GetResourcePath(param GetResourcePathParam) string {
-	return l.storage.ResourcePath(param.ResourceID, param.VersionID)
-}
-
-func (l *VersionLogic) GetPatchPath(ctx context.Context, param GetVersionPatchParam) (string, error) {
-	exists, err := l.storage.PatchExists(param.ResourceID, param.TargetVersionID, param.CurrentVersionID)
-	if err != nil {
-		l.logger.Error("Failed to check patch file exists",
-			zap.String("resource ID", param.ResourceID),
-			zap.Int("target version ID", param.TargetVersionID),
-			zap.Int("current version ID", param.CurrentVersionID),
-			zap.Error(err),
-		)
-		return "", err
-	}
-
-	if exists {
-		patchPath := l.storage.PatchPath(param.ResourceID, param.TargetVersionID, param.CurrentVersionID)
-		return patchPath, nil
-	}
-
-	var (
-		target   = strconv.Itoa(param.TargetVersionID)
-		origin   = strconv.Itoa(param.CurrentVersionID)
-		mutexKey = strings.Join([]string{"Patch", param.ResourceID, origin, target}, ":")
-
-		cacheKey = strings.Join([]string{"Load", param.ResourceID, origin, target}, ":")
-	)
-
-	val, done, err := l.isPatchLoaded(ctx, cacheKey)
-	l.logger.Info("val",
-		zap.String("val", val),
-		zap.Bool("done", done),
-		zap.Error(err),
-	)
-	switch {
-	case err != nil:
-		return "", err
-	case done:
-		return val, nil
-	}
-
-	mutex := l.sync.NewMutex(mutexKey)
-
-	if err := mutex.Lock(); err != nil {
-		return "", err
-	}
-	defer func() {
-		if ok, err := mutex.Unlock(); !ok || err != nil {
-			l.logger.Error("Failed to unlock patch mutex",
-				zap.String("resource id", param.ResourceID),
-				zap.Int("target version id", param.TargetVersionID),
-				zap.Int("current version id", param.CurrentVersionID),
-				zap.Error(err),
-			)
-		}
-	}()
-
-	val, done, err = l.isPatchLoaded(ctx, cacheKey)
-	l.logger.Info("val",
-		zap.String("val", val),
-		zap.Bool("done", done),
-		zap.Error(err),
-	)
-	switch {
-	case err != nil:
-		return "", err
-	case done:
-		return val, nil
-	}
-
-	p, err := l.doGetPatchPath(ctx, param, err)
-
-	var e string
-	if err != nil {
-		e = err.Error()
-	}
-
-	if err := l.LoadPatchInfo(ctx, cacheKey, p, e); err != nil {
-		return "", err
-	}
-
-	return p, nil
+func (l *VersionLogic) cleanPath(p string) string {
+	rel := strings.TrimPrefix(p, l.storageLogic.RootDir)
+	rel = strings.TrimPrefix(rel, string(os.PathSeparator))
+	rel = strings.ReplaceAll(rel, string(os.PathSeparator), "/")
+	return rel
 }
 
 func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (string, bool, error) {
@@ -416,45 +340,214 @@ func (l *VersionLogic) LoadPatchInfo(ctx context.Context, cacheKey, p, e string)
 	return nil
 }
 
-func (l *VersionLogic) doGetPatchPath(ctx context.Context, param GetVersionPatchParam, err error) (string, error) {
-	changes, err := patcher.CalculateDiff(param.TargetVersionFileHashes, param.CurrentVersionFileHashes)
+func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
+	return l.cacheGroup
+}
+
+func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (*ent.Storage, *ent.Storage, error) {
+
+	var (
+		targetStorage  *ent.Storage
+		currentStorage *ent.Storage
+		ch             = make(chan *ent.Storage, 1)
+	)
+	defer close(ch)
+	wg := errgroup.Group{}
+	wg.Go(func() error {
+		s, err := l.storageLogic.GetFullUpdateStorage(ctx, target, resOS, resArch)
+		if err != nil {
+			return err
+		}
+		ch <- s
+		return nil
+	})
+	currentStorage, err := l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
+
+	wge := wg.Wait()
+
+	if err != nil || wge != nil {
+		return nil, nil, err
+	}
+
+	targetStorage = <-ch
+
+	return targetStorage, currentStorage, nil
+}
+
+func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param UpdateProcessInfo) (string, error) {
+	return l.doGetIncrementalUpdatePackagePath(ctx, param)
+}
+
+func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, param UpdateProcessInfo) (string, error) {
+	var (
+		targetVersion  = strconv.Itoa(param.TargetVersionID)
+		currentVersion = strconv.Itoa(param.CurrentVersionID)
+		resourceID     = param.ResourceID
+
+		mutexKey = strings.Join([]string{"Patch", resourceID, targetVersion, currentVersion}, ":")
+		cacheKey = strings.Join([]string{"Load", resourceID, targetVersion, currentVersion}, ":")
+	)
+
+	val, done, err := l.isPatchLoaded(ctx, cacheKey)
+	switch {
+	case err != nil:
+		return "", err
+	case done:
+		return val, nil
+	}
+
+	mutex := l.sync.NewMutex(mutexKey)
+
+	if err := mutex.Lock(); err != nil {
+		return "", err
+	}
+	defer func() {
+		if ok, err := mutex.Unlock(); !ok || err != nil {
+			l.logger.Error("Failed to unlock patch mutex")
+		}
+	}()
+
+	val, done, err = l.isPatchLoaded(ctx, cacheKey)
+	switch {
+	case err != nil:
+		return "", err
+	case done:
+		return val, nil
+	}
+
+	p, err := l.doCreateIncrementalUpdatePackage(ctx, param)
+
+	var e string
+	if err != nil {
+		e = err.Error()
+	}
+
+	if err := l.LoadPatchInfo(ctx, cacheKey, p, e); err != nil {
+		return "", err
+	}
+
+	return p, nil
+}
+
+func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, param UpdateProcessInfo) (string, error) {
+
+	// find existing incremental update
+	cacheKey := strings.Join([]string{
+		param.OS,
+		param.Arch,
+		strconv.Itoa(param.CurrentVersionID),
+		strconv.Itoa(param.TargetVersionID),
+	}, ":")
+	p, err := l.cacheGroup.IncrementalUpdatePathCache.ComputeIfAbsent(cacheKey, func() (string, error) {
+		return l.storageLogic.GetIncrementalUpdatePath(ctx, param)
+	})
+
+	switch {
+	case err != nil && !ent.IsNotFound(err):
+		l.logger.Error("Failed to get incremental update package path",
+			zap.Error(err),
+		)
+		return "", err
+	case err == nil:
+		return *p, nil
+	default:
+		// create not existed incremental update
+	}
+
+	packagePath, err := l.CreateIncrementalUpdatePackage(ctx, param)
+	if err != nil {
+		l.logger.Error("Failed to generate incremental update package",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	return packagePath, nil
+}
+
+func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, param UpdateProcessInfo) (string, error) {
+
+	var (
+		resourceID  = param.ResourceID
+		target      = param.TargetVersionID
+		current     = param.CurrentVersionID
+		resOS       = param.OS
+		resArch     = param.Arch
+		packagePath string
+	)
+
+	targetStorage, currentStorage, err := l.fetchStorageInfoTuple(ctx, target, current, resOS, resArch)
+	if err != nil {
+		l.logger.Error("Failed to get storage info",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	changes, err := patcher.CalculateDiff(targetStorage.FileHashes, currentStorage.FileHashes)
 	if err != nil {
 		l.logger.Error("Failed to calculate diff",
-			zap.String("resource ID", param.ResourceID),
-			zap.Int("target version ID", param.TargetVersionID),
-			zap.Int("current version ID", param.CurrentVersionID),
 			zap.Error(err),
 		)
 		return "", err
 	}
 
-	patchDir := l.storage.PatchDir(param.ResourceID, param.TargetVersionID)
+	patchDir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceID, target, resOS, resArch)
 
-	latestStorage, err := l.storageRepo.GetStorageByVersionID(ctx, param.TargetVersionID)
-	if err != nil {
-		l.logger.Error("Failed to get storage",
-			zap.Error(err),
-		)
-		return "", err
+	var (
+		resourceDir = targetStorage.ResourcePath
+	)
 
-	}
+	patchName, err := patcher.Generate(strconv.Itoa(current), resourceDir, patchDir, changes)
 
-	patchName, err := patcher.Generate(strconv.Itoa(param.CurrentVersionID), latestStorage.Directory, patchDir, changes)
 	if err != nil {
 		l.logger.Error("Failed to generate patch package",
 			zap.Error(err),
 		)
 		return "", err
-
 	}
 
-	return filepath.Join(patchDir, patchName), nil
+	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
+
+		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
+			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
+				// Code before the actual rollback.
+
+				if err := os.RemoveAll(packagePath); err != nil {
+					l.logger.Error("Failed to remove patch package",
+						zap.Error(err),
+					)
+				}
+
+				err := next.Rollback(ctx, tx)
+				// Code after the transaction was rolled back.
+
+				return err
+			})
+		})
+
+		packagePath = filepath.Join(patchDir, patchName)
+		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, resOS, resArch, packagePath)
+		if err != nil {
+			l.logger.Error("Failed to create incremental update storage",
+				zap.Error(err),
+			)
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		l.logger.Error("Failed to commit transaction",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	return packagePath, nil
 }
 
-func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
-	return l.cacheGroup
-}
-
-func (l *VersionLogic) GetStorageRootDir() string {
-	return l.storage.RootDir
+func (l *VersionLogic) GetFullUpdatePackagePath(ctx context.Context, param GetFullUpdatePackagePathParam) (string, error) {
+	return l.storageLogic.GetFullUpdatePath(ctx, param.VersionID, param.OS, param.Arch)
 }

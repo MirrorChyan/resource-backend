@@ -9,14 +9,12 @@ import (
 )
 
 type Version struct {
-	*Repo
 	db *ent.Client
 }
 
 func NewVersion(db *ent.Client) *Version {
 	return &Version{
-		Repo: &Repo{db: db},
-		db:   db,
+		db: db,
 	}
 }
 
@@ -41,20 +39,17 @@ func (r *Version) GetLatestVersion(ctx context.Context, resID string) (*ent.Vers
 		First(ctx)
 }
 
-func (r *Version) CreateVersion(ctx context.Context, tx *ent.Tx, resID, name string, number uint64) (*ent.Version, error) {
-	return tx.Version.Create().
+func (r *Version) CreateVersion(ctx context.Context, resID, name string, number uint64) (*ent.Version, error) {
+	return r.db.Version.Create().
 		SetResourceID(resID).
 		SetName(name).
 		SetNumber(number).
 		Save(ctx)
 }
-
-func (r *Version) SetVersionFileHashesByOne(ctx context.Context, tx *ent.Tx, ver *ent.Version, fileHashes map[string]string) (*ent.Version, error) {
-	return tx.Version.UpdateOne(ver).
-		SetFileHashes(fileHashes).
+func (r *Version) CreateVersionTx(ctx context.Context, tx *ent.Tx, resID, name string, number uint64) (*ent.Version, error) {
+	return tx.Version.Create().
+		SetResourceID(resID).
+		SetName(name).
+		SetNumber(number).
 		Save(ctx)
-}
-
-func (r *Version) SetVersionStorageByOne(ctx context.Context, tx *ent.Tx, ver *ent.Version, stg *ent.Storage) (*ent.Version, error) {
-	return tx.Version.UpdateOne(ver).SetStorage(stg).Save(ctx)
 }

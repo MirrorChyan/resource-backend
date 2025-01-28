@@ -34,7 +34,7 @@ func GetAll(targetDir string) (map[string]string, error) {
 	var (
 		files = make(map[string]string)
 		//    path,relativePath,hash
-		tmp = make([][3]string, 10)
+		tmp = make([][3]string, 0, 12)
 	)
 	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -60,10 +60,11 @@ func GetAll(targetDir string) (map[string]string, error) {
 			if flag.Load() {
 				return nil
 			}
-			var (
-				val  = tmp[i]
-				path = val[0]
-			)
+			path := tmp[i][0]
+			_, e := os.Stat(path)
+			if e != nil {
+				return nil
+			}
 			hash, err := Calculate(path)
 			if err != nil {
 				flag.Store(true)
@@ -74,7 +75,7 @@ func GetAll(targetDir string) (map[string]string, error) {
 				flag.Store(true)
 				return err
 			}
-			val[1], val[2] = rel, hash
+			tmp[i][1], tmp[i][2] = rel, hash
 			return nil
 		})
 	}
@@ -85,6 +86,5 @@ func GetAll(targetDir string) (map[string]string, error) {
 	for i := range tmp {
 		files[tmp[i][1]] = tmp[i][2]
 	}
-
 	return files, err
 }

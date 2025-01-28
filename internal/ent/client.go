@@ -482,7 +482,23 @@ func (c *StorageClient) QueryVersion(s *Storage) *VersionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(storage.Table, storage.FieldID, id),
 			sqlgraph.To(version.Table, version.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, storage.VersionTable, storage.VersionColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, storage.VersionTable, storage.VersionColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryOldVersion queries the old_version edge of a Storage.
+func (c *StorageClient) QueryOldVersion(s *Storage) *VersionQuery {
+	query := (&VersionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(storage.Table, storage.FieldID, id),
+			sqlgraph.To(version.Table, version.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, storage.OldVersionTable, storage.OldVersionColumn),
 		)
 		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
 		return fromV, nil
@@ -623,15 +639,15 @@ func (c *VersionClient) GetX(ctx context.Context, id int) *Version {
 	return obj
 }
 
-// QueryStorage queries the storage edge of a Version.
-func (c *VersionClient) QueryStorage(v *Version) *StorageQuery {
+// QueryStorages queries the storages edge of a Version.
+func (c *VersionClient) QueryStorages(v *Version) *StorageQuery {
 	query := (&StorageClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := v.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(version.Table, version.FieldID, id),
 			sqlgraph.To(storage.Table, storage.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, version.StorageTable, version.StorageColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, version.StoragesTable, version.StoragesColumn),
 		)
 		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
 		return fromV, nil

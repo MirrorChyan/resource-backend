@@ -11,7 +11,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/google/wire"
@@ -21,13 +20,15 @@ import (
 
 // Injectors from wire.go:
 
-func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync2 *redsync.Redsync, storage *stg.Storage, cg *cache.VersionCacheGroup) *HandlerSet {
+func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync2 *redsync.Redsync, cg *cache.VersionCacheGroup) *HandlerSet {
 	resource := repo.NewResource(db)
 	resourceLogic := logic.NewResourceLogic(logger, resource)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
+	repoRepo := repo.NewRepo(db)
 	version := repo.NewVersion(db)
-	repoStorage := repo.NewStorage(db)
-	versionLogic := logic.NewVersionLogic(logger, version, repoStorage, storage, redsync2, rdb, cg)
+	storage := repo.NewStorage(db)
+	storageLogic := logic.NewStorageLogic(logger, storage)
+	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, storageLogic, rdb, redsync2, cg)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic)
 	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
 	return handlerSet
@@ -35,9 +36,9 @@ func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsyn
 
 // wire.go:
 
-var repoProviderSet = wire.NewSet(repo.NewResource, repo.NewVersion, repo.NewStorage)
+var repoProviderSet = wire.NewSet(repo.NewRepo, repo.NewResource, repo.NewVersion, repo.NewStorage)
 
-var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic)
+var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewStorageLogic)
 
 var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler, handler.NewMetricsHandler)
 

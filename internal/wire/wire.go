@@ -8,7 +8,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/google/wire"
@@ -17,6 +16,7 @@ import (
 )
 
 var repoProviderSet = wire.NewSet(
+	repo.NewRepo,
 	repo.NewResource,
 	repo.NewVersion,
 	repo.NewStorage,
@@ -25,6 +25,7 @@ var repoProviderSet = wire.NewSet(
 var logicProviderSet = wire.NewSet(
 	logic.NewResourceLogic,
 	logic.NewVersionLogic,
+	logic.NewStorageLogic,
 )
 
 var handlerProviderSet = wire.NewSet(
@@ -46,6 +47,6 @@ func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler 
 	}
 }
 
-func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync *redsync.Redsync, storage *stg.Storage, cg *cache.VersionCacheGroup) *HandlerSet {
+func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync *redsync.Redsync, cg *cache.VersionCacheGroup) *HandlerSet {
 	panic(wire.Build(repoProviderSet, logicProviderSet, handlerProviderSet, provideHandlerSet))
 }

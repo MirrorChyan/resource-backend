@@ -21,9 +21,63 @@ type StorageCreate struct {
 	hooks    []Hook
 }
 
-// SetDirectory sets the "directory" field.
-func (sc *StorageCreate) SetDirectory(s string) *StorageCreate {
-	sc.mutation.SetDirectory(s)
+// SetUpdateType sets the "update_type" field.
+func (sc *StorageCreate) SetUpdateType(st storage.UpdateType) *StorageCreate {
+	sc.mutation.SetUpdateType(st)
+	return sc
+}
+
+// SetOs sets the "os" field.
+func (sc *StorageCreate) SetOs(s string) *StorageCreate {
+	sc.mutation.SetOs(s)
+	return sc
+}
+
+// SetNillableOs sets the "os" field if the given value is not nil.
+func (sc *StorageCreate) SetNillableOs(s *string) *StorageCreate {
+	if s != nil {
+		sc.SetOs(*s)
+	}
+	return sc
+}
+
+// SetArch sets the "arch" field.
+func (sc *StorageCreate) SetArch(s string) *StorageCreate {
+	sc.mutation.SetArch(s)
+	return sc
+}
+
+// SetNillableArch sets the "arch" field if the given value is not nil.
+func (sc *StorageCreate) SetNillableArch(s *string) *StorageCreate {
+	if s != nil {
+		sc.SetArch(*s)
+	}
+	return sc
+}
+
+// SetPackagePath sets the "package_path" field.
+func (sc *StorageCreate) SetPackagePath(s string) *StorageCreate {
+	sc.mutation.SetPackagePath(s)
+	return sc
+}
+
+// SetResourcePath sets the "resource_path" field.
+func (sc *StorageCreate) SetResourcePath(s string) *StorageCreate {
+	sc.mutation.SetResourcePath(s)
+	return sc
+}
+
+// SetNillableResourcePath sets the "resource_path" field if the given value is not nil.
+func (sc *StorageCreate) SetNillableResourcePath(s *string) *StorageCreate {
+	if s != nil {
+		sc.SetResourcePath(*s)
+	}
+	return sc
+}
+
+// SetFileHashes sets the "file_hashes" field.
+func (sc *StorageCreate) SetFileHashes(m map[string]string) *StorageCreate {
+	sc.mutation.SetFileHashes(m)
 	return sc
 }
 
@@ -47,17 +101,28 @@ func (sc *StorageCreate) SetVersionID(id int) *StorageCreate {
 	return sc
 }
 
-// SetNillableVersionID sets the "version" edge to the Version entity by ID if the given value is not nil.
-func (sc *StorageCreate) SetNillableVersionID(id *int) *StorageCreate {
+// SetVersion sets the "version" edge to the Version entity.
+func (sc *StorageCreate) SetVersion(v *Version) *StorageCreate {
+	return sc.SetVersionID(v.ID)
+}
+
+// SetOldVersionID sets the "old_version" edge to the Version entity by ID.
+func (sc *StorageCreate) SetOldVersionID(id int) *StorageCreate {
+	sc.mutation.SetOldVersionID(id)
+	return sc
+}
+
+// SetNillableOldVersionID sets the "old_version" edge to the Version entity by ID if the given value is not nil.
+func (sc *StorageCreate) SetNillableOldVersionID(id *int) *StorageCreate {
 	if id != nil {
-		sc = sc.SetVersionID(*id)
+		sc = sc.SetOldVersionID(*id)
 	}
 	return sc
 }
 
-// SetVersion sets the "version" edge to the Version entity.
-func (sc *StorageCreate) SetVersion(v *Version) *StorageCreate {
-	return sc.SetVersionID(v.ID)
+// SetOldVersion sets the "old_version" edge to the Version entity.
+func (sc *StorageCreate) SetOldVersion(v *Version) *StorageCreate {
+	return sc.SetOldVersionID(v.ID)
 }
 
 // Mutation returns the StorageMutation object of the builder.
@@ -103,11 +168,27 @@ func (sc *StorageCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (sc *StorageCreate) check() error {
-	if _, ok := sc.mutation.Directory(); !ok {
-		return &ValidationError{Name: "directory", err: errors.New(`ent: missing required field "Storage.directory"`)}
+	if _, ok := sc.mutation.UpdateType(); !ok {
+		return &ValidationError{Name: "update_type", err: errors.New(`ent: missing required field "Storage.update_type"`)}
+	}
+	if v, ok := sc.mutation.UpdateType(); ok {
+		if err := storage.UpdateTypeValidator(v); err != nil {
+			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
+		}
+	}
+	if _, ok := sc.mutation.PackagePath(); !ok {
+		return &ValidationError{Name: "package_path", err: errors.New(`ent: missing required field "Storage.package_path"`)}
+	}
+	if v, ok := sc.mutation.PackagePath(); ok {
+		if err := storage.PackagePathValidator(v); err != nil {
+			return &ValidationError{Name: "package_path", err: fmt.Errorf(`ent: validator failed for field "Storage.package_path": %w`, err)}
+		}
 	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Storage.created_at"`)}
+	}
+	if len(sc.mutation.VersionIDs()) == 0 {
+		return &ValidationError{Name: "version", err: errors.New(`ent: missing required edge "Storage.version"`)}
 	}
 	return nil
 }
@@ -135,9 +216,29 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		_node = &Storage{config: sc.config}
 		_spec = sqlgraph.NewCreateSpec(storage.Table, sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt))
 	)
-	if value, ok := sc.mutation.Directory(); ok {
-		_spec.SetField(storage.FieldDirectory, field.TypeString, value)
-		_node.Directory = value
+	if value, ok := sc.mutation.UpdateType(); ok {
+		_spec.SetField(storage.FieldUpdateType, field.TypeEnum, value)
+		_node.UpdateType = value
+	}
+	if value, ok := sc.mutation.Os(); ok {
+		_spec.SetField(storage.FieldOs, field.TypeString, value)
+		_node.Os = value
+	}
+	if value, ok := sc.mutation.Arch(); ok {
+		_spec.SetField(storage.FieldArch, field.TypeString, value)
+		_node.Arch = value
+	}
+	if value, ok := sc.mutation.PackagePath(); ok {
+		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
+		_node.PackagePath = value
+	}
+	if value, ok := sc.mutation.ResourcePath(); ok {
+		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
+		_node.ResourcePath = value
+	}
+	if value, ok := sc.mutation.FileHashes(); ok {
+		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
+		_node.FileHashes = value
 	}
 	if value, ok := sc.mutation.CreatedAt(); ok {
 		_spec.SetField(storage.FieldCreatedAt, field.TypeTime, value)
@@ -145,7 +246,7 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 	}
 	if nodes := sc.mutation.VersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   storage.VersionTable,
 			Columns: []string{storage.VersionColumn},
@@ -157,7 +258,24 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.version_storage = &nodes[0]
+		_node.version_storages = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.OldVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   storage.OldVersionTable,
+			Columns: []string{storage.OldVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.storage_old_version = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

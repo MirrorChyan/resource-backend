@@ -19,7 +19,9 @@ func UnpackZip(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func(r *zip.ReadCloser) {
+		_ = r.Close()
+	}(r)
 
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)

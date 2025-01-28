@@ -34,12 +34,6 @@ func (vc *VersionCreate) SetNumber(u uint64) *VersionCreate {
 	return vc
 }
 
-// SetFileHashes sets the "file_hashes" field.
-func (vc *VersionCreate) SetFileHashes(m map[string]string) *VersionCreate {
-	vc.mutation.SetFileHashes(m)
-	return vc
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (vc *VersionCreate) SetCreatedAt(t time.Time) *VersionCreate {
 	vc.mutation.SetCreatedAt(t)
@@ -54,23 +48,19 @@ func (vc *VersionCreate) SetNillableCreatedAt(t *time.Time) *VersionCreate {
 	return vc
 }
 
-// SetStorageID sets the "storage" edge to the Storage entity by ID.
-func (vc *VersionCreate) SetStorageID(id int) *VersionCreate {
-	vc.mutation.SetStorageID(id)
+// AddStorageIDs adds the "storages" edge to the Storage entity by IDs.
+func (vc *VersionCreate) AddStorageIDs(ids ...int) *VersionCreate {
+	vc.mutation.AddStorageIDs(ids...)
 	return vc
 }
 
-// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
-func (vc *VersionCreate) SetNillableStorageID(id *int) *VersionCreate {
-	if id != nil {
-		vc = vc.SetStorageID(*id)
+// AddStorages adds the "storages" edges to the Storage entity.
+func (vc *VersionCreate) AddStorages(s ...*Storage) *VersionCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
-	return vc
-}
-
-// SetStorage sets the "storage" edge to the Storage entity.
-func (vc *VersionCreate) SetStorage(s *Storage) *VersionCreate {
-	return vc.SetStorageID(s.ID)
+	return vc.AddStorageIDs(ids...)
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
@@ -183,20 +173,16 @@ func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 		_spec.SetField(version.FieldNumber, field.TypeUint64, value)
 		_node.Number = value
 	}
-	if value, ok := vc.mutation.FileHashes(); ok {
-		_spec.SetField(version.FieldFileHashes, field.TypeJSON, value)
-		_node.FileHashes = value
-	}
 	if value, ok := vc.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if nodes := vc.mutation.StorageIDs(); len(nodes) > 0 {
+	if nodes := vc.mutation.StoragesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   version.StorageTable,
-			Columns: []string{version.StorageColumn},
+			Table:   version.StoragesTable,
+			Columns: []string{version.StoragesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),

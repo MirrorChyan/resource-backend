@@ -24,9 +24,15 @@ var (
 	// StoragesColumns holds the columns for the "storages" table.
 	StoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "directory", Type: field.TypeString},
+		{Name: "update_type", Type: field.TypeEnum, Enums: []string{"full", "incremental"}},
+		{Name: "os", Type: field.TypeString, Nullable: true},
+		{Name: "arch", Type: field.TypeString, Nullable: true},
+		{Name: "package_path", Type: field.TypeString},
+		{Name: "resource_path", Type: field.TypeString, Nullable: true},
+		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "version_storage", Type: field.TypeInt, Unique: true, Nullable: true},
+		{Name: "storage_old_version", Type: field.TypeInt, Nullable: true},
+		{Name: "version_storages", Type: field.TypeInt},
 	}
 	// StoragesTable holds the schema information for the "storages" table.
 	StoragesTable = &schema.Table{
@@ -35,10 +41,16 @@ var (
 		PrimaryKey: []*schema.Column{StoragesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "storages_versions_storage",
-				Columns:    []*schema.Column{StoragesColumns[3]},
+				Symbol:     "storages_versions_old_version",
+				Columns:    []*schema.Column{StoragesColumns[8]},
 				RefColumns: []*schema.Column{VersionsColumns[0]},
 				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "storages_versions_storages",
+				Columns:    []*schema.Column{StoragesColumns[9]},
+				RefColumns: []*schema.Column{VersionsColumns[0]},
+				OnDelete:   schema.NoAction,
 			},
 		},
 	}
@@ -47,7 +59,6 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "number", Type: field.TypeUint64},
-		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "resource_versions", Type: field.TypeString, Nullable: true},
 	}
@@ -59,7 +70,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "versions_resources_versions",
-				Columns:    []*schema.Column{VersionsColumns[5]},
+				Columns:    []*schema.Column{VersionsColumns[4]},
 				RefColumns: []*schema.Column{ResourcesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -75,5 +86,6 @@ var (
 
 func init() {
 	StoragesTable.ForeignKeys[0].RefTable = VersionsTable
+	StoragesTable.ForeignKeys[1].RefTable = VersionsTable
 	VersionsTable.ForeignKeys[0].RefTable = ResourcesTable
 }

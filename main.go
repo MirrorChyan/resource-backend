@@ -8,7 +8,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/stg"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
@@ -48,15 +47,14 @@ func main() {
 	var (
 		redis   = db.NewRedis()
 		redSync = db.NewRedSync(redis)
-		storage = stg.New()
-		group   = cache.NewVersionCacheGroup()
+		group   = cache.NewVersionCacheGroup(redis)
 		app     = fiber.New(fiber.Config{
 			BodyLimit:   BodyLimit,
 			ProxyHeader: fiber.HeaderXForwardedFor,
 		})
 	)
 
-	handlerSet := wire.NewHandlerSet(zap.L(), mysql, redis, redSync, storage, group)
+	handlerSet := wire.NewHandlerSet(zap.L(), mysql, redis, redSync, group)
 
 	app.Use(fiberzap.New(fiberzap.Config{
 		Logger: zap.L(),

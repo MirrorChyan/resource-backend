@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/handler/response"
+	response "github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/gofiber/fiber/v2"
@@ -132,24 +132,88 @@ func (h *VersionHandler) isValidExtension(filename string) bool {
 	return ext == ".zip" || strings.HasSuffix(filename, ".tar.gz")
 }
 
-func (h *VersionHandler) isAllowedMimeType(mime string) bool {
-	allowedTypes := []string{
-		"application/zip",
-		"application/x-zip-compressed",
-		"application/x-gzip",
-		"application/gzip",
+var (
+	osMap = map[string]string{
+		// any
+		"": "",
+
+		// windows
+		"windows": "windows",
+		"win":     "windows",
+		"win32":   "windows",
+
+		// linux
+		"linux": "linux",
+
+		// darwin
+		"darwin": "darwin",
+		"macos":  "darwin",
+		"mac":    "darwin",
+		"osx":    "darwin",
+
+		// android
+		"android": "android",
 	}
-	for _, allowedType := range allowedTypes {
-		if strings.EqualFold(mime, allowedType) {
-			return true
-		}
+
+	archMap = map[string]string{
+		// any
+		"": "",
+
+		// 386
+		"386":    "386",
+		"x86":    "386",
+		"x86_32": "386",
+		"i386":   "386",
+
+		// amd64
+		"amd64":   "amd64",
+		"x64":     "amd64",
+		"x86_64":  "amd64",
+		"intel64": "amd64",
+
+		// arm
+		"arm": "arm",
+
+		// arm64
+		"arm64":   "arm64",
+		"aarch64": "arm64",
 	}
-	return false
+)
+
+func (h *VersionHandler) handleOSParam(os string) (string, bool) {
+	if standardOS, ok := osMap[os]; ok {
+		return standardOS, true
+	}
+	return "", false
+}
+
+func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
+	if standardArch, ok := archMap[arch]; ok {
+		return standardArch, true
+	}
+	return "", false
+}
+
+func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (string, string, error) {
+	var (
+		resOS   = c.FormValue("os")
+		resArch = c.FormValue("arch")
+	)
+	resOS, ok := h.handleOSParam(resOS)
+	if !ok {
+		return "", "", errors.New("invalid os")
+	}
+
+	resArch, ok = h.handleArchParam(resArch)
+	if !ok {
+		return "", "", errors.New("invalid arch")
+	}
+	return resOS, resArch, nil
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	resID := c.Params(resourceKey)
-	name := c.FormValue("name")
+	verName := c.FormValue("name")
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.logger.Error("Failed to get file from form",
@@ -161,19 +225,22 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	var ctx = c.UserContext()
 
-	// if !h.isAllowedMimeType(file.Header.Get("Content-Type")) {
-	// 	resp := response.BusinessError("invalid file type")
-	// 	return c.Status(fiber.StatusBadRequest).JSON(resp)
-	// }
-
 	if !h.isValidExtension(file.Filename) {
 		resp := response.BusinessError("invalid file extension")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
+	resourceOS, resourceArch, err := h.doProcessOsAndArch(c)
+	if err != nil {
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
 	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
 		ResourceID: resID,
-		Name:       name,
+		Name:       verName,
+		OS:         resourceOS,
+		Arch:       resourceArch,
 	})
 	switch {
 	case err != nil:
@@ -185,7 +252,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	case exists:
 		h.logger.Info("Version name already exists",
 			zap.String("resource id", resID),
-			zap.String("version name", name),
+			zap.String("version name", verName),
+			zap.String("resource os", resourceOS),
+			zap.String("resource arch", resourceArch),
 		)
 		resp := response.BusinessError("version name already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
@@ -202,9 +271,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 	// remove temp root dir
 	defer func(path string) {
-		if err := os.RemoveAll(path); err != nil {
-			h.logger.Error("Failed to remove temp directory")
-		}
+		go func(p string) {
+			_ = os.RemoveAll(p)
+		}(path)
 	}(root)
 
 	dest := strings.Join([]string{root, file.Filename}, string(os.PathSeparator))
@@ -218,10 +287,11 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	version, err := h.versionLogic.Create(ctx, CreateVersionParam{
 		ResourceID:        resID,
-		Name:              name,
+		Name:              verName,
 		UploadArchivePath: dest,
+		OS:                resourceOS,
+		Arch:              resourceArch,
 	})
-
 	if err != nil {
 		h.logger.Error("Failed to create version",
 			zap.Error(err),
@@ -320,7 +390,7 @@ func (h *VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string)
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	resID := c.Params(resourceKey)
+	resourceID := c.Params(resourceKey)
 
 	req := &GetLatestVersionRequest{}
 	if err := c.QueryParser(req); err != nil {
@@ -333,13 +403,16 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var ctx = c.UserContext()
 
-	cg := h.versionLogic.GetCacheGroup()
-	val, err := cg.VersionLatestCache.ComputeIfAbsent(resID, func() (*ent.Version, error) {
-		return h.versionLogic.GetLatest(ctx, resID)
-	})
-
+	rOS, rArch, err := h.doProcessOsAndArch(c)
 	if err != nil {
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
 
+	req.OS, req.Arch = rOS, rArch
+
+	latest, err := h.versionLogic.GetLatest(ctx, resourceID)
+	if err != nil {
 		if ent.IsNotFound(err) {
 			resp := response.BusinessError("resources can't be found")
 			return c.Status(fiber.StatusNotFound).JSON(resp)
@@ -351,7 +424,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).
 			JSON(response.UnexpectedError())
 	}
-	latest := *val
 
 	data := QueryLatestResponseData{
 		VersionName:   latest.Name,
@@ -363,7 +435,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.validateCDK(req.CDK, req.SpID, req.UserAgent, resID); err != nil {
+	if isFirstBind, err := h.validateCDK(req.CDK, req.SpID, req.UserAgent, resourceID); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
@@ -378,7 +450,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		}
 	} else if isFirstBind {
 		// at-most-once callback
-		go h.sendBillingCheckinRequest(resID, req.CDK, req.UserAgent)
+		go h.sendBillingCheckinRequest(resourceID, req.CDK, req.UserAgent)
 	}
 
 	if latest.Name == req.CurrentVersion {
@@ -389,12 +461,15 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	h.logger.Info("CDK validation success")
 
 	url, err := h.versionLogic.GetDownloadUrl(ctx, ProcessUpdateParam{
-		ResourceID:         resID,
+		ResourceID:         resourceID,
 		CurrentVersionName: req.CurrentVersion,
-		LatestVersion:      latest,
+		TargetVersion:      latest,
+		OS:                 req.OS,
+		Arch:               req.Arch,
 	})
+
 	if err != nil {
-		h.logger.Error("Failed to store temp download info",
+		h.logger.Error("failed to get download url",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()

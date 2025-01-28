@@ -44,6 +44,10 @@ func (c *Cache[K, V]) Delete(key K) {
 	c.cache.Del(key)
 }
 
+func (c *Cache[K, V]) EvictAll() {
+	c.cache.Clear()
+}
+
 func NewCache[K string, V any](ttl time.Duration) *Cache[K, V] {
 	cache, _ := ristretto.NewCache(&ristretto.Config[K, V]{
 		NumCounters: 500,

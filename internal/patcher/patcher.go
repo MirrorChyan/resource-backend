@@ -90,11 +90,13 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 	var files [][2]string
 
 	for _, change := range changes {
-		resPath := filepath.Join(resDir, change.Filename)
-		tempPath := filepath.Join(root, change.Filename)
 
 		switch change.ChangeType {
 		case Modified, Added:
+
+			resPath := filepath.Join(resDir, change.Filename)
+			tempPath := filepath.Join(root, change.Filename)
+
 			tempFileDir := filepath.Dir(tempPath)
 			_, err := os.Stat(tempFileDir)
 			if err != nil {
@@ -121,7 +123,7 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 	)
 
 	flag.Store(false)
-	wg.SetLimit(runtime.NumCPU() * 10)
+	wg.SetLimit(runtime.NumCPU() * 5)
 	for i := range files {
 		if flag.Load() {
 			break

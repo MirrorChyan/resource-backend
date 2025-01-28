@@ -175,16 +175,6 @@ func NumberLTE(v uint64) predicate.Version {
 	return predicate.Version(sql.FieldLTE(FieldNumber, v))
 }
 
-// FileHashesIsNil applies the IsNil predicate on the "file_hashes" field.
-func FileHashesIsNil() predicate.Version {
-	return predicate.Version(sql.FieldIsNull(FieldFileHashes))
-}
-
-// FileHashesNotNil applies the NotNil predicate on the "file_hashes" field.
-func FileHashesNotNil() predicate.Version {
-	return predicate.Version(sql.FieldNotNull(FieldFileHashes))
-}
-
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Version {
 	return predicate.Version(sql.FieldEQ(FieldCreatedAt, v))
@@ -225,21 +215,21 @@ func CreatedAtLTE(v time.Time) predicate.Version {
 	return predicate.Version(sql.FieldLTE(FieldCreatedAt, v))
 }
 
-// HasStorage applies the HasEdge predicate on the "storage" edge.
-func HasStorage() predicate.Version {
+// HasStorages applies the HasEdge predicate on the "storages" edge.
+func HasStorages() predicate.Version {
 	return predicate.Version(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, StoragesTable, StoragesColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasStorageWith applies the HasEdge predicate on the "storage" edge with a given conditions (other predicates).
-func HasStorageWith(preds ...predicate.Storage) predicate.Version {
+// HasStoragesWith applies the HasEdge predicate on the "storages" edge with a given conditions (other predicates).
+func HasStoragesWith(preds ...predicate.Storage) predicate.Version {
 	return predicate.Version(func(s *sql.Selector) {
-		step := newStorageStep()
+		step := newStoragesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
