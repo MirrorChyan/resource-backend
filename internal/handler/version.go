@@ -334,13 +334,12 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 	var (
 		conf   = config.CFG
 		agent  = fiber.AcquireAgent()
-		req    = fasthttp.AcquireRequest()
+		req    = agent.Request()
 		resp   = fasthttp.AcquireResponse()
 		result ValidateCDKResponse
 	)
 	defer func() {
 		fiber.ReleaseAgent(agent)
-		fasthttp.ReleaseRequest(req)
 		fasthttp.ReleaseResponse(resp)
 	}()
 
@@ -348,6 +347,13 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 	req.Header.SetMethod(fiber.MethodPost)
 	req.Header.SetContentType(fiber.MIMEApplicationJSON)
 	req.SetBody(jsonData)
+
+	if err := agent.Parse(); err != nil {
+		h.logger.Error("Failed to parse request",
+			zap.Error(err),
+		)
+		return false, err
+	}
 
 	if err := agent.Do(req, resp); err != nil {
 		h.logger.Error("Failed to send request",
