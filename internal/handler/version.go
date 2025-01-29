@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/valyala/fasthttp"
 	"io"
 	"net/http"
 	"os"
@@ -330,20 +331,32 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 		return false, err
 	}
 
-	var conf = config.CFG
-	resp, err := http.Post(conf.Auth.CDKValidationURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(jsonData))
-	if err != nil {
+	var (
+		conf   = config.CFG
+		agent  = fiber.AcquireAgent()
+		req    = fasthttp.AcquireRequest()
+		resp   = fasthttp.AcquireResponse()
+		result ValidateCDKResponse
+	)
+	defer func() {
+		fiber.ReleaseAgent(agent)
+		fasthttp.ReleaseRequest(req)
+		fasthttp.ReleaseResponse(resp)
+	}()
+
+	req.SetRequestURI(conf.Auth.CDKValidationURL)
+	req.Header.SetMethod(fiber.MethodPost)
+	req.Header.SetContentType(fiber.MIMEApplicationJSON)
+	req.SetBody(jsonData)
+
+	if err := agent.Do(req, resp); err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
 		)
 		return false, err
 	}
 
-	var result ValidateCDKResponse
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
+	buf := resp.Body()
 	if err := sonic.Unmarshal(buf, &result); err != nil {
 		h.logger.Error("Failed to decode response",
 			zap.Error(err),
