@@ -1425,6 +1425,7 @@ type VersionMutation struct {
 	op              Op
 	typ             string
 	id              *int
+	channel         *version.Channel
 	name            *string
 	number          *uint64
 	addnumber       *int64
@@ -1536,6 +1537,42 @@ func (m *VersionMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetChannel sets the "channel" field.
+func (m *VersionMutation) SetChannel(v version.Channel) {
+	m.channel = &v
+}
+
+// Channel returns the value of the "channel" field in the mutation.
+func (m *VersionMutation) Channel() (r version.Channel, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannel returns the old "channel" field's value of the Version entity.
+// If the Version object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VersionMutation) OldChannel(ctx context.Context) (v version.Channel, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannel: %w", err)
+	}
+	return oldValue.Channel, nil
+}
+
+// ResetChannel resets all changes to the "channel" field.
+func (m *VersionMutation) ResetChannel() {
+	m.channel = nil
 }
 
 // SetName sets the "name" field.
@@ -1793,7 +1830,10 @@ func (m *VersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *VersionMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
+	if m.channel != nil {
+		fields = append(fields, version.FieldChannel)
+	}
 	if m.name != nil {
 		fields = append(fields, version.FieldName)
 	}
@@ -1811,6 +1851,8 @@ func (m *VersionMutation) Fields() []string {
 // schema.
 func (m *VersionMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case version.FieldChannel:
+		return m.Channel()
 	case version.FieldName:
 		return m.Name()
 	case version.FieldNumber:
@@ -1826,6 +1868,8 @@ func (m *VersionMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *VersionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case version.FieldChannel:
+		return m.OldChannel(ctx)
 	case version.FieldName:
 		return m.OldName(ctx)
 	case version.FieldNumber:
@@ -1841,6 +1885,13 @@ func (m *VersionMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *VersionMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case version.FieldChannel:
+		v, ok := value.(version.Channel)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannel(v)
+		return nil
 	case version.FieldName:
 		v, ok := value.(string)
 		if !ok {
@@ -1926,6 +1977,9 @@ func (m *VersionMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *VersionMutation) ResetField(name string) error {
 	switch name {
+	case version.FieldChannel:
+		m.ResetChannel()
+		return nil
 	case version.FieldName:
 		m.ResetName()
 		return nil

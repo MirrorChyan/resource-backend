@@ -42,11 +42,11 @@ func init() {
 	versionFields := schema.Version{}.Fields()
 	_ = versionFields
 	// versionDescName is the schema descriptor for name field.
-	versionDescName := versionFields[0].Descriptor()
+	versionDescName := versionFields[1].Descriptor()
 	// version.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	version.NameValidator = versionDescName.Validators[0].(func(string) error)
 	// versionDescCreatedAt is the schema descriptor for created_at field.
-	versionDescCreatedAt := versionFields[2].Descriptor()
+	versionDescCreatedAt := versionFields[3].Descriptor()
 	// version.DefaultCreatedAt holds the default value on creation for the created_at field.
 	version.DefaultCreatedAt = versionDescCreatedAt.Default.(time.Time)
 }

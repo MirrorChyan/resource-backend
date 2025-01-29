@@ -3,6 +3,7 @@
 package version
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -14,6 +15,8 @@ const (
 	Label = "version"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldChannel holds the string denoting the channel field in the database.
+	FieldChannel = "channel"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldNumber holds the string denoting the number field in the database.
@@ -45,6 +48,7 @@ const (
 // Columns holds all SQL columns for version fields.
 var Columns = []string{
 	FieldID,
+	FieldChannel,
 	FieldName,
 	FieldNumber,
 	FieldCreatedAt,
@@ -78,12 +82,44 @@ var (
 	DefaultCreatedAt time.Time
 )
 
+// Channel defines the type for the "channel" enum field.
+type Channel string
+
+// ChannelStable is the default value of the Channel enum.
+const DefaultChannel = ChannelStable
+
+// Channel values.
+const (
+	ChannelStable Channel = "stable"
+	ChannelAlpha  Channel = "alpha"
+	ChannelBeta   Channel = "beta"
+)
+
+func (c Channel) String() string {
+	return string(c)
+}
+
+// ChannelValidator is a validator for the "channel" field enum values. It is called by the builders before save.
+func ChannelValidator(c Channel) error {
+	switch c {
+	case ChannelStable, ChannelAlpha, ChannelBeta:
+		return nil
+	default:
+		return fmt.Errorf("version: invalid enum value for channel field: %q", c)
+	}
+}
+
 // OrderOption defines the ordering options for the Version queries.
 type OrderOption func(*sql.Selector)
 
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByChannel orders the results by the channel field.
+func ByChannel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChannel, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

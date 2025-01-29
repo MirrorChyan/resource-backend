@@ -22,6 +22,20 @@ type VersionCreate struct {
 	hooks    []Hook
 }
 
+// SetChannel sets the "channel" field.
+func (vc *VersionCreate) SetChannel(v version.Channel) *VersionCreate {
+	vc.mutation.SetChannel(v)
+	return vc
+}
+
+// SetNillableChannel sets the "channel" field if the given value is not nil.
+func (vc *VersionCreate) SetNillableChannel(v *version.Channel) *VersionCreate {
+	if v != nil {
+		vc.SetChannel(*v)
+	}
+	return vc
+}
+
 // SetName sets the "name" field.
 func (vc *VersionCreate) SetName(s string) *VersionCreate {
 	vc.mutation.SetName(s)
@@ -117,6 +131,10 @@ func (vc *VersionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (vc *VersionCreate) defaults() {
+	if _, ok := vc.mutation.Channel(); !ok {
+		v := version.DefaultChannel
+		vc.mutation.SetChannel(v)
+	}
 	if _, ok := vc.mutation.CreatedAt(); !ok {
 		v := version.DefaultCreatedAt
 		vc.mutation.SetCreatedAt(v)
@@ -125,6 +143,14 @@ func (vc *VersionCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (vc *VersionCreate) check() error {
+	if _, ok := vc.mutation.Channel(); !ok {
+		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required field "Version.channel"`)}
+	}
+	if v, ok := vc.mutation.Channel(); ok {
+		if err := version.ChannelValidator(v); err != nil {
+			return &ValidationError{Name: "channel", err: fmt.Errorf(`ent: validator failed for field "Version.channel": %w`, err)}
+		}
+	}
 	if _, ok := vc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Version.name"`)}
 	}
@@ -165,6 +191,10 @@ func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 		_node = &Version{config: vc.config}
 		_spec = sqlgraph.NewCreateSpec(version.Table, sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt))
 	)
+	if value, ok := vc.mutation.Channel(); ok {
+		_spec.SetField(version.FieldChannel, field.TypeEnum, value)
+		_node.Channel = value
+	}
 	if value, ok := vc.mutation.Name(); ok {
 		_spec.SetField(version.FieldName, field.TypeString, value)
 		_node.Name = value
