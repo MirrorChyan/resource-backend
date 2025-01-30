@@ -30,13 +30,13 @@ func (c *Cache[K, V]) ComputeIfAbsent(key K, f func() (V, error)) (*V, error) {
 		if err != nil {
 			return nil, err
 		}
+		c.SetWithTTL(key, r, c.ttl)
 		return r, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	r := cv.(V)
-	c.cache.SetWithTTL(key, r, 1, c.ttl)
 	return &r, nil
 }
 
