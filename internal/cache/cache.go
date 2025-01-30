@@ -26,12 +26,13 @@ func (c *Cache[K, V]) ComputeIfAbsent(key K, f func() (V, error)) (*V, error) {
 		return &v, nil
 	}
 	cv, err := c.group.Do(string(key), func() (any, error) {
-		r, err := f()
+		value, err := f()
 		if err != nil {
 			return nil, err
 		}
-		c.SetWithTTL(key, r, c.ttl)
-		return r, nil
+		c.cache.SetWithTTL(key, value, 1, c.ttl)
+		c.cache.Wait()
+		return value, nil
 	})
 	if err != nil {
 		return nil, err
