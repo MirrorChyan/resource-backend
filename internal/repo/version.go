@@ -39,16 +39,10 @@ func (r *Version) GetLatestVersion(ctx context.Context, resID string) (*ent.Vers
 		First(ctx)
 }
 
-func (r *Version) CreateVersion(ctx context.Context, resID, name string, number uint64) (*ent.Version, error) {
+func (r *Version) CreateVersion(ctx context.Context, resID string, channel version.Channel, name string, number uint64) (*ent.Version, error) {
 	return r.db.Version.Create().
 		SetResourceID(resID).
-		SetName(name).
-		SetNumber(number).
-		Save(ctx)
-}
-func (r *Version) CreateVersionTx(ctx context.Context, tx *ent.Tx, resID, name string, number uint64) (*ent.Version, error) {
-	return tx.Version.Create().
-		SetResourceID(resID).
+		SetChannel(channel).
 		SetName(name).
 		SetNumber(number).
 		Save(ctx)
