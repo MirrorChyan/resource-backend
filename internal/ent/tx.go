@@ -12,6 +12,8 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// LatestVersion is the client for interacting with the LatestVersion builders.
+	LatestVersion *LatestVersionClient
 	// Resource is the client for interacting with the Resource builders.
 	Resource *ResourceClient
 	// Storage is the client for interacting with the Storage builders.
@@ -149,6 +151,7 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.LatestVersion = NewLatestVersionClient(tx.config)
 	tx.Resource = NewResourceClient(tx.config)
 	tx.Storage = NewStorageClient(tx.config)
 	tx.Version = NewVersionClient(tx.config)
@@ -161,7 +164,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Resource.QueryXXX(), the query will be executed
+// applies a query, for example: LatestVersion.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

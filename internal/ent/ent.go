@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -75,9 +76,10 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			resource.Table: resource.ValidColumn,
-			storage.Table:  storage.ValidColumn,
-			version.Table:  version.ValidColumn,
+			latestversion.Table: latestversion.ValidColumn,
+			resource.Table:      resource.ValidColumn,
+			storage.Table:       storage.ValidColumn,
+			version.Table:       version.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

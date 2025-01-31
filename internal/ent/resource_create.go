@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
@@ -66,6 +67,21 @@ func (rc *ResourceCreate) AddVersions(v ...*Version) *ResourceCreate {
 		ids[i] = v[i].ID
 	}
 	return rc.AddVersionIDs(ids...)
+}
+
+// AddLatestVersionIDs adds the "latest_versions" edge to the LatestVersion entity by IDs.
+func (rc *ResourceCreate) AddLatestVersionIDs(ids ...int) *ResourceCreate {
+	rc.mutation.AddLatestVersionIDs(ids...)
+	return rc
+}
+
+// AddLatestVersions adds the "latest_versions" edges to the LatestVersion entity.
+func (rc *ResourceCreate) AddLatestVersions(l ...*LatestVersion) *ResourceCreate {
+	ids := make([]int, len(l))
+	for i := range l {
+		ids[i] = l[i].ID
+	}
+	return rc.AddLatestVersionIDs(ids...)
 }
 
 // Mutation returns the ResourceMutation object of the builder.
@@ -186,6 +202,22 @@ func (rc *ResourceCreate) createSpec() (*Resource, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := rc.mutation.LatestVersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.LatestVersionsTable,
+			Columns: []string{resource.LatestVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(latestversion.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
