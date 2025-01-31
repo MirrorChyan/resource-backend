@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
@@ -20,6 +21,7 @@ type LatestVersionCreate struct {
 	config
 	mutation *LatestVersionMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetChannel sets the "channel" field.
@@ -162,6 +164,7 @@ func (lvc *LatestVersionCreate) createSpec() (*LatestVersion, *sqlgraph.CreateSp
 		_node = &LatestVersion{config: lvc.config}
 		_spec = sqlgraph.NewCreateSpec(latestversion.Table, sqlgraph.NewFieldSpec(latestversion.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = lvc.conflict
 	if value, ok := lvc.mutation.Channel(); ok {
 		_spec.SetField(latestversion.FieldChannel, field.TypeEnum, value)
 		_node.Channel = value
@@ -207,11 +210,186 @@ func (lvc *LatestVersionCreate) createSpec() (*LatestVersion, *sqlgraph.CreateSp
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.LatestVersion.Create().
+//		SetChannel(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.LatestVersionUpsert) {
+//			SetChannel(v+v).
+//		}).
+//		Exec(ctx)
+func (lvc *LatestVersionCreate) OnConflict(opts ...sql.ConflictOption) *LatestVersionUpsertOne {
+	lvc.conflict = opts
+	return &LatestVersionUpsertOne{
+		create: lvc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.LatestVersion.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (lvc *LatestVersionCreate) OnConflictColumns(columns ...string) *LatestVersionUpsertOne {
+	lvc.conflict = append(lvc.conflict, sql.ConflictColumns(columns...))
+	return &LatestVersionUpsertOne{
+		create: lvc,
+	}
+}
+
+type (
+	// LatestVersionUpsertOne is the builder for "upsert"-ing
+	//  one LatestVersion node.
+	LatestVersionUpsertOne struct {
+		create *LatestVersionCreate
+	}
+
+	// LatestVersionUpsert is the "OnConflict" setter.
+	LatestVersionUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetChannel sets the "channel" field.
+func (u *LatestVersionUpsert) SetChannel(v latestversion.Channel) *LatestVersionUpsert {
+	u.Set(latestversion.FieldChannel, v)
+	return u
+}
+
+// UpdateChannel sets the "channel" field to the value that was provided on create.
+func (u *LatestVersionUpsert) UpdateChannel() *LatestVersionUpsert {
+	u.SetExcluded(latestversion.FieldChannel)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *LatestVersionUpsert) SetUpdatedAt(v time.Time) *LatestVersionUpsert {
+	u.Set(latestversion.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *LatestVersionUpsert) UpdateUpdatedAt() *LatestVersionUpsert {
+	u.SetExcluded(latestversion.FieldUpdatedAt)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.LatestVersion.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *LatestVersionUpsertOne) UpdateNewValues() *LatestVersionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.LatestVersion.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *LatestVersionUpsertOne) Ignore() *LatestVersionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *LatestVersionUpsertOne) DoNothing() *LatestVersionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the LatestVersionCreate.OnConflict
+// documentation for more info.
+func (u *LatestVersionUpsertOne) Update(set func(*LatestVersionUpsert)) *LatestVersionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&LatestVersionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetChannel sets the "channel" field.
+func (u *LatestVersionUpsertOne) SetChannel(v latestversion.Channel) *LatestVersionUpsertOne {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.SetChannel(v)
+	})
+}
+
+// UpdateChannel sets the "channel" field to the value that was provided on create.
+func (u *LatestVersionUpsertOne) UpdateChannel() *LatestVersionUpsertOne {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.UpdateChannel()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *LatestVersionUpsertOne) SetUpdatedAt(v time.Time) *LatestVersionUpsertOne {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *LatestVersionUpsertOne) UpdateUpdatedAt() *LatestVersionUpsertOne {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *LatestVersionUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for LatestVersionCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *LatestVersionUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *LatestVersionUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *LatestVersionUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // LatestVersionCreateBulk is the builder for creating many LatestVersion entities in bulk.
 type LatestVersionCreateBulk struct {
 	config
 	err      error
 	builders []*LatestVersionCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the LatestVersion entities in the database.
@@ -241,6 +419,7 @@ func (lvcb *LatestVersionCreateBulk) Save(ctx context.Context) ([]*LatestVersion
 					_, err = mutators[i+1].Mutate(root, lvcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = lvcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, lvcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -291,6 +470,138 @@ func (lvcb *LatestVersionCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (lvcb *LatestVersionCreateBulk) ExecX(ctx context.Context) {
 	if err := lvcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.LatestVersion.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.LatestVersionUpsert) {
+//			SetChannel(v+v).
+//		}).
+//		Exec(ctx)
+func (lvcb *LatestVersionCreateBulk) OnConflict(opts ...sql.ConflictOption) *LatestVersionUpsertBulk {
+	lvcb.conflict = opts
+	return &LatestVersionUpsertBulk{
+		create: lvcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.LatestVersion.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (lvcb *LatestVersionCreateBulk) OnConflictColumns(columns ...string) *LatestVersionUpsertBulk {
+	lvcb.conflict = append(lvcb.conflict, sql.ConflictColumns(columns...))
+	return &LatestVersionUpsertBulk{
+		create: lvcb,
+	}
+}
+
+// LatestVersionUpsertBulk is the builder for "upsert"-ing
+// a bulk of LatestVersion nodes.
+type LatestVersionUpsertBulk struct {
+	create *LatestVersionCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.LatestVersion.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *LatestVersionUpsertBulk) UpdateNewValues() *LatestVersionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.LatestVersion.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *LatestVersionUpsertBulk) Ignore() *LatestVersionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *LatestVersionUpsertBulk) DoNothing() *LatestVersionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the LatestVersionCreateBulk.OnConflict
+// documentation for more info.
+func (u *LatestVersionUpsertBulk) Update(set func(*LatestVersionUpsert)) *LatestVersionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&LatestVersionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetChannel sets the "channel" field.
+func (u *LatestVersionUpsertBulk) SetChannel(v latestversion.Channel) *LatestVersionUpsertBulk {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.SetChannel(v)
+	})
+}
+
+// UpdateChannel sets the "channel" field to the value that was provided on create.
+func (u *LatestVersionUpsertBulk) UpdateChannel() *LatestVersionUpsertBulk {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.UpdateChannel()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *LatestVersionUpsertBulk) SetUpdatedAt(v time.Time) *LatestVersionUpsertBulk {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *LatestVersionUpsertBulk) UpdateUpdatedAt() *LatestVersionUpsertBulk {
+	return u.Update(func(s *LatestVersionUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *LatestVersionUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the LatestVersionCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for LatestVersionCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *LatestVersionUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
