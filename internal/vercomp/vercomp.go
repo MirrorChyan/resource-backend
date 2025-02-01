@@ -87,3 +87,12 @@ func (c *VersionComparator) getParserForValue(val interface{}) Parser {
 	}
 	return nil
 }
+
+func (c *VersionComparator) IsVersionParsable(version string) bool {
+	for _, p := range c.parsers {
+		if p.CanParse(version) {
+			return true
+		}
+	}
+	return false
+}

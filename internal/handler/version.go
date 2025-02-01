@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/bytedance/sonic"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -26,17 +28,20 @@ type VersionHandler struct {
 	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
+	verComparator *vercomp.VersionComparator
 }
 
 func NewVersionHandler(
 	logger *zap.Logger,
 	resourceLogic *logic.ResourceLogic,
 	versionLogic *logic.VersionLogic,
+	verComparator *vercomp.VersionComparator,
 ) *VersionHandler {
 	return &VersionHandler{
 		logger:        logger,
 		resourceLogic: resourceLogic,
 		versionLogic:  versionLogic,
+		verComparator: verComparator,
 	}
 }
 
@@ -265,6 +270,14 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	if !ok {
 		resp := response.BusinessError("invalid channel")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if channel != version.ChannelStable.String() {
+		parsable := h.verComparator.IsVersionParsable(verName)
+		if !parsable {
+			resp := response.BusinessError("version name is not support to parsable")
+			return c.Status(fiber.StatusBadRequest).JSON(resp)
+		}
 	}
 
 	var ctx = c.UserContext()

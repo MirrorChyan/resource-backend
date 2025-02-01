@@ -10,7 +10,7 @@ func (p *SemVerParser) CanParse(v string) bool {
 }
 
 func (p *SemVerParser) Parse(v string) (interface{}, error) {
-	return semver.NewVersion(v)
+	return semver.StrictNewVersion(v)
 }
 
 func (p *SemVerParser) Compare(a, b interface{}) int {

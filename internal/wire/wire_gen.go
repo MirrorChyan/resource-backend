@@ -32,7 +32,7 @@ func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsyn
 	latestVersionLogic := logic.NewLatestVersionLogic(logger, latestVersion, verComparator)
 	storageLogic := logic.NewStorageLogic(logger, storage)
 	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, latestVersionLogic, storageLogic, rdb, redsync2, cg)
-	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic)
+	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, verComparator)
 	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
 	return handlerSet
 }
