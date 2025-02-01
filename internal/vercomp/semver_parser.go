@@ -4,6 +4,10 @@ import "github.com/Masterminds/semver/v3"
 
 type SemVerParser struct{}
 
+func (p *SemVerParser) Name() string {
+	return "SemVerParser"
+}
+
 func (p *SemVerParser) CanParse(v string) bool {
 	_, err := semver.StrictNewVersion(v)
 	return err == nil

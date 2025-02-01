@@ -9,6 +9,10 @@ type DateTimeParser struct {
 	Layouts []string // supported date formats
 }
 
+func (p *DateTimeParser) Name() string {
+	return "DateTimeParser"
+}
+
 func (p *DateTimeParser) CanParse(v string) bool {
 	for _, layout := range p.Layouts {
 		if _, err := time.Parse(layout, v); err == nil {
