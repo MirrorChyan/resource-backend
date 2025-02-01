@@ -275,7 +275,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	if channel != version.ChannelStable.String() {
 		parsable := h.verComparator.IsVersionParsable(verName)
 		if !parsable {
-			resp := response.BusinessError("version name is not support to parsable")
+			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
 			return c.Status(fiber.StatusBadRequest).JSON(resp)
 		}
 	}
