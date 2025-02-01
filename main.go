@@ -3,18 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
+	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 
-	_ "github.com/MirrorChyan/resource-backend/internal/banner"
 	_ "net/http/pprof"
+
+	_ "github.com/MirrorChyan/resource-backend/internal/banner"
 )
 
 const BodyLimit = 50 * 1024 * 1024
@@ -45,16 +48,17 @@ func main() {
 
 	// deps
 	var (
-		redis   = db.NewRedis()
-		redSync = db.NewRedSync(redis)
-		group   = cache.NewVersionCacheGroup(redis)
-		app     = fiber.New(fiber.Config{
+		redis         = db.NewRedis()
+		redSync       = db.NewRedSync(redis)
+		group         = cache.NewVersionCacheGroup(redis)
+		verComparator = vercomp.NewComparator()
+		app           = fiber.New(fiber.Config{
 			BodyLimit:   BodyLimit,
 			ProxyHeader: fiber.HeaderXForwardedFor,
 		})
 	)
 
-	handlerSet := wire.NewHandlerSet(zap.L(), mysql, redis, redSync, group)
+	handlerSet := wire.NewHandlerSet(zap.L(), mysql, redis, redSync, group, verComparator)
 
 	app.Use(fiberzap.New(fiberzap.Config{
 		Logger: zap.L(),

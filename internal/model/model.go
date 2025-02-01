@@ -13,6 +13,7 @@ type CreateVersionParam struct {
 	Name              string
 	OS                string
 	Arch              string
+	Channel           string
 	UploadArchivePath string
 }
 

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -55,8 +56,13 @@ func (r RemoteError) Error() string {
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
-
-	r.Get("/resources/:rid/latest", h.GetLatest)
+	// stable channel
+	r.Get("/resources/:rid/latest", h.GetLatestStable)
+	r.Get("/resources/:rid/stable/latest", h.GetLatestStable)
+	// beta channel
+	r.Get("/resources/:rid/beta/latest", h.GetLatestBeta)
+	// alpha channel
+	r.Get("/rerources/:rid/alpha/latest", h.GetLatestAlpha)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", h.ValidateUploader)
@@ -212,6 +218,25 @@ func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (string, string, error
 	return resOS, resArch, nil
 }
 
+var channelMap = map[string]string{
+	// stable
+	"":       "stable",
+	"stable": "stable",
+
+	// beta
+	"beta": "beta",
+
+	// alpha
+	"alpha": "alpha",
+}
+
+func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {
+	if standardChannel, ok := channelMap[channel]; ok {
+		return standardChannel, true
+	}
+	return "", false
+}
+
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	resID := c.Params(resourceKey)
 	verName := c.FormValue("name")
@@ -232,6 +257,13 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	resourceOS, resourceArch, err := h.doProcessOsAndArch(c)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	channel := c.FormValue("channel")
+	channel, ok := h.handleChannelParam(channel)
+	if !ok {
+		resp := response.BusinessError("invalid channel")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
@@ -292,6 +324,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		UploadArchivePath: dest,
 		OS:                resourceOS,
 		Arch:              resourceArch,
+		Channel:           channel,
 	})
 	if err != nil {
 		h.logger.Error("Failed to create version",
@@ -390,38 +423,46 @@ func (h *VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string)
 	}
 }
 
-func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	resourceID := c.Params(resourceKey)
+func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (resID string, req *GetLatestVersionRequest, err error) {
+	resID = c.Params(resourceKey)
 
-	req := &GetLatestVersionRequest{}
+	req = &GetLatestVersionRequest{}
 	if err := c.QueryParser(req); err != nil {
 		h.logger.Error("Failed to parse query",
 			zap.Error(err),
 		)
-		resp := response.BusinessError("invalid param")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
+		return "", nil, errors.New("invalid param")
 	}
 
-	rOS, rArch, err := h.doProcessOsAndArch(c)
+	resOS, resArch, err := h.doProcessOsAndArch(c)
+	if err != nil {
+		return "", nil, err
+	}
+
+	req.OS, req.Arch = resOS, resArch
+
+	return
+}
+
+func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx context.Context, resID string) (*ent.Version, error)) error {
+	resID, req, err := h.handleGetLatestParam(c)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	req.OS, req.Arch = rOS, rArch
+	ctx := c.UserContext()
 
-	var ctx = c.UserContext()
-
-	latest, err := h.versionLogic.GetLatest(ctx, resourceID)
+	latest, err := getLatestFunc(ctx, resID)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			resp := response.BusinessError("resources can't be found")
 			return c.Status(fiber.StatusNotFound).JSON(resp)
 		}
+
 		h.logger.Error("Failed to get latest version",
 			zap.Error(err),
 		)
-
 		return c.Status(fiber.StatusInternalServerError).
 			JSON(response.UnexpectedError())
 	}
@@ -436,7 +477,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.validateCDK(req.CDK, req.SpID, req.UserAgent, resourceID); err != nil {
+	if isFirstBind, err := h.validateCDK(req.CDK, req.SpID, req.UserAgent, resID); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
@@ -451,7 +492,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		}
 	} else if isFirstBind {
 		// at-most-once callback
-		go h.sendBillingCheckinRequest(resourceID, req.CDK, req.UserAgent)
+		go h.sendBillingCheckinRequest(resID, req.CDK, req.UserAgent)
 	}
 
 	if latest.Name == req.CurrentVersion {
@@ -462,7 +503,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	h.logger.Info("CDK validation success")
 
 	url, err := h.versionLogic.GetDownloadUrl(ctx, ProcessUpdateParam{
-		ResourceID:         resourceID,
+		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		TargetVersion:      latest,
 		OS:                 req.OS,
@@ -486,4 +527,16 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.Url = url
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
+}
+
+func (h *VersionHandler) GetLatestStable(c *fiber.Ctx) error {
+	return h.handleGetLatest(c, h.versionLogic.GetLatestStableVersion)
+}
+
+func (h *VersionHandler) GetLatestBeta(c *fiber.Ctx) error {
+	return h.handleGetLatest(c, h.versionLogic.GetLatestBetaVersion)
+}
+
+func (h *VersionHandler) GetLatestAlpha(c *fiber.Ctx) error {
+	return h.handleGetLatest(c, h.versionLogic.GetLatestAlphaVersion)
 }

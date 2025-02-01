@@ -12,6 +12,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
@@ -20,15 +21,17 @@ import (
 
 // Injectors from wire.go:
 
-func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync2 *redsync.Redsync, cg *cache.VersionCacheGroup) *HandlerSet {
+func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync2 *redsync.Redsync, cg *cache.VersionCacheGroup, verComparator *vercomp.VersionComparator) *HandlerSet {
 	resource := repo.NewResource(db)
 	resourceLogic := logic.NewResourceLogic(logger, resource)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
 	repoRepo := repo.NewRepo(db)
 	version := repo.NewVersion(db)
 	storage := repo.NewStorage(db)
+	latestVersion := repo.NewLatestVersion(db)
+	latestVersionLogic := logic.NewLatestVersionLogic(logger, latestVersion, verComparator)
 	storageLogic := logic.NewStorageLogic(logger, storage)
-	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, storageLogic, rdb, redsync2, cg)
+	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, latestVersionLogic, storageLogic, rdb, redsync2, cg)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic)
 	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
 	return handlerSet
@@ -36,9 +39,9 @@ func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsyn
 
 // wire.go:
 
-var repoProviderSet = wire.NewSet(repo.NewRepo, repo.NewResource, repo.NewVersion, repo.NewStorage)
+var repoProviderSet = wire.NewSet(repo.NewRepo, repo.NewResource, repo.NewVersion, repo.NewLatestVersion, repo.NewStorage)
 
-var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewStorageLogic)
+var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewLatestVersionLogic, logic.NewStorageLogic)
 
 var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler, handler.NewMetricsHandler)
 
