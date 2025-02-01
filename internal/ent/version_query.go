@@ -336,12 +336,12 @@ func (vq *VersionQuery) WithResource(opts ...func(*ResourceQuery)) *VersionQuery
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Channel version.Channel `json:"channel,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Version.Query().
-//		GroupBy(version.FieldName).
+//		GroupBy(version.FieldChannel).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (vq *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy {
@@ -359,11 +359,11 @@ func (vq *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy 
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Channel version.Channel `json:"channel,omitempty"`
 //	}
 //
 //	client.Version.Query().
-//		Select(version.FieldName).
+//		Select(version.FieldChannel).
 //		Scan(ctx, &v)
 func (vq *VersionQuery) Select(fields ...string) *VersionSelect {
 	vq.ctx.Fields = append(vq.ctx.Fields, fields...)

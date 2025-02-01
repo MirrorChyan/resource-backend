@@ -18,6 +18,8 @@ type Version struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Channel holds the value of the "channel" field.
+	Channel version.Channel `json:"channel,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Number holds the value of the "number" field.
@@ -69,7 +71,7 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case version.FieldID, version.FieldNumber:
 			values[i] = new(sql.NullInt64)
-		case version.FieldName:
+		case version.FieldChannel, version.FieldName:
 			values[i] = new(sql.NullString)
 		case version.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -96,6 +98,12 @@ func (v *Version) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			v.ID = int(value.Int64)
+		case version.FieldChannel:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field channel", values[i])
+			} else if value.Valid {
+				v.Channel = version.Channel(value.String)
+			}
 		case version.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
@@ -167,6 +175,9 @@ func (v *Version) String() string {
 	var builder strings.Builder
 	builder.WriteString("Version(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", v.ID))
+	builder.WriteString("channel=")
+	builder.WriteString(fmt.Sprintf("%v", v.Channel))
+	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(v.Name)
 	builder.WriteString(", ")

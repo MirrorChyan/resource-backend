@@ -16,6 +16,9 @@ type Version struct {
 // Fields of the Version.
 func (Version) Fields() []ent.Field {
 	return []ent.Field{
+		field.Enum("channel").
+			Values("stable", "alpha", "beta").
+			Default("stable"),
 		field.String("name").
 			NotEmpty(),
 		field.Uint64("number"),

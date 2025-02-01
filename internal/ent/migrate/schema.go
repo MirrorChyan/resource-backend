@@ -8,6 +8,41 @@ import (
 )
 
 var (
+	// LatestVersionsColumns holds the columns for the "latest_versions" table.
+	LatestVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "channel", Type: field.TypeEnum, Enums: []string{"stable", "beta", "alpha"}, Default: "stable"},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "latest_version_version", Type: field.TypeInt},
+		{Name: "resource_latest_versions", Type: field.TypeString},
+	}
+	// LatestVersionsTable holds the schema information for the "latest_versions" table.
+	LatestVersionsTable = &schema.Table{
+		Name:       "latest_versions",
+		Columns:    LatestVersionsColumns,
+		PrimaryKey: []*schema.Column{LatestVersionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "latest_versions_versions_version",
+				Columns:    []*schema.Column{LatestVersionsColumns[3]},
+				RefColumns: []*schema.Column{VersionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "latest_versions_resources_latest_versions",
+				Columns:    []*schema.Column{LatestVersionsColumns[4]},
+				RefColumns: []*schema.Column{ResourcesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "latestversion_channel_resource_latest_versions",
+				Unique:  true,
+				Columns: []*schema.Column{LatestVersionsColumns[1], LatestVersionsColumns[4]},
+			},
+		},
+	}
 	// ResourcesColumns holds the columns for the "resources" table.
 	ResourcesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -57,6 +92,7 @@ var (
 	// VersionsColumns holds the columns for the "versions" table.
 	VersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "channel", Type: field.TypeEnum, Enums: []string{"stable", "alpha", "beta"}, Default: "stable"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "number", Type: field.TypeUint64},
 		{Name: "created_at", Type: field.TypeTime},
@@ -70,7 +106,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "versions_resources_versions",
-				Columns:    []*schema.Column{VersionsColumns[4]},
+				Columns:    []*schema.Column{VersionsColumns[5]},
 				RefColumns: []*schema.Column{ResourcesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -78,6 +114,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		LatestVersionsTable,
 		ResourcesTable,
 		StoragesTable,
 		VersionsTable,
@@ -85,6 +122,8 @@ var (
 )
 
 func init() {
+	LatestVersionsTable.ForeignKeys[0].RefTable = VersionsTable
+	LatestVersionsTable.ForeignKeys[1].RefTable = ResourcesTable
 	StoragesTable.ForeignKeys[0].RefTable = VersionsTable
 	StoragesTable.ForeignKeys[1].RefTable = VersionsTable
 	VersionsTable.ForeignKeys[0].RefTable = ResourcesTable

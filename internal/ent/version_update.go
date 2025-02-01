@@ -30,6 +30,20 @@ func (vu *VersionUpdate) Where(ps ...predicate.Version) *VersionUpdate {
 	return vu
 }
 
+// SetChannel sets the "channel" field.
+func (vu *VersionUpdate) SetChannel(v version.Channel) *VersionUpdate {
+	vu.mutation.SetChannel(v)
+	return vu
+}
+
+// SetNillableChannel sets the "channel" field if the given value is not nil.
+func (vu *VersionUpdate) SetNillableChannel(v *version.Channel) *VersionUpdate {
+	if v != nil {
+		vu.SetChannel(*v)
+	}
+	return vu
+}
+
 // SetName sets the "name" field.
 func (vu *VersionUpdate) SetName(s string) *VersionUpdate {
 	vu.mutation.SetName(s)
@@ -174,6 +188,11 @@ func (vu *VersionUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (vu *VersionUpdate) check() error {
+	if v, ok := vu.mutation.Channel(); ok {
+		if err := version.ChannelValidator(v); err != nil {
+			return &ValidationError{Name: "channel", err: fmt.Errorf(`ent: validator failed for field "Version.channel": %w`, err)}
+		}
+	}
 	if v, ok := vu.mutation.Name(); ok {
 		if err := version.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Version.name": %w`, err)}
@@ -193,6 +212,9 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := vu.mutation.Channel(); ok {
+		_spec.SetField(version.FieldChannel, field.TypeEnum, value)
 	}
 	if value, ok := vu.mutation.Name(); ok {
 		_spec.SetField(version.FieldName, field.TypeString, value)
@@ -298,6 +320,20 @@ type VersionUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *VersionMutation
+}
+
+// SetChannel sets the "channel" field.
+func (vuo *VersionUpdateOne) SetChannel(v version.Channel) *VersionUpdateOne {
+	vuo.mutation.SetChannel(v)
+	return vuo
+}
+
+// SetNillableChannel sets the "channel" field if the given value is not nil.
+func (vuo *VersionUpdateOne) SetNillableChannel(v *version.Channel) *VersionUpdateOne {
+	if v != nil {
+		vuo.SetChannel(*v)
+	}
+	return vuo
 }
 
 // SetName sets the "name" field.
@@ -457,6 +493,11 @@ func (vuo *VersionUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (vuo *VersionUpdateOne) check() error {
+	if v, ok := vuo.mutation.Channel(); ok {
+		if err := version.ChannelValidator(v); err != nil {
+			return &ValidationError{Name: "channel", err: fmt.Errorf(`ent: validator failed for field "Version.channel": %w`, err)}
+		}
+	}
 	if v, ok := vuo.mutation.Name(); ok {
 		if err := version.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Version.name": %w`, err)}
@@ -493,6 +534,9 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := vuo.mutation.Channel(); ok {
+		_spec.SetField(version.FieldChannel, field.TypeEnum, value)
 	}
 	if value, ok := vuo.mutation.Name(); ok {
 		_spec.SetField(version.FieldName, field.TypeString, value)
