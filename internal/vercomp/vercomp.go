@@ -36,6 +36,8 @@ func NewComparator() *VersionComparator {
 				Layouts: []string{
 					time.RFC3339,
 					time.DateTime,
+					"2006-01-02 15:04:05.000",
+					"20060102150405",
 				},
 			},
 		},
