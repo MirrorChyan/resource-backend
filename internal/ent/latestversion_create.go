@@ -114,7 +114,7 @@ func (lvc *LatestVersionCreate) defaults() {
 		lvc.mutation.SetChannel(v)
 	}
 	if _, ok := lvc.mutation.UpdatedAt(); !ok {
-		v := latestversion.DefaultUpdatedAt
+		v := latestversion.DefaultUpdatedAt()
 		lvc.mutation.SetUpdatedAt(v)
 	}
 }

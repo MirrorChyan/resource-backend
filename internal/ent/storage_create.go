@@ -163,7 +163,7 @@ func (sc *StorageCreate) ExecX(ctx context.Context) {
 // defaults sets the default values of the builder before save.
 func (sc *StorageCreate) defaults() {
 	if _, ok := sc.mutation.CreatedAt(); !ok {
-		v := storage.DefaultCreatedAt
+		v := storage.DefaultCreatedAt()
 		sc.mutation.SetCreatedAt(v)
 	}
 }

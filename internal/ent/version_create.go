@@ -138,7 +138,7 @@ func (vc *VersionCreate) defaults() {
 		vc.mutation.SetChannel(v)
 	}
 	if _, ok := vc.mutation.CreatedAt(); !ok {
-		v := version.DefaultCreatedAt
+		v := version.DefaultCreatedAt()
 		vc.mutation.SetCreatedAt(v)
 	}
 }

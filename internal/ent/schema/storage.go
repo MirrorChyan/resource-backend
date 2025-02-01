@@ -31,7 +31,7 @@ func (Storage) Fields() []ent.Field {
 			Optional().
 			Comment("only for full update"),
 		field.Time("created_at").
-			Default(time.Now()),
+			Default(time.Now),
 	}
 }
 

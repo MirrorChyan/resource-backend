@@ -23,7 +23,7 @@ func (Version) Fields() []ent.Field {
 			NotEmpty(),
 		field.Uint64("number"),
 		field.Time("created_at").
-			Default(time.Now()),
+			Default(time.Now),
 	}
 }
 

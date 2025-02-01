@@ -21,7 +21,7 @@ func init() {
 	// latestversionDescUpdatedAt is the schema descriptor for updated_at field.
 	latestversionDescUpdatedAt := latestversionFields[1].Descriptor()
 	// latestversion.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	latestversion.DefaultUpdatedAt = latestversionDescUpdatedAt.Default.(time.Time)
+	latestversion.DefaultUpdatedAt = latestversionDescUpdatedAt.Default.(func() time.Time)
 	// latestversion.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	latestversion.UpdateDefaultUpdatedAt = latestversionDescUpdatedAt.UpdateDefault.(func() time.Time)
 	resourceFields := schema.Resource{}.Fields()
@@ -47,7 +47,7 @@ func init() {
 	// storageDescCreatedAt is the schema descriptor for created_at field.
 	storageDescCreatedAt := storageFields[6].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.
-	storage.DefaultCreatedAt = storageDescCreatedAt.Default.(time.Time)
+	storage.DefaultCreatedAt = storageDescCreatedAt.Default.(func() time.Time)
 	versionFields := schema.Version{}.Fields()
 	_ = versionFields
 	// versionDescName is the schema descriptor for name field.
@@ -57,5 +57,5 @@ func init() {
 	// versionDescCreatedAt is the schema descriptor for created_at field.
 	versionDescCreatedAt := versionFields[3].Descriptor()
 	// version.DefaultCreatedAt holds the default value on creation for the created_at field.
-	version.DefaultCreatedAt = versionDescCreatedAt.Default.(time.Time)
+	version.DefaultCreatedAt = versionDescCreatedAt.Default.(func() time.Time)
 }

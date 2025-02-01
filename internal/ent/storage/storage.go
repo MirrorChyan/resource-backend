@@ -89,7 +89,7 @@ var (
 	// PackagePathValidator is a validator for the "package_path" field. It is called by the builders before save.
 	PackagePathValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
-	DefaultCreatedAt time.Time
+	DefaultCreatedAt func() time.Time
 )
 
 // UpdateType defines the type for the "update_type" enum field.

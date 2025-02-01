@@ -21,8 +21,8 @@ func (LatestVersion) Fields() []ent.Field {
 			Values("stable", "beta", "alpha").
 			Default("stable"),
 		field.Time("updated_at").
-			Default(time.Now()).
-			UpdateDefault(time.Now()),
+			Default(time.Now).
+			UpdateDefault(time.Now),
 	}
 }
 
