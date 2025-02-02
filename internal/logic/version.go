@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"errors"
+
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/bytedance/sonic"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/ksuid"
@@ -433,7 +435,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	return
 }
 
-func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdateParam) (url string, updateType string, err error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, cdk string, param ProcessUpdateParam) (url string, updateType string, err error) {
 	var (
 		cfg = config.CFG
 	)
@@ -448,7 +450,15 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdatePar
 	key := ksuid.New().String()
 	sk := strings.Join([]string{resourcePrefix, key}, ":")
 
-	_, err = l.rdb.Set(ctx, sk, rel, cfg.Extra.DownloadEffectiveTime).Result()
+	value, err := sonic.Marshal(map[string]string{
+		"cdk":  cdk,
+		"path": rel,
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = l.rdb.Set(ctx, sk, value, cfg.Extra.DownloadEffectiveTime).Result()
 	if err != nil {
 		return "", "", err
 	}

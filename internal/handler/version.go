@@ -501,20 +501,23 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 			JSON(response.UnexpectedError())
 	}
 
-	data := QueryLatestResponseData{
-		VersionName:   latest.Name,
-		VersionNumber: latest.Number,
-		Channel:       latest.Channel.String(),
-		OS:            req.OS,
-		Arch:          req.Arch,
-	}
+	var (
+		data = QueryLatestResponseData{
+			VersionName:   latest.Name,
+			VersionNumber: latest.Number,
+			Channel:       latest.Channel.String(),
+			OS:            req.OS,
+			Arch:          req.Arch,
+		}
+		cdk = req.CDK
+	)
 
-	if req.CDK == "" {
+	if cdk == "" {
 		resp := response.Success(data, "current resource latest version is "+latest.Name)
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.validateCDK(req.CDK, req.SpID, req.UserAgent, resID); err != nil {
+	if isFirstBind, err := h.validateCDK(cdk, req.SpID, req.UserAgent, resID); err != nil {
 		var e RemoteError
 		switch {
 		case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
@@ -529,7 +532,7 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 		}
 	} else if isFirstBind {
 		// at-most-once callback
-		go h.sendBillingCheckinRequest(resID, req.CDK, req.UserAgent)
+		go h.sendBillingCheckinRequest(resID, cdk, req.UserAgent)
 	}
 
 	if latest.Name == req.CurrentVersion {
@@ -539,7 +542,7 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 
 	h.logger.Info("CDK validation success")
 
-	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ProcessUpdateParam{
+	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, cdk, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		TargetVersion:      latest,
