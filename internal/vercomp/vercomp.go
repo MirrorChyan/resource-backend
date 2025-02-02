@@ -97,6 +97,14 @@ func (c *VersionComparator) parseVersion(v string) (interface{}, Parser) {
 }
 
 func (c *VersionComparator) IsVersionParsable(version string) bool {
+	if len(version) > 0 && (version[0] == 'v' || version[0] == 'V') {
+		version = version[1:]
+	}
+
+	if version == "" {
+		return false
+	}
+
 	_, ok := c.canParseWithAnyParser(version)
 	return ok
 }
