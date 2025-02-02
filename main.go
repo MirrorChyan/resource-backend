@@ -20,7 +20,7 @@ import (
 	_ "github.com/MirrorChyan/resource-backend/internal/banner"
 )
 
-const BodyLimit = 50 * 1024 * 1024
+const BodyLimit = 500 * 1024 * 1024
 
 func main() {
 
