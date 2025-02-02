@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/valyala/fasthttp"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/valyala/fasthttp"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -219,11 +220,10 @@ func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
 	return "", false
 }
 
-func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (string, string, error) {
-	var (
-		resOS   = c.FormValue("os")
-		resArch = c.FormValue("arch")
-	)
+func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (resOS string, resArch string, err error) {
+	resOS = c.FormValue("os")
+	resArch = c.FormValue("arch")
+
 	resOS, ok := h.handleOSParam(resOS)
 	if !ok {
 		return "", "", errors.New("invalid os")
@@ -233,7 +233,8 @@ func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (string, string, error
 	if !ok {
 		return "", "", errors.New("invalid arch")
 	}
-	return resOS, resArch, nil
+
+	return
 }
 
 func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {

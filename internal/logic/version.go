@@ -337,10 +337,9 @@ func (l *VersionLogic) doPostCreateResources(resID, channel string) {
 	l.cacheGroup.VersionLatestCache.Delete(cacheKey)
 }
 
-func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (string, string, error) {
+func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (packagePath string, updateType string, err error) {
 	// if current version is not provided, we will download the full version
 	var (
-		err            error
 		cacheGroup     = l.cacheGroup
 		isFull         = param.CurrentVersionName == ""
 		resourceID     = param.ResourceID
@@ -372,7 +371,8 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 			param.Arch,
 			strconv.Itoa(param.TargetVersion.ID),
 		)
-		val, err := cacheGroup.FullUpdatePathCache.ComputeIfAbsent(cacheKey, func() (string, error) {
+		var val *string
+		val, err = cacheGroup.FullUpdatePathCache.ComputeIfAbsent(cacheKey, func() (string, error) {
 			return l.GetFullUpdatePackagePath(ctx, GetFullUpdatePackagePathParam{
 				ResourceID: resourceID,
 				VersionID:  param.TargetVersion.ID,
@@ -389,7 +389,11 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 			)
 			return "", "", err
 		}
-		return *val, FullUpdateType, nil
+
+		packagePath = *val
+		updateType = FullUpdateType
+
+		return
 
 	}
 
@@ -416,7 +420,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 		return "", "", err
 	}
 
-	result, err := l.GetIncrementalUpdatePackagePath(ctx, info)
+	packagePath, err = l.GetIncrementalUpdatePackagePath(ctx, info)
 	if err != nil {
 		l.logger.Error("failed to get incremental update package path",
 			zap.Error(err),
@@ -424,20 +428,22 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 		return "", "", err
 	}
 
-	return result, IncrementalUpdateType, nil
+	updateType = IncrementalUpdateType
+
+	return
 }
 
-func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdateParam) (string, string, error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdateParam) (url string, updateType string, err error) {
 	var (
 		cfg = config.CFG
 	)
 	// path is the download path, type is the update type
-	p, t, err := l.doProcessPatchOrFullUpdate(ctx, param)
+	packagePath, updateType, err := l.doProcessPatchOrFullUpdate(ctx, param)
 	if err != nil {
 		return "", "", err
 	}
 
-	rel := l.cleanPath(p)
+	rel := l.cleanPath(packagePath)
 
 	key := ksuid.New().String()
 	sk := strings.Join([]string{resourcePrefix, key}, ":")
@@ -447,7 +453,9 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdatePar
 		return "", "", err
 	}
 
-	return strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/"), t, nil
+	url = strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/")
+
+	return
 }
 
 func (l *VersionLogic) cleanPath(p string) string {
@@ -491,14 +499,10 @@ func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
 	return l.cacheGroup
 }
 
-func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (*ent.Storage, *ent.Storage, error) {
-
-	var (
-		targetStorage  *ent.Storage
-		currentStorage *ent.Storage
-		ch             = make(chan *ent.Storage, 1)
-	)
+func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (targetStorage *ent.Storage, currentStorage *ent.Storage, err error) {
+	var ch = make(chan *ent.Storage, 1)
 	defer close(ch)
+
 	wg := errgroup.Group{}
 	wg.Go(func() error {
 		s, err := l.storageLogic.GetFullUpdateStorage(ctx, target, resOS, resArch)
@@ -508,7 +512,7 @@ func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, curren
 		ch <- s
 		return nil
 	})
-	currentStorage, err := l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
+	currentStorage, err = l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
 	wge := wg.Wait()
 
 	if err != nil || wge != nil {
@@ -517,7 +521,7 @@ func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, curren
 
 	targetStorage = <-ch
 
-	return targetStorage, currentStorage, nil
+	return
 }
 
 func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param ActualUpdateProcessInfo) (string, error) {
