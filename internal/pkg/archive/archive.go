@@ -19,7 +19,9 @@ func UnpackZip(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func(r *zip.ReadCloser) {
+		_ = r.Close()
+	}(r)
 
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
@@ -28,7 +30,7 @@ func UnpackZip(src, dest string) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(fpath, os.ModePerm)
+			_ = os.MkdirAll(fpath, os.ModePerm)
 			continue
 		}
 
@@ -115,9 +117,8 @@ func CompressToZip(srcDir, destZip string) error {
 	if err != nil {
 		return err
 	}
-	defer func(zipFile *os.File) {
-		err := zipFile.Close()
-		if err != nil {
+	defer func(f *os.File) {
+		if err := f.Close(); err != nil {
 			zap.L().Error("Failed to close zip file",
 				zap.Error(err),
 			)
@@ -125,9 +126,8 @@ func CompressToZip(srcDir, destZip string) error {
 	}(zipFile)
 
 	writer := zip.NewWriter(zipFile)
-	defer func(zipWriter *zip.Writer) {
-		err := zipWriter.Close()
-		if err != nil {
+	defer func(w *zip.Writer) {
+		if err := w.Close(); err != nil {
 			zap.L().Error("Failed to close zip writer",
 				zap.Error(err),
 			)

@@ -2,14 +2,16 @@ package db
 
 import (
 	"fmt"
-
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-
 	_ "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 )
 
-func NewMySQL(conf *config.Config) (*ent.Client, error) {
+func NewDataSource() (*ent.Client, error) {
+	var (
+		conf = config.CFG
+	)
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=True",
 		conf.Database.Username,
@@ -18,5 +20,14 @@ func NewMySQL(conf *config.Config) (*ent.Client, error) {
 		conf.Database.Port,
 		conf.Database.Name,
 	)
-	return ent.Open("mysql", dsn)
+
+	var opts []ent.Option
+
+	if conf.Extra.SqlDebugMode {
+		opts = append(opts, ent.Debug(), ent.Log(func(a ...any) {
+			zap.S().Info(a...)
+		}))
+	}
+
+	return ent.Open("mysql", dsn, opts...)
 }

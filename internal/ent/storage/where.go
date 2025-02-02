@@ -55,9 +55,24 @@ func IDLTE(id int) predicate.Storage {
 	return predicate.Storage(sql.FieldLTE(FieldID, id))
 }
 
-// Directory applies equality check predicate on the "directory" field. It's identical to DirectoryEQ.
-func Directory(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldDirectory, v))
+// Os applies equality check predicate on the "os" field. It's identical to OsEQ.
+func Os(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldOs, v))
+}
+
+// Arch applies equality check predicate on the "arch" field. It's identical to ArchEQ.
+func Arch(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldArch, v))
+}
+
+// PackagePath applies equality check predicate on the "package_path" field. It's identical to PackagePathEQ.
+func PackagePath(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackagePath, v))
+}
+
+// ResourcePath applies equality check predicate on the "resource_path" field. It's identical to ResourcePathEQ.
+func ResourcePath(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldResourcePath, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -65,69 +80,334 @@ func CreatedAt(v time.Time) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldCreatedAt, v))
 }
 
-// DirectoryEQ applies the EQ predicate on the "directory" field.
-func DirectoryEQ(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldDirectory, v))
+// UpdateTypeEQ applies the EQ predicate on the "update_type" field.
+func UpdateTypeEQ(v UpdateType) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldUpdateType, v))
 }
 
-// DirectoryNEQ applies the NEQ predicate on the "directory" field.
-func DirectoryNEQ(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldNEQ(FieldDirectory, v))
+// UpdateTypeNEQ applies the NEQ predicate on the "update_type" field.
+func UpdateTypeNEQ(v UpdateType) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldUpdateType, v))
 }
 
-// DirectoryIn applies the In predicate on the "directory" field.
-func DirectoryIn(vs ...string) predicate.Storage {
-	return predicate.Storage(sql.FieldIn(FieldDirectory, vs...))
+// UpdateTypeIn applies the In predicate on the "update_type" field.
+func UpdateTypeIn(vs ...UpdateType) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldUpdateType, vs...))
 }
 
-// DirectoryNotIn applies the NotIn predicate on the "directory" field.
-func DirectoryNotIn(vs ...string) predicate.Storage {
-	return predicate.Storage(sql.FieldNotIn(FieldDirectory, vs...))
+// UpdateTypeNotIn applies the NotIn predicate on the "update_type" field.
+func UpdateTypeNotIn(vs ...UpdateType) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldUpdateType, vs...))
 }
 
-// DirectoryGT applies the GT predicate on the "directory" field.
-func DirectoryGT(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldGT(FieldDirectory, v))
+// OsEQ applies the EQ predicate on the "os" field.
+func OsEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldOs, v))
 }
 
-// DirectoryGTE applies the GTE predicate on the "directory" field.
-func DirectoryGTE(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldGTE(FieldDirectory, v))
+// OsNEQ applies the NEQ predicate on the "os" field.
+func OsNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldOs, v))
 }
 
-// DirectoryLT applies the LT predicate on the "directory" field.
-func DirectoryLT(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldLT(FieldDirectory, v))
+// OsIn applies the In predicate on the "os" field.
+func OsIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldOs, vs...))
 }
 
-// DirectoryLTE applies the LTE predicate on the "directory" field.
-func DirectoryLTE(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldLTE(FieldDirectory, v))
+// OsNotIn applies the NotIn predicate on the "os" field.
+func OsNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldOs, vs...))
 }
 
-// DirectoryContains applies the Contains predicate on the "directory" field.
-func DirectoryContains(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldContains(FieldDirectory, v))
+// OsGT applies the GT predicate on the "os" field.
+func OsGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldOs, v))
 }
 
-// DirectoryHasPrefix applies the HasPrefix predicate on the "directory" field.
-func DirectoryHasPrefix(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldHasPrefix(FieldDirectory, v))
+// OsGTE applies the GTE predicate on the "os" field.
+func OsGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldOs, v))
 }
 
-// DirectoryHasSuffix applies the HasSuffix predicate on the "directory" field.
-func DirectoryHasSuffix(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldHasSuffix(FieldDirectory, v))
+// OsLT applies the LT predicate on the "os" field.
+func OsLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldOs, v))
 }
 
-// DirectoryEqualFold applies the EqualFold predicate on the "directory" field.
-func DirectoryEqualFold(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEqualFold(FieldDirectory, v))
+// OsLTE applies the LTE predicate on the "os" field.
+func OsLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldOs, v))
 }
 
-// DirectoryContainsFold applies the ContainsFold predicate on the "directory" field.
-func DirectoryContainsFold(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldContainsFold(FieldDirectory, v))
+// OsContains applies the Contains predicate on the "os" field.
+func OsContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldOs, v))
+}
+
+// OsHasPrefix applies the HasPrefix predicate on the "os" field.
+func OsHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldOs, v))
+}
+
+// OsHasSuffix applies the HasSuffix predicate on the "os" field.
+func OsHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldOs, v))
+}
+
+// OsIsNil applies the IsNil predicate on the "os" field.
+func OsIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldOs))
+}
+
+// OsNotNil applies the NotNil predicate on the "os" field.
+func OsNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldOs))
+}
+
+// OsEqualFold applies the EqualFold predicate on the "os" field.
+func OsEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldOs, v))
+}
+
+// OsContainsFold applies the ContainsFold predicate on the "os" field.
+func OsContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldOs, v))
+}
+
+// ArchEQ applies the EQ predicate on the "arch" field.
+func ArchEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldArch, v))
+}
+
+// ArchNEQ applies the NEQ predicate on the "arch" field.
+func ArchNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldArch, v))
+}
+
+// ArchIn applies the In predicate on the "arch" field.
+func ArchIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldArch, vs...))
+}
+
+// ArchNotIn applies the NotIn predicate on the "arch" field.
+func ArchNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldArch, vs...))
+}
+
+// ArchGT applies the GT predicate on the "arch" field.
+func ArchGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldArch, v))
+}
+
+// ArchGTE applies the GTE predicate on the "arch" field.
+func ArchGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldArch, v))
+}
+
+// ArchLT applies the LT predicate on the "arch" field.
+func ArchLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldArch, v))
+}
+
+// ArchLTE applies the LTE predicate on the "arch" field.
+func ArchLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldArch, v))
+}
+
+// ArchContains applies the Contains predicate on the "arch" field.
+func ArchContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldArch, v))
+}
+
+// ArchHasPrefix applies the HasPrefix predicate on the "arch" field.
+func ArchHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldArch, v))
+}
+
+// ArchHasSuffix applies the HasSuffix predicate on the "arch" field.
+func ArchHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldArch, v))
+}
+
+// ArchIsNil applies the IsNil predicate on the "arch" field.
+func ArchIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldArch))
+}
+
+// ArchNotNil applies the NotNil predicate on the "arch" field.
+func ArchNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldArch))
+}
+
+// ArchEqualFold applies the EqualFold predicate on the "arch" field.
+func ArchEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldArch, v))
+}
+
+// ArchContainsFold applies the ContainsFold predicate on the "arch" field.
+func ArchContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldArch, v))
+}
+
+// PackagePathEQ applies the EQ predicate on the "package_path" field.
+func PackagePathEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackagePath, v))
+}
+
+// PackagePathNEQ applies the NEQ predicate on the "package_path" field.
+func PackagePathNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldPackagePath, v))
+}
+
+// PackagePathIn applies the In predicate on the "package_path" field.
+func PackagePathIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldPackagePath, vs...))
+}
+
+// PackagePathNotIn applies the NotIn predicate on the "package_path" field.
+func PackagePathNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldPackagePath, vs...))
+}
+
+// PackagePathGT applies the GT predicate on the "package_path" field.
+func PackagePathGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldPackagePath, v))
+}
+
+// PackagePathGTE applies the GTE predicate on the "package_path" field.
+func PackagePathGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldPackagePath, v))
+}
+
+// PackagePathLT applies the LT predicate on the "package_path" field.
+func PackagePathLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldPackagePath, v))
+}
+
+// PackagePathLTE applies the LTE predicate on the "package_path" field.
+func PackagePathLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldPackagePath, v))
+}
+
+// PackagePathContains applies the Contains predicate on the "package_path" field.
+func PackagePathContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldPackagePath, v))
+}
+
+// PackagePathHasPrefix applies the HasPrefix predicate on the "package_path" field.
+func PackagePathHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldPackagePath, v))
+}
+
+// PackagePathHasSuffix applies the HasSuffix predicate on the "package_path" field.
+func PackagePathHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldPackagePath, v))
+}
+
+// PackagePathIsNil applies the IsNil predicate on the "package_path" field.
+func PackagePathIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldPackagePath))
+}
+
+// PackagePathNotNil applies the NotNil predicate on the "package_path" field.
+func PackagePathNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldPackagePath))
+}
+
+// PackagePathEqualFold applies the EqualFold predicate on the "package_path" field.
+func PackagePathEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldPackagePath, v))
+}
+
+// PackagePathContainsFold applies the ContainsFold predicate on the "package_path" field.
+func PackagePathContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldPackagePath, v))
+}
+
+// ResourcePathEQ applies the EQ predicate on the "resource_path" field.
+func ResourcePathEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldResourcePath, v))
+}
+
+// ResourcePathNEQ applies the NEQ predicate on the "resource_path" field.
+func ResourcePathNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldResourcePath, v))
+}
+
+// ResourcePathIn applies the In predicate on the "resource_path" field.
+func ResourcePathIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldResourcePath, vs...))
+}
+
+// ResourcePathNotIn applies the NotIn predicate on the "resource_path" field.
+func ResourcePathNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldResourcePath, vs...))
+}
+
+// ResourcePathGT applies the GT predicate on the "resource_path" field.
+func ResourcePathGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldResourcePath, v))
+}
+
+// ResourcePathGTE applies the GTE predicate on the "resource_path" field.
+func ResourcePathGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldResourcePath, v))
+}
+
+// ResourcePathLT applies the LT predicate on the "resource_path" field.
+func ResourcePathLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldResourcePath, v))
+}
+
+// ResourcePathLTE applies the LTE predicate on the "resource_path" field.
+func ResourcePathLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldResourcePath, v))
+}
+
+// ResourcePathContains applies the Contains predicate on the "resource_path" field.
+func ResourcePathContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldResourcePath, v))
+}
+
+// ResourcePathHasPrefix applies the HasPrefix predicate on the "resource_path" field.
+func ResourcePathHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldResourcePath, v))
+}
+
+// ResourcePathHasSuffix applies the HasSuffix predicate on the "resource_path" field.
+func ResourcePathHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldResourcePath, v))
+}
+
+// ResourcePathIsNil applies the IsNil predicate on the "resource_path" field.
+func ResourcePathIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldResourcePath))
+}
+
+// ResourcePathNotNil applies the NotNil predicate on the "resource_path" field.
+func ResourcePathNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldResourcePath))
+}
+
+// ResourcePathEqualFold applies the EqualFold predicate on the "resource_path" field.
+func ResourcePathEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldResourcePath, v))
+}
+
+// ResourcePathContainsFold applies the ContainsFold predicate on the "resource_path" field.
+func ResourcePathContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldResourcePath, v))
+}
+
+// FileHashesIsNil applies the IsNil predicate on the "file_hashes" field.
+func FileHashesIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldFileHashes))
+}
+
+// FileHashesNotNil applies the NotNil predicate on the "file_hashes" field.
+func FileHashesNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldFileHashes))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -175,7 +455,7 @@ func HasVersion() predicate.Storage {
 	return predicate.Storage(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, VersionTable, VersionColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, VersionTable, VersionColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
@@ -185,6 +465,29 @@ func HasVersion() predicate.Storage {
 func HasVersionWith(preds ...predicate.Version) predicate.Storage {
 	return predicate.Storage(func(s *sql.Selector) {
 		step := newVersionStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOldVersion applies the HasEdge predicate on the "old_version" edge.
+func HasOldVersion() predicate.Storage {
+	return predicate.Storage(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, OldVersionTable, OldVersionColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOldVersionWith applies the HasEdge predicate on the "old_version" edge with a given conditions (other predicates).
+func HasOldVersionWith(preds ...predicate.Version) predicate.Storage {
+	return predicate.Storage(func(s *sql.Selector) {
+		step := newOldVersionStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

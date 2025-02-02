@@ -25,7 +25,7 @@ type VersionQuery struct {
 	order        []version.OrderOption
 	inters       []Interceptor
 	predicates   []predicate.Version
-	withStorage  *StorageQuery
+	withStorages *StorageQuery
 	withResource *ResourceQuery
 	withFKs      bool
 	// intermediate query (i.e. traversal path).
@@ -64,8 +64,8 @@ func (vq *VersionQuery) Order(o ...version.OrderOption) *VersionQuery {
 	return vq
 }
 
-// QueryStorage chains the current query on the "storage" edge.
-func (vq *VersionQuery) QueryStorage() *StorageQuery {
+// QueryStorages chains the current query on the "storages" edge.
+func (vq *VersionQuery) QueryStorages() *StorageQuery {
 	query := (&StorageClient{config: vq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := vq.prepareQuery(ctx); err != nil {
@@ -78,7 +78,7 @@ func (vq *VersionQuery) QueryStorage() *StorageQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(version.Table, version.FieldID, selector),
 			sqlgraph.To(storage.Table, storage.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, version.StorageTable, version.StorageColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, version.StoragesTable, version.StoragesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(vq.driver.Dialect(), step)
 		return fromU, nil
@@ -300,7 +300,7 @@ func (vq *VersionQuery) Clone() *VersionQuery {
 		order:        append([]version.OrderOption{}, vq.order...),
 		inters:       append([]Interceptor{}, vq.inters...),
 		predicates:   append([]predicate.Version{}, vq.predicates...),
-		withStorage:  vq.withStorage.Clone(),
+		withStorages: vq.withStorages.Clone(),
 		withResource: vq.withResource.Clone(),
 		// clone intermediate query.
 		sql:  vq.sql.Clone(),
@@ -308,14 +308,14 @@ func (vq *VersionQuery) Clone() *VersionQuery {
 	}
 }
 
-// WithStorage tells the query-builder to eager-load the nodes that are connected to
-// the "storage" edge. The optional arguments are used to configure the query builder of the edge.
-func (vq *VersionQuery) WithStorage(opts ...func(*StorageQuery)) *VersionQuery {
+// WithStorages tells the query-builder to eager-load the nodes that are connected to
+// the "storages" edge. The optional arguments are used to configure the query builder of the edge.
+func (vq *VersionQuery) WithStorages(opts ...func(*StorageQuery)) *VersionQuery {
 	query := (&StorageClient{config: vq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	vq.withStorage = query
+	vq.withStorages = query
 	return vq
 }
 
@@ -336,12 +336,12 @@ func (vq *VersionQuery) WithResource(opts ...func(*ResourceQuery)) *VersionQuery
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Channel version.Channel `json:"channel,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Version.Query().
-//		GroupBy(version.FieldName).
+//		GroupBy(version.FieldChannel).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (vq *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy {
@@ -359,11 +359,11 @@ func (vq *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy 
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Channel version.Channel `json:"channel,omitempty"`
 //	}
 //
 //	client.Version.Query().
-//		Select(version.FieldName).
+//		Select(version.FieldChannel).
 //		Scan(ctx, &v)
 func (vq *VersionQuery) Select(fields ...string) *VersionSelect {
 	vq.ctx.Fields = append(vq.ctx.Fields, fields...)
@@ -410,7 +410,7 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 		withFKs     = vq.withFKs
 		_spec       = vq.querySpec()
 		loadedTypes = [2]bool{
-			vq.withStorage != nil,
+			vq.withStorages != nil,
 			vq.withResource != nil,
 		}
 	)
@@ -438,9 +438,10 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := vq.withStorage; query != nil {
-		if err := vq.loadStorage(ctx, query, nodes, nil,
-			func(n *Version, e *Storage) { n.Edges.Storage = e }); err != nil {
+	if query := vq.withStorages; query != nil {
+		if err := vq.loadStorages(ctx, query, nodes,
+			func(n *Version) { n.Edges.Storages = []*Storage{} },
+			func(n *Version, e *Storage) { n.Edges.Storages = append(n.Edges.Storages, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -453,29 +454,32 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 	return nodes, nil
 }
 
-func (vq *VersionQuery) loadStorage(ctx context.Context, query *StorageQuery, nodes []*Version, init func(*Version), assign func(*Version, *Storage)) error {
+func (vq *VersionQuery) loadStorages(ctx context.Context, query *StorageQuery, nodes []*Version, init func(*Version), assign func(*Version, *Storage)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*Version)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
 	}
 	query.withFKs = true
 	query.Where(predicate.Storage(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(version.StorageColumn), fks...))
+		s.Where(sql.InValues(s.C(version.StoragesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.version_storage
+		fk := n.version_storages
 		if fk == nil {
-			return fmt.Errorf(`foreign-key "version_storage" is nil for node %v`, n.ID)
+			return fmt.Errorf(`foreign-key "version_storages" is nil for node %v`, n.ID)
 		}
 		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "version_storage" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "version_storages" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

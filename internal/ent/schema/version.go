@@ -16,21 +16,21 @@ type Version struct {
 // Fields of the Version.
 func (Version) Fields() []ent.Field {
 	return []ent.Field{
+		field.Enum("channel").
+			Values("stable", "alpha", "beta").
+			Default("stable"),
 		field.String("name").
 			NotEmpty(),
 		field.Uint64("number"),
-		field.JSON("file_hashes", map[string]string{}).
-			Optional(),
 		field.Time("created_at").
-			Default(time.Now()),
+			Default(time.Now),
 	}
 }
 
 // Edges of the Version.
 func (Version) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("storage", Storage.Type).
-			Unique(),
+		edge.To("storages", Storage.Type),
 		edge.From("resource", Resource.Type).
 			Ref("versions").
 			Unique(),

@@ -2,7 +2,7 @@ package handler
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +11,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/valyala/fasthttp"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/vercomp"
+	"github.com/bytedance/sonic"
+
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -21,23 +27,23 @@ import (
 )
 
 type VersionHandler struct {
-	conf          *config.Config
 	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
+	verComparator *vercomp.VersionComparator
 }
 
 func NewVersionHandler(
-	conf *config.Config,
 	logger *zap.Logger,
 	resourceLogic *logic.ResourceLogic,
 	versionLogic *logic.VersionLogic,
+	verComparator *vercomp.VersionComparator,
 ) *VersionHandler {
 	return &VersionHandler{
-		conf:          conf,
 		logger:        logger,
 		resourceLogic: resourceLogic,
 		versionLogic:  versionLogic,
+		verComparator: verComparator,
 	}
 }
 
@@ -57,9 +63,13 @@ func (r RemoteError) Error() string {
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
-
-	r.Get("/resources/:rid/latest", h.GetLatest)
-	r.Get("/resources/download/:key", h.Download)
+	// stable channel
+	r.Get("/resources/:rid/latest", h.GetLatestStable)
+	r.Get("/resources/:rid/stable/latest", h.GetLatestStable)
+	// beta channel
+	r.Get("/resources/:rid/beta/latest", h.GetLatestBeta)
+	// alpha channel
+	r.Get("/resources/:rid/alpha/latest", h.GetLatestAlpha)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", h.ValidateUploader)
@@ -73,7 +83,9 @@ func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(resp)
 	}
 
-	url := fmt.Sprintf("%s?token=%s", h.conf.Auth.UploaderValidationURL, token)
+	var conf = config.CFG
+
+	url := fmt.Sprintf("%s?token=%s", conf.Auth.UploaderValidationURL, token)
 	resp, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		h.logger.Error("Failed to request uploader validation",
@@ -82,8 +94,8 @@ func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+	defer func(b io.ReadCloser) {
+		err := b.Close()
 		if err != nil {
 			h.logger.Error("Failed to close response body")
 		}
@@ -98,7 +110,11 @@ func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
 	}
 
 	var res ValidateUploaderResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := sonic.Unmarshal(buf, &res); err != nil {
 		h.logger.Error("Failed to decode response body",
 			zap.Error(err),
 		)
@@ -130,24 +146,107 @@ func (h *VersionHandler) isValidExtension(filename string) bool {
 	return ext == ".zip" || strings.HasSuffix(filename, ".tar.gz")
 }
 
-func (h *VersionHandler) isAllowedMimeType(mime string) bool {
-	allowedTypes := []string{
-		"application/zip",
-		"application/x-zip-compressed",
-		"application/x-gzip",
-		"application/gzip",
+var (
+	osMap = map[string]string{
+		// any
+		"": "",
+
+		// windows
+		"windows": "windows",
+		"win":     "windows",
+		"win32":   "windows",
+
+		// linux
+		"linux": "linux",
+
+		// darwin
+		"darwin": "darwin",
+		"macos":  "darwin",
+		"mac":    "darwin",
+		"osx":    "darwin",
+
+		// android
+		"android": "android",
 	}
-	for _, allowedType := range allowedTypes {
-		if strings.EqualFold(mime, allowedType) {
-			return true
-		}
+
+	archMap = map[string]string{
+		// any
+		"": "",
+
+		// 386
+		"386":    "386",
+		"x86":    "386",
+		"x86_32": "386",
+		"i386":   "386",
+
+		// amd64
+		"amd64":   "amd64",
+		"x64":     "amd64",
+		"x86_64":  "amd64",
+		"intel64": "amd64",
+
+		// arm
+		"arm": "arm",
+
+		// arm64
+		"arm64":   "arm64",
+		"aarch64": "arm64",
 	}
-	return false
+
+	channelMap = map[string]string{
+		// stable
+		"":       "stable",
+		"stable": "stable",
+
+		// beta
+		"beta": "beta",
+
+		// alpha
+		"alpha": "alpha",
+	}
+)
+
+func (h *VersionHandler) handleOSParam(os string) (string, bool) {
+	if standardOS, ok := osMap[os]; ok {
+		return standardOS, true
+	}
+	return "", false
+}
+
+func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
+	if standardArch, ok := archMap[arch]; ok {
+		return standardArch, true
+	}
+	return "", false
+}
+
+func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (resOS string, resArch string, err error) {
+	resOS = c.FormValue("os")
+	resArch = c.FormValue("arch")
+
+	resOS, ok := h.handleOSParam(resOS)
+	if !ok {
+		return "", "", errors.New("invalid os")
+	}
+
+	resArch, ok = h.handleArchParam(resArch)
+	if !ok {
+		return "", "", errors.New("invalid arch")
+	}
+
+	return
+}
+
+func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {
+	if standardChannel, ok := channelMap[channel]; ok {
+		return standardChannel, true
+	}
+	return "", false
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	resID := c.Params(resourceKey)
-	name := c.FormValue("name")
+	verName := c.FormValue("name")
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.logger.Error("Failed to get file from form",
@@ -157,83 +256,91 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	ctx := c.UserContext()
-
-	// if !h.isAllowedMimeType(file.Header.Get("Content-Type")) {
-	// 	resp := response.BusinessError("invalid file type")
-	// 	return c.Status(fiber.StatusBadRequest).JSON(resp)
-	// }
-
 	if !h.isValidExtension(file.Filename) {
 		resp := response.BusinessError("invalid file extension")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	versionNameExistsParam := VersionNameExistsParam{
-		ResourceID: resID,
-		Name:       name,
-	}
-	exists, err := h.versionLogic.NameExists(ctx, versionNameExistsParam)
+	resourceOS, resourceArch, err := h.doProcessOsAndArch(c)
 	if err != nil {
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	ch := c.FormValue("channel")
+	channel, ok := h.handleChannelParam(ch)
+	if !ok {
+		resp := response.BusinessError("invalid channel")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if channel != version.ChannelStable.String() {
+		parsable := h.verComparator.IsVersionParsable(verName)
+		if !parsable {
+			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
+			return c.Status(fiber.StatusBadRequest).JSON(resp)
+		}
+	}
+
+	var ctx = c.UserContext()
+
+	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
+		ResourceID: resID,
+		Name:       verName,
+		OS:         resourceOS,
+		Arch:       resourceArch,
+	})
+	switch {
+	case err != nil:
 		h.logger.Error("Failed to check if version name exists",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	if exists {
+	case exists:
 		h.logger.Info("Version name already exists",
 			zap.String("resource id", resID),
-			zap.String("version name", name),
+			zap.String("version name", verName),
+			zap.String("resource os", resourceOS),
+			zap.String("resource arch", resourceArch),
 		)
-		resp := response.BusinessError("version name already exists")
+		resp := response.BusinessError("version name under the current platform architecture already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
 	}
 
-	cwd, err := os.Getwd()
+	// create temp root dir
+	root, err := os.MkdirTemp(os.TempDir(), "process-temp")
 	if err != nil {
-		h.logger.Error("Failed to get current directory",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	tempRootDir := filepath.Join(cwd, "temp")
-	if err := os.MkdirAll(tempRootDir, os.ModePerm); err != nil {
 		h.logger.Error("Failed to create temp root directory",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-	tempDir, err := os.MkdirTemp(tempRootDir, "version")
-	if err != nil {
-		h.logger.Error("Failed to create temp directory", zap.Error(err))
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
+	// remove temp root dir
 	defer func(path string) {
-		err := os.RemoveAll(path)
-		if err != nil {
-			h.logger.Error("Failed to remove temp directory")
-		}
-	}(tempDir)
+		go func(p string) {
+			_ = os.RemoveAll(p)
+		}(path)
+	}(root)
 
-	tempPath := fmt.Sprintf("%s/%s", tempDir, file.Filename)
-	if err := c.SaveFile(file, tempPath); err != nil {
-		h.logger.Error("Failed to save file",
+	dest := strings.Join([]string{root, file.Filename}, string(os.PathSeparator))
+	if err := c.SaveFile(file, dest); err != nil {
+		h.logger.Error("failed to save file",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	createVersionParam := CreateVersionParam{
+	ver, err := h.versionLogic.Create(ctx, CreateVersionParam{
 		ResourceID:        resID,
-		Name:              name,
-		UploadArchivePath: tempPath,
-	}
-	version, err := h.versionLogic.Create(ctx, createVersionParam)
+		Name:              verName,
+		UploadArchivePath: dest,
+		OS:                resourceOS,
+		Arch:              resourceArch,
+		Channel:           channel,
+	})
 	if err != nil {
 		h.logger.Error("Failed to create version",
 			zap.Error(err),
@@ -243,12 +350,11 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	data := CreateVersionResponseData{
-		ID:     version.ID,
-		Name:   version.Name,
-		Number: version.Number,
+		ID:     ver.ID,
+		Name:   ver.Name,
+		Number: ver.Number,
 	}
-	resp := response.Success(data)
-	return c.Status(fiber.StatusCreated).JSON(resp)
+	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
 }
 
 func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error) {
@@ -264,7 +370,7 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 		UA:              ua,
 	}
 
-	jsonData, err := json.Marshal(request)
+	jsonData, err := sonic.Marshal(request)
 	if err != nil {
 		h.logger.Error("Failed to marshal JSON",
 			zap.Error(err),
@@ -272,16 +378,39 @@ func (h *VersionHandler) validateCDK(cdk, spId, ua, source string) (bool, error)
 		return false, err
 	}
 
-	resp, err := http.Post(h.conf.Auth.CDKValidationURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(jsonData))
-	if err != nil {
+	var (
+		conf   = config.CFG
+		agent  = fiber.AcquireAgent()
+		req    = agent.Request()
+		resp   = fasthttp.AcquireResponse()
+		result ValidateCDKResponse
+	)
+	defer func() {
+		fiber.ReleaseAgent(agent)
+		fasthttp.ReleaseResponse(resp)
+	}()
+
+	req.SetRequestURI(conf.Auth.CDKValidationURL)
+	req.Header.SetMethod(fiber.MethodPost)
+	req.Header.SetContentType(fiber.MIMEApplicationJSON)
+	req.SetBody(jsonData)
+
+	if err := agent.Parse(); err != nil {
+		h.logger.Error("Failed to parse request",
+			zap.Error(err),
+		)
+		return false, err
+	}
+
+	if err := agent.Do(req, resp); err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
 		)
 		return false, err
 	}
 
-	var result ValidateCDKResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	buf := resp.Body()
+	if err := sonic.Unmarshal(buf, &result); err != nil {
 		h.logger.Error("Failed to decode response",
 			zap.Error(err),
 		)
@@ -313,43 +442,61 @@ func (h *VersionHandler) sendBillingCheckinRequest(resID, cdk, userAgent string)
 		Application: resID,
 		UserAgent:   userAgent,
 	}
-	body, err := json.Marshal(request)
+	body, err := sonic.Marshal(request)
 	if err != nil {
 		h.logger.Warn("Checkin callback Failed to marshal JSON")
 		return
 	}
-	_, err = http.Post(h.conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
+
+	var conf = config.CFG
+
+	_, err = http.Post(conf.Billing.CheckinURL, fiber.MIMEApplicationJSON, bytes.NewBuffer(body))
 	if err != nil {
 		h.logger.Warn("Failed to send billing checkin request", zap.Error(err))
 	}
 }
 
-func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	resID := c.Params(resourceKey)
+func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (resID string, req *GetLatestVersionRequest, err error) {
+	resID = c.Params(resourceKey)
 
-	req := &GetLatestVersionRequest{}
+	req = &GetLatestVersionRequest{}
 	if err := c.QueryParser(req); err != nil {
 		h.logger.Error("Failed to parse query",
 			zap.Error(err),
 		)
-		resp := response.BusinessError("invalid param")
+		return "", nil, errors.New("invalid param")
+	}
+
+	resOS, resArch, err := h.doProcessOsAndArch(c)
+	if err != nil {
+		return "", nil, err
+	}
+
+	req.OS, req.Arch = resOS, resArch
+
+	return
+}
+
+func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx context.Context, resID string) (*ent.Version, error)) error {
+	resID, req, err := h.handleGetLatestParam(c)
+	if err != nil {
+		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	var ctx = c.UserContext()
+	ctx := c.UserContext()
 
-	latest, err := h.versionLogic.GetLatest(ctx, resID)
+	latest, err := getLatestFunc(ctx, resID)
 
 	if err != nil {
-
 		if ent.IsNotFound(err) {
 			resp := response.BusinessError("resources can't be found")
 			return c.Status(fiber.StatusNotFound).JSON(resp)
 		}
+
 		h.logger.Error("Failed to get latest version",
 			zap.Error(err),
 		)
-
 		return c.Status(fiber.StatusInternalServerError).
 			JSON(response.UnexpectedError())
 	}
@@ -357,6 +504,9 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data := QueryLatestResponseData{
 		VersionName:   latest.Name,
 		VersionNumber: latest.Number,
+		Channel:       latest.Channel.String(),
+		OS:            req.OS,
+		Arch:          req.Arch,
 	}
 
 	if req.CDK == "" {
@@ -389,80 +539,41 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	info := StoreTempDownloadInfoParam{
+	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
-		LatestVersion:      latest,
-	}
+		TargetVersion:      latest,
+		OS:                 req.OS,
+		Arch:               req.Arch,
+	})
 
-	key, err := h.versionLogic.StoreTempDownloadInfo(ctx, info)
 	if err != nil {
-		h.logger.Error("Failed to store temp download info",
+
+		if errors.Is(err, logic.StorageInfoNotFound) {
+			resp := response.BusinessError("the corresponding resource does not exist")
+			return c.Status(fiber.StatusNotFound).JSON(resp)
+		}
+
+		h.logger.Error("failed to get download url",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	url := strings.Join([]string{h.conf.Extra.DownloadPrefix, key}, "/")
-	data.Url = url
-	resp := response.Success(data)
-	return c.Status(fiber.StatusOK).JSON(resp)
+	data.Url, data.UpdateType = url, updateType
+
+	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 }
 
-func (h *VersionHandler) Download(c *fiber.Ctx) error {
-	key := c.Params("key", "")
+func (h *VersionHandler) GetLatestStable(c *fiber.Ctx) error {
+	return h.handleGetLatest(c, h.versionLogic.GetLatestStableVersion)
+}
 
-	if key == "" {
-		resp := response.BusinessError("missing key")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	}
+func (h *VersionHandler) GetLatestBeta(c *fiber.Ctx) error {
+	return h.handleGetLatest(c, h.versionLogic.GetLatestBetaVersion)
+}
 
-	ctx := c.UserContext()
-
-	info, err := h.versionLogic.GetTempDownloadInfo(ctx, key)
-	if err != nil {
-		h.logger.Warn("invalid key or resource not found",
-			zap.String("key", key),
-		)
-		resp := response.BusinessError("invalid key or resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	}
-
-	h.logger.Info("start download resources", zap.String("ip", c.IP()))
-
-	// full update
-	if info.Full {
-		param := GetResourcePathParam{
-			ResourceID: info.ResourceID,
-			VersionID:  info.TargetVersionID,
-		}
-		resArchivePath := h.versionLogic.GetResourcePath(param)
-		c.Set("X-Update-Type", "full")
-		return c.Status(fiber.StatusOK).Download(resArchivePath)
-	}
-
-	// incremental update
-	param := GetVersionPatchParam{
-		ResourceID:               info.ResourceID,
-		TargetVersionID:          info.TargetVersionID,
-		TargetVersionFileHashes:  info.TargetVersionFileHashes,
-		CurrentVersionID:         info.CurrentVersionID,
-		CurrentVersionFileHashes: info.CurrentVersionFileHashes,
-	}
-	patchPath, err := h.versionLogic.GetPatchPath(ctx, param)
-	if err != nil {
-		h.logger.Error("Failed to get patch",
-			zap.String("resource id", info.ResourceID),
-			zap.Int("target version id", info.TargetVersionID),
-			zap.Int("current version id", info.CurrentVersionID),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError
-		return c.Status(fiber.StatusInternalServerError).JSON(resp())
-	}
-
-	c.Set("X-New-Version-Available", "true")
-	c.Set("X-Update-Type", "incremental")
-	return c.Status(fiber.StatusOK).Download(patchPath, "ota.zip")
+func (h *VersionHandler) GetLatestAlpha(c *fiber.Ctx) error {
+	return h.handleGetLatest(c, h.versionLogic.GetLatestAlphaVersion)
 }

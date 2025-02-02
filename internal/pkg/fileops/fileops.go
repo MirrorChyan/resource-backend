@@ -1,6 +1,7 @@
 package fileops
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/pkg"
 	"io"
 	"os"
 
@@ -12,11 +13,8 @@ func CopyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer func(sourceFile *os.File) {
-		err := sourceFile.Close()
-		if err != nil {
-
-		}
+	defer func(f *os.File) {
+		_ = f.Close()
 	}(sourceFile)
 
 	destFile, err := os.Create(dst)
@@ -33,7 +31,9 @@ func CopyFile(src, dst string) error {
 		}
 	}(destFile)
 
-	_, err = io.Copy(destFile, sourceFile)
+	buf := pkg.GetBuffer()
+	defer pkg.PutBuffer(buf)
+	_, err = io.CopyBuffer(destFile, sourceFile, buf)
 	return err
 }
 
@@ -43,6 +43,9 @@ func MoveFile(src, dst string) error {
 		return err
 	}
 
-	err = os.Remove(src)
-	return err
+	go func(src string) {
+		_ = os.Remove(src)
+	}(src)
+
+	return nil
 }

@@ -33,9 +33,11 @@ type Resource struct {
 type ResourceEdges struct {
 	// Versions holds the value of the versions edge.
 	Versions []*Version `json:"versions,omitempty"`
+	// LatestVersions holds the value of the latest_versions edge.
+	LatestVersions []*LatestVersion `json:"latest_versions,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // VersionsOrErr returns the Versions value or an error if the edge
@@ -45,6 +47,15 @@ func (e ResourceEdges) VersionsOrErr() ([]*Version, error) {
 		return e.Versions, nil
 	}
 	return nil, &NotLoadedError{edge: "versions"}
+}
+
+// LatestVersionsOrErr returns the LatestVersions value or an error if the edge
+// was not loaded in eager-loading.
+func (e ResourceEdges) LatestVersionsOrErr() ([]*LatestVersion, error) {
+	if e.loadedTypes[1] {
+		return e.LatestVersions, nil
+	}
+	return nil, &NotLoadedError{edge: "latest_versions"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -111,6 +122,11 @@ func (r *Resource) Value(name string) (ent.Value, error) {
 // QueryVersions queries the "versions" edge of the Resource entity.
 func (r *Resource) QueryVersions() *VersionQuery {
 	return NewResourceClient(r.config).QueryVersions(r)
+}
+
+// QueryLatestVersions queries the "latest_versions" edge of the Resource entity.
+func (r *Resource) QueryLatestVersions() *LatestVersionQuery {
+	return NewResourceClient(r.config).QueryLatestVersions(r)
 }
 
 // Update returns a builder for updating this Resource.

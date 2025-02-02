@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// LatestVersion is the predicate function for latestversion builders.
+type LatestVersion func(*sql.Selector)
+
 // Resource is the predicate function for resource builders.
 type Resource func(*sql.Selector)
 

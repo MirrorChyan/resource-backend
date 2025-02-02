@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
-	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -20,12 +18,12 @@ type Version struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Channel holds the value of the "channel" field.
+	Channel version.Channel `json:"channel,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Number holds the value of the "number" field.
 	Number uint64 `json:"number,omitempty"`
-	// FileHashes holds the value of the "file_hashes" field.
-	FileHashes map[string]string `json:"file_hashes,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -37,8 +35,8 @@ type Version struct {
 
 // VersionEdges holds the relations/edges for other nodes in the graph.
 type VersionEdges struct {
-	// Storage holds the value of the storage edge.
-	Storage *Storage `json:"storage,omitempty"`
+	// Storages holds the value of the storages edge.
+	Storages []*Storage `json:"storages,omitempty"`
 	// Resource holds the value of the resource edge.
 	Resource *Resource `json:"resource,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -46,15 +44,13 @@ type VersionEdges struct {
 	loadedTypes [2]bool
 }
 
-// StorageOrErr returns the Storage value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e VersionEdges) StorageOrErr() (*Storage, error) {
-	if e.Storage != nil {
-		return e.Storage, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: storage.Label}
+// StoragesOrErr returns the Storages value or an error if the edge
+// was not loaded in eager-loading.
+func (e VersionEdges) StoragesOrErr() ([]*Storage, error) {
+	if e.loadedTypes[0] {
+		return e.Storages, nil
 	}
-	return nil, &NotLoadedError{edge: "storage"}
+	return nil, &NotLoadedError{edge: "storages"}
 }
 
 // ResourceOrErr returns the Resource value or an error if the edge
@@ -73,11 +69,9 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case version.FieldFileHashes:
-			values[i] = new([]byte)
 		case version.FieldID, version.FieldNumber:
 			values[i] = new(sql.NullInt64)
-		case version.FieldName:
+		case version.FieldChannel, version.FieldName:
 			values[i] = new(sql.NullString)
 		case version.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -104,6 +98,12 @@ func (v *Version) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			v.ID = int(value.Int64)
+		case version.FieldChannel:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field channel", values[i])
+			} else if value.Valid {
+				v.Channel = version.Channel(value.String)
+			}
 		case version.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
@@ -115,14 +115,6 @@ func (v *Version) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field number", values[i])
 			} else if value.Valid {
 				v.Number = uint64(value.Int64)
-			}
-		case version.FieldFileHashes:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field file_hashes", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &v.FileHashes); err != nil {
-					return fmt.Errorf("unmarshal field file_hashes: %w", err)
-				}
 			}
 		case version.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -150,9 +142,9 @@ func (v *Version) Value(name string) (ent.Value, error) {
 	return v.selectValues.Get(name)
 }
 
-// QueryStorage queries the "storage" edge of the Version entity.
-func (v *Version) QueryStorage() *StorageQuery {
-	return NewVersionClient(v.config).QueryStorage(v)
+// QueryStorages queries the "storages" edge of the Version entity.
+func (v *Version) QueryStorages() *StorageQuery {
+	return NewVersionClient(v.config).QueryStorages(v)
 }
 
 // QueryResource queries the "resource" edge of the Version entity.
@@ -183,14 +175,14 @@ func (v *Version) String() string {
 	var builder strings.Builder
 	builder.WriteString("Version(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", v.ID))
+	builder.WriteString("channel=")
+	builder.WriteString(fmt.Sprintf("%v", v.Channel))
+	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(v.Name)
 	builder.WriteString(", ")
 	builder.WriteString("number=")
 	builder.WriteString(fmt.Sprintf("%v", v.Number))
-	builder.WriteString(", ")
-	builder.WriteString("file_hashes=")
-	builder.WriteString(fmt.Sprintf("%v", v.FileHashes))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(v.CreatedAt.Format(time.ANSIC))

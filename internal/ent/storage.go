@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -18,24 +19,37 @@ type Storage struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
-	// Directory holds the value of the "directory" field.
-	Directory string `json:"directory,omitempty"`
+	// UpdateType holds the value of the "update_type" field.
+	UpdateType storage.UpdateType `json:"update_type,omitempty"`
+	// Os holds the value of the "os" field.
+	Os string `json:"os,omitempty"`
+	// Arch holds the value of the "arch" field.
+	Arch string `json:"arch,omitempty"`
+	// PackagePath holds the value of the "package_path" field.
+	PackagePath string `json:"package_path,omitempty"`
+	// only for full update
+	ResourcePath string `json:"resource_path,omitempty"`
+	// only for full update
+	FileHashes map[string]string `json:"file_hashes,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the StorageQuery when eager-loading is set.
-	Edges           StorageEdges `json:"edges"`
-	version_storage *int
-	selectValues    sql.SelectValues
+	Edges               StorageEdges `json:"edges"`
+	storage_old_version *int
+	version_storages    *int
+	selectValues        sql.SelectValues
 }
 
 // StorageEdges holds the relations/edges for other nodes in the graph.
 type StorageEdges struct {
 	// Version holds the value of the version edge.
 	Version *Version `json:"version,omitempty"`
+	// only for incremental update
+	OldVersion *Version `json:"old_version,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // VersionOrErr returns the Version value or an error if the edge
@@ -49,18 +63,33 @@ func (e StorageEdges) VersionOrErr() (*Version, error) {
 	return nil, &NotLoadedError{edge: "version"}
 }
 
+// OldVersionOrErr returns the OldVersion value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e StorageEdges) OldVersionOrErr() (*Version, error) {
+	if e.OldVersion != nil {
+		return e.OldVersion, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: version.Label}
+	}
+	return nil, &NotLoadedError{edge: "old_version"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Storage) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case storage.FieldFileHashes:
+			values[i] = new([]byte)
 		case storage.FieldID:
 			values[i] = new(sql.NullInt64)
-		case storage.FieldDirectory:
+		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldResourcePath:
 			values[i] = new(sql.NullString)
 		case storage.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case storage.ForeignKeys[0]: // version_storage
+		case storage.ForeignKeys[0]: // storage_old_version
+			values[i] = new(sql.NullInt64)
+		case storage.ForeignKeys[1]: // version_storages
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -83,11 +112,43 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			s.ID = int(value.Int64)
-		case storage.FieldDirectory:
+		case storage.FieldUpdateType:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field directory", values[i])
+				return fmt.Errorf("unexpected type %T for field update_type", values[i])
 			} else if value.Valid {
-				s.Directory = value.String
+				s.UpdateType = storage.UpdateType(value.String)
+			}
+		case storage.FieldOs:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field os", values[i])
+			} else if value.Valid {
+				s.Os = value.String
+			}
+		case storage.FieldArch:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field arch", values[i])
+			} else if value.Valid {
+				s.Arch = value.String
+			}
+		case storage.FieldPackagePath:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field package_path", values[i])
+			} else if value.Valid {
+				s.PackagePath = value.String
+			}
+		case storage.FieldResourcePath:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field resource_path", values[i])
+			} else if value.Valid {
+				s.ResourcePath = value.String
+			}
+		case storage.FieldFileHashes:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field file_hashes", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &s.FileHashes); err != nil {
+					return fmt.Errorf("unmarshal field file_hashes: %w", err)
+				}
 			}
 		case storage.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -97,10 +158,17 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 			}
 		case storage.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field version_storage", value)
+				return fmt.Errorf("unexpected type %T for edge-field storage_old_version", value)
 			} else if value.Valid {
-				s.version_storage = new(int)
-				*s.version_storage = int(value.Int64)
+				s.storage_old_version = new(int)
+				*s.storage_old_version = int(value.Int64)
+			}
+		case storage.ForeignKeys[1]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field version_storages", value)
+			} else if value.Valid {
+				s.version_storages = new(int)
+				*s.version_storages = int(value.Int64)
 			}
 		default:
 			s.selectValues.Set(columns[i], values[i])
@@ -118,6 +186,11 @@ func (s *Storage) Value(name string) (ent.Value, error) {
 // QueryVersion queries the "version" edge of the Storage entity.
 func (s *Storage) QueryVersion() *VersionQuery {
 	return NewStorageClient(s.config).QueryVersion(s)
+}
+
+// QueryOldVersion queries the "old_version" edge of the Storage entity.
+func (s *Storage) QueryOldVersion() *VersionQuery {
+	return NewStorageClient(s.config).QueryOldVersion(s)
 }
 
 // Update returns a builder for updating this Storage.
@@ -143,8 +216,23 @@ func (s *Storage) String() string {
 	var builder strings.Builder
 	builder.WriteString("Storage(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", s.ID))
-	builder.WriteString("directory=")
-	builder.WriteString(s.Directory)
+	builder.WriteString("update_type=")
+	builder.WriteString(fmt.Sprintf("%v", s.UpdateType))
+	builder.WriteString(", ")
+	builder.WriteString("os=")
+	builder.WriteString(s.Os)
+	builder.WriteString(", ")
+	builder.WriteString("arch=")
+	builder.WriteString(s.Arch)
+	builder.WriteString(", ")
+	builder.WriteString("package_path=")
+	builder.WriteString(s.PackagePath)
+	builder.WriteString(", ")
+	builder.WriteString("resource_path=")
+	builder.WriteString(s.ResourcePath)
+	builder.WriteString(", ")
+	builder.WriteString("file_hashes=")
+	builder.WriteString(fmt.Sprintf("%v", s.FileHashes))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(s.CreatedAt.Format(time.ANSIC))

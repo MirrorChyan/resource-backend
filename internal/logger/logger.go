@@ -11,7 +11,10 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func New(conf *config.Config) *zap.Logger {
+func New() *zap.Logger {
+	var (
+		conf = config.CFG
+	)
 	encoder := getConsoleEncoder()
 	core := zapcore.NewCore(
 		encoder,

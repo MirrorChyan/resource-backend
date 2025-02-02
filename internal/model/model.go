@@ -2,48 +2,26 @@ package model
 
 import "github.com/MirrorChyan/resource-backend/internal/ent"
 
-type UpdateResourceParam struct {
-	ID          string
-	Name        string
-	Description string
-}
-
-type ListResourceParam struct {
-	Offset int
-	Limit  int
-}
-
 type CreateResourceParam struct {
 	ID          string
 	Name        string
 	Description string
 }
 
-type CreateStorageParam struct {
-	VersionID int
-	Directory string
-}
-
 type CreateVersionParam struct {
 	ResourceID        string
 	Name              string
+	OS                string
+	Arch              string
+	Channel           string
 	UploadArchivePath string
-}
-
-type ListVersionParam struct {
-	ResourceID string
-	Offset     int
-	Limit      int
-}
-
-type GetVersionByNameParam struct {
-	ResourceID string
-	Name       string
 }
 
 type VersionNameExistsParam struct {
 	ResourceID string
 	Name       string
+	OS         string
+	Arch       string
 }
 
 type ValidateCDKRequest struct {
@@ -61,6 +39,8 @@ type ValidateCDKResponse struct {
 
 type GetLatestVersionRequest struct {
 	CurrentVersion string `query:"current_version"`
+	OS             string `query:"os"`
+	Arch           string `query:"arch"`
 	CDK            string `query:"cdk"`
 	SpID           string `query:"sp_id"`
 	UserAgent      string `query:"user_agent"`
@@ -70,12 +50,19 @@ type QueryLatestResponseData struct {
 	VersionName   string `json:"version_name"`
 	VersionNumber uint64 `json:"version_number"`
 	Url           string `json:"url,omitempty"`
+	Channel       string `json:"channel"`
+	OS            string `json:"os,omitempty"`
+	Arch          string `json:"arch,omitempty"`
+	// UpdateType is the type of the update, it can be "full" or "incremental"
+	UpdateType string `json:"update_type,omitempty"`
 }
 
 type CreateVersionResponseData struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Number uint64 `json:"number"`
+	OS     string `json:"os,omitempty"`
+	Arch   string `json:"arch,omitempty"`
 }
 
 type ValidateUploaderResponse struct {
@@ -96,12 +83,12 @@ type CreateResourceResponseData struct {
 }
 
 type TempDownloadInfo struct {
-	ResourceID               string            `json:"resource_id"`
-	Full                     bool              `json:"full"`
-	TargetVersionID          int               `json:"target_version_id"`
-	TargetVersionFileHashes  map[string]string `json:"target_version_file_hashes"`
-	CurrentVersionID         int               `json:"current_version_id"`
-	CurrentVersionFileHashes map[string]string `json:"current_version_file_hashes"`
+	ResourceID       string `json:"resource_id"`
+	Full             bool   `json:"full"`
+	TargetVersionID  int    `json:"target_version_id"`
+	CurrentVersionID int    `json:"current_version_id"`
+	OS               string `json:"os"`
+	Arch             string `json:"arch"`
 }
 
 type BillingCheckinRequest struct {
@@ -111,21 +98,31 @@ type BillingCheckinRequest struct {
 	UserAgent   string `json:"user_agent"`
 }
 
-type StoreTempDownloadInfoParam struct {
+type ProcessUpdateParam struct {
 	ResourceID         string
 	CurrentVersionName string
-	LatestVersion      *ent.Version
+	TargetVersion      *ent.Version
+	OS                 string
+	Arch               string
 }
 
-type GetResourcePathParam struct {
+type GetFullUpdatePackagePathParam struct {
 	ResourceID string
 	VersionID  int
+	OS         string
+	Arch       string
 }
 
-type GetVersionPatchParam struct {
-	ResourceID               string
-	CurrentVersionID         int
-	CurrentVersionFileHashes map[string]string
-	TargetVersionID          int
-	TargetVersionFileHashes  map[string]string
+type UpdateProcessInfo struct {
+	ResourceID       string
+	TargetVersionID  int
+	CurrentVersionID int
+	OS               string
+	Arch             string
+}
+
+type ActualUpdateProcessInfo struct {
+	Info    UpdateProcessInfo
+	Target  *ent.Storage
+	Current *ent.Storage
 }
