@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
@@ -65,6 +66,9 @@ func NewVersionLogic(
 const (
 	actualResourcePath = "resource"
 	archiveZip         = "resource.zip"
+
+	FullUpdateType        = "full"
+	IncrementalUpdateType = "incremental"
 
 	resourcePrefix = "Res"
 
@@ -333,7 +337,7 @@ func (l *VersionLogic) doPostCreateResources(resID, channel string) {
 	l.cacheGroup.VersionLatestCache.Delete(cacheKey)
 }
 
-func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (string, error) {
+func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (string, string, error) {
 	// if current version is not provided, we will download the full version
 	var (
 		err            error
@@ -355,7 +359,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 		case err == nil:
 			currentVersion = *val
 		case !ent.IsNotFound(err):
-			return "", err
+			return "", "", err
 		default:
 			isFull = true
 		}
@@ -377,9 +381,15 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 			})
 		})
 		if err != nil {
-			return "", err
+			if ent.IsNotFound(err) {
+				return "", "", StorageInfoNotFound
+			}
+			l.logger.Error("failed to get full storage info",
+				zap.Error(err),
+			)
+			return "", "", err
 		}
-		return *val, nil
+		return *val, FullUpdateType, nil
 
 	}
 
@@ -398,12 +408,12 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	info.Target, info.Current, err = l.fetchStorageInfoTuple(ctx, targetVersion.ID, currentVersion.ID, param.OS, param.Arch)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return "", StorageInfoNotFound
+			return "", "", StorageInfoNotFound
 		}
 		l.logger.Error("failed to get storage info",
 			zap.Error(err),
 		)
-		return "", err
+		return "", "", err
 	}
 
 	result, err := l.GetIncrementalUpdatePackagePath(ctx, info)
@@ -411,19 +421,20 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 		l.logger.Error("failed to get incremental update package path",
 			zap.Error(err),
 		)
-		return "", err
+		return "", "", err
 	}
 
-	return result, nil
+	return result, IncrementalUpdateType, nil
 }
 
-func (l *VersionLogic) GetDownloadUrl(ctx context.Context, param ProcessUpdateParam) (string, error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdateParam) (string, string, error) {
 	var (
 		cfg = config.CFG
 	)
-	p, err := l.doProcessPatchOrFullUpdate(ctx, param)
+	// path is the download path, type is the update type
+	p, t, err := l.doProcessPatchOrFullUpdate(ctx, param)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	rel := l.cleanPath(p)
@@ -433,10 +444,10 @@ func (l *VersionLogic) GetDownloadUrl(ctx context.Context, param ProcessUpdatePa
 
 	_, err = l.rdb.Set(ctx, sk, rel, cfg.Extra.DownloadEffectiveTime).Result()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/"), nil
+	return strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/"), t, nil
 }
 
 func (l *VersionLogic) cleanPath(p string) string {
@@ -469,7 +480,7 @@ func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (stri
 
 func (l *VersionLogic) StorePatchInfo(ctx context.Context, cacheKey, p, e string) error {
 	val := strings.Join([]string{p, e}, specificSeparator)
-	_, err := l.rdb.Set(ctx, cacheKey, val, 0).Result()
+	_, err := l.rdb.Set(ctx, cacheKey, val, time.Minute*5).Result()
 	if err != nil {
 		return err
 	}

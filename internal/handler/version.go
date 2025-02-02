@@ -68,7 +68,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	// beta channel
 	r.Get("/resources/:rid/beta/latest", h.GetLatestBeta)
 	// alpha channel
-	r.Get("/rerources/:rid/alpha/latest", h.GetLatestAlpha)
+	r.Get("/resources/:rid/alpha/latest", h.GetLatestAlpha)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", h.ValidateUploader)
@@ -191,6 +191,18 @@ var (
 		"arm64":   "arm64",
 		"aarch64": "arm64",
 	}
+
+	channelMap = map[string]string{
+		// stable
+		"":       "stable",
+		"stable": "stable",
+
+		// beta
+		"beta": "beta",
+
+		// alpha
+		"alpha": "alpha",
+	}
 )
 
 func (h *VersionHandler) handleOSParam(os string) (string, bool) {
@@ -224,18 +236,6 @@ func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (string, string, error
 	return resOS, resArch, nil
 }
 
-var channelMap = map[string]string{
-	// stable
-	"":       "stable",
-	"stable": "stable",
-
-	// beta
-	"beta": "beta",
-
-	// alpha
-	"alpha": "alpha",
-}
-
 func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {
 	if standardChannel, ok := channelMap[channel]; ok {
 		return standardChannel, true
@@ -266,8 +266,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	channel := c.FormValue("channel")
-	channel, ok := h.handleChannelParam(channel)
+	ch := c.FormValue("channel")
+	channel, ok := h.handleChannelParam(ch)
 	if !ok {
 		resp := response.BusinessError("invalid channel")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
@@ -332,7 +332,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	version, err := h.versionLogic.Create(ctx, CreateVersionParam{
+	ver, err := h.versionLogic.Create(ctx, CreateVersionParam{
 		ResourceID:        resID,
 		Name:              verName,
 		UploadArchivePath: dest,
@@ -349,9 +349,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	data := CreateVersionResponseData{
-		ID:     version.ID,
-		Name:   version.Name,
-		Number: version.Number,
+		ID:     ver.ID,
+		Name:   ver.Name,
+		Number: ver.Number,
 	}
 	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
 }
@@ -486,6 +486,7 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 	ctx := c.UserContext()
 
 	latest, err := getLatestFunc(ctx, resID)
+
 	if err != nil {
 		if ent.IsNotFound(err) {
 			resp := response.BusinessError("resources can't be found")
@@ -502,6 +503,9 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 	data := QueryLatestResponseData{
 		VersionName:   latest.Name,
 		VersionNumber: latest.Number,
+		Channel:       latest.Channel.String(),
+		OS:            req.OS,
+		Arch:          req.Arch,
 	}
 
 	if req.CDK == "" {
@@ -534,7 +538,7 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 
 	h.logger.Info("CDK validation success")
 
-	url, err := h.versionLogic.GetDownloadUrl(ctx, ProcessUpdateParam{
+	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		TargetVersion:      latest,
@@ -556,7 +560,7 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	data.Url = url
+	data.Url, data.UpdateType = url, updateType
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 }

@@ -19,7 +19,7 @@ func NewLatestVersion(db *ent.Client) *LatestVersion {
 }
 
 func (r *LatestVersion) UpsertLatestVersion(ctx context.Context, tx *ent.Tx, resID string, channel latestversion.Channel, ver *ent.Version) error {
-	return r.db.LatestVersion.Create().
+	return tx.LatestVersion.Create().
 		SetResourceID(resID).
 		SetChannel(channel).
 		SetVersion(ver).
