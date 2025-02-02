@@ -305,6 +305,16 @@ func PackagePathHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldPackagePath, v))
 }
 
+// PackagePathIsNil applies the IsNil predicate on the "package_path" field.
+func PackagePathIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldPackagePath))
+}
+
+// PackagePathNotNil applies the NotNil predicate on the "package_path" field.
+func PackagePathNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldPackagePath))
+}
+
 // PackagePathEqualFold applies the EqualFold predicate on the "package_path" field.
 func PackagePathEqualFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEqualFold(FieldPackagePath, v))

@@ -1441,9 +1441,22 @@ func (m *StorageMutation) OldPackagePath(ctx context.Context) (v string, err err
 	return oldValue.PackagePath, nil
 }
 
+// ClearPackagePath clears the value of the "package_path" field.
+func (m *StorageMutation) ClearPackagePath() {
+	m.package_path = nil
+	m.clearedFields[storage.FieldPackagePath] = struct{}{}
+}
+
+// PackagePathCleared returns if the "package_path" field was cleared in this mutation.
+func (m *StorageMutation) PackagePathCleared() bool {
+	_, ok := m.clearedFields[storage.FieldPackagePath]
+	return ok
+}
+
 // ResetPackagePath resets all changes to the "package_path" field.
 func (m *StorageMutation) ResetPackagePath() {
 	m.package_path = nil
+	delete(m.clearedFields, storage.FieldPackagePath)
 }
 
 // SetResourcePath sets the "resource_path" field.
@@ -1853,6 +1866,9 @@ func (m *StorageMutation) ClearedFields() []string {
 	if m.FieldCleared(storage.FieldArch) {
 		fields = append(fields, storage.FieldArch)
 	}
+	if m.FieldCleared(storage.FieldPackagePath) {
+		fields = append(fields, storage.FieldPackagePath)
+	}
 	if m.FieldCleared(storage.FieldResourcePath) {
 		fields = append(fields, storage.FieldResourcePath)
 	}
@@ -1878,6 +1894,9 @@ func (m *StorageMutation) ClearField(name string) error {
 		return nil
 	case storage.FieldArch:
 		m.ClearArch()
+		return nil
+	case storage.FieldPackagePath:
+		m.ClearPackagePath()
 		return nil
 	case storage.FieldResourcePath:
 		m.ClearResourcePath()

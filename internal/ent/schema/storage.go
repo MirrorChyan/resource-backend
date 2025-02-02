@@ -23,7 +23,7 @@ func (Storage) Fields() []ent.Field {
 		field.String("arch").
 			Optional(),
 		field.String("package_path").
-			NotEmpty(),
+			Optional(),
 		field.String("resource_path").
 			Optional().
 			Comment("only for full update"),

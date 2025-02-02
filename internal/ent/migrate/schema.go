@@ -62,7 +62,7 @@ var (
 		{Name: "update_type", Type: field.TypeEnum, Enums: []string{"full", "incremental"}},
 		{Name: "os", Type: field.TypeString, Nullable: true},
 		{Name: "arch", Type: field.TypeString, Nullable: true},
-		{Name: "package_path", Type: field.TypeString},
+		{Name: "package_path", Type: field.TypeString, Nullable: true},
 		{Name: "resource_path", Type: field.TypeString, Nullable: true},
 		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},

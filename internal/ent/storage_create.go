@@ -63,6 +63,14 @@ func (sc *StorageCreate) SetPackagePath(s string) *StorageCreate {
 	return sc
 }
 
+// SetNillablePackagePath sets the "package_path" field if the given value is not nil.
+func (sc *StorageCreate) SetNillablePackagePath(s *string) *StorageCreate {
+	if s != nil {
+		sc.SetPackagePath(*s)
+	}
+	return sc
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (sc *StorageCreate) SetResourcePath(s string) *StorageCreate {
 	sc.mutation.SetResourcePath(s)
@@ -176,14 +184,6 @@ func (sc *StorageCreate) check() error {
 	if v, ok := sc.mutation.UpdateType(); ok {
 		if err := storage.UpdateTypeValidator(v); err != nil {
 			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
-		}
-	}
-	if _, ok := sc.mutation.PackagePath(); !ok {
-		return &ValidationError{Name: "package_path", err: errors.New(`ent: missing required field "Storage.package_path"`)}
-	}
-	if v, ok := sc.mutation.PackagePath(); ok {
-		if err := storage.PackagePathValidator(v); err != nil {
-			return &ValidationError{Name: "package_path", err: fmt.Errorf(`ent: validator failed for field "Storage.package_path": %w`, err)}
 		}
 	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
@@ -393,6 +393,12 @@ func (u *StorageUpsert) UpdatePackagePath() *StorageUpsert {
 	return u
 }
 
+// ClearPackagePath clears the value of the "package_path" field.
+func (u *StorageUpsert) ClearPackagePath() *StorageUpsert {
+	u.SetNull(storage.FieldPackagePath)
+	return u
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (u *StorageUpsert) SetResourcePath(v string) *StorageUpsert {
 	u.Set(storage.FieldResourcePath, v)
@@ -548,6 +554,13 @@ func (u *StorageUpsertOne) SetPackagePath(v string) *StorageUpsertOne {
 func (u *StorageUpsertOne) UpdatePackagePath() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdatePackagePath()
+	})
+}
+
+// ClearPackagePath clears the value of the "package_path" field.
+func (u *StorageUpsertOne) ClearPackagePath() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearPackagePath()
 	})
 }
 
@@ -878,6 +891,13 @@ func (u *StorageUpsertBulk) SetPackagePath(v string) *StorageUpsertBulk {
 func (u *StorageUpsertBulk) UpdatePackagePath() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdatePackagePath()
+	})
+}
+
+// ClearPackagePath clears the value of the "package_path" field.
+func (u *StorageUpsertBulk) ClearPackagePath() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearPackagePath()
 	})
 }
 

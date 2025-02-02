@@ -40,10 +40,6 @@ func init() {
 	resource.IDValidator = resourceDescID.Validators[0].(func(string) error)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
-	// storageDescPackagePath is the schema descriptor for package_path field.
-	storageDescPackagePath := storageFields[3].Descriptor()
-	// storage.PackagePathValidator is a validator for the "package_path" field. It is called by the builders before save.
-	storage.PackagePathValidator = storageDescPackagePath.Validators[0].(func(string) error)
 	// storageDescCreatedAt is the schema descriptor for created_at field.
 	storageDescCreatedAt := storageFields[6].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.

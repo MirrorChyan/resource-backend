@@ -97,6 +97,12 @@ func (su *StorageUpdate) SetNillablePackagePath(s *string) *StorageUpdate {
 	return su
 }
 
+// ClearPackagePath clears the value of the "package_path" field.
+func (su *StorageUpdate) ClearPackagePath() *StorageUpdate {
+	su.mutation.ClearPackagePath()
+	return su
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (su *StorageUpdate) SetResourcePath(s string) *StorageUpdate {
 	su.mutation.SetResourcePath(s)
@@ -224,11 +230,6 @@ func (su *StorageUpdate) check() error {
 			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
 		}
 	}
-	if v, ok := su.mutation.PackagePath(); ok {
-		if err := storage.PackagePathValidator(v); err != nil {
-			return &ValidationError{Name: "package_path", err: fmt.Errorf(`ent: validator failed for field "Storage.package_path": %w`, err)}
-		}
-	}
 	if su.mutation.VersionCleared() && len(su.mutation.VersionIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Storage.version"`)
 	}
@@ -264,6 +265,9 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := su.mutation.PackagePath(); ok {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
+	}
+	if su.mutation.PackagePathCleared() {
+		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
 	if value, ok := su.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
@@ -426,6 +430,12 @@ func (suo *StorageUpdateOne) SetNillablePackagePath(s *string) *StorageUpdateOne
 	return suo
 }
 
+// ClearPackagePath clears the value of the "package_path" field.
+func (suo *StorageUpdateOne) ClearPackagePath() *StorageUpdateOne {
+	suo.mutation.ClearPackagePath()
+	return suo
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (suo *StorageUpdateOne) SetResourcePath(s string) *StorageUpdateOne {
 	suo.mutation.SetResourcePath(s)
@@ -566,11 +576,6 @@ func (suo *StorageUpdateOne) check() error {
 			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
 		}
 	}
-	if v, ok := suo.mutation.PackagePath(); ok {
-		if err := storage.PackagePathValidator(v); err != nil {
-			return &ValidationError{Name: "package_path", err: fmt.Errorf(`ent: validator failed for field "Storage.package_path": %w`, err)}
-		}
-	}
 	if suo.mutation.VersionCleared() && len(suo.mutation.VersionIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Storage.version"`)
 	}
@@ -623,6 +628,9 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	}
 	if value, ok := suo.mutation.PackagePath(); ok {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
+	}
+	if suo.mutation.PackagePathCleared() {
+		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
 	if value, ok := suo.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
