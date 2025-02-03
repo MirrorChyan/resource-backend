@@ -40,6 +40,14 @@ func init() {
 	resource.IDValidator = resourceDescID.Validators[0].(func(string) error)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
+	// storageDescOs is the schema descriptor for os field.
+	storageDescOs := storageFields[1].Descriptor()
+	// storage.DefaultOs holds the default value on creation for the os field.
+	storage.DefaultOs = storageDescOs.Default.(string)
+	// storageDescArch is the schema descriptor for arch field.
+	storageDescArch := storageFields[2].Descriptor()
+	// storage.DefaultArch holds the default value on creation for the arch field.
+	storage.DefaultArch = storageDescArch.Default.(string)
 	// storageDescCreatedAt is the schema descriptor for created_at field.
 	storageDescCreatedAt := storageFields[6].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.

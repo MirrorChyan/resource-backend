@@ -19,9 +19,9 @@ func (Storage) Fields() []ent.Field {
 		field.Enum("update_type").
 			Values("full", "incremental"),
 		field.String("os").
-			Optional(),
+			Default(""),
 		field.String("arch").
-			Optional(),
+			Default(""),
 		field.String("package_path").
 			Optional(),
 		field.String("resource_path").
