@@ -245,7 +245,27 @@ func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
+	var ctx = c.UserContext()
+
 	resID := c.Params(resourceKey)
+	resExist, err := h.resourceLogic.Exists(ctx, resID)
+	switch {
+	case err != nil:
+		h.logger.Error("Failed to check if resource exists",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+
+	case !resExist:
+		h.logger.Info("Resource not found",
+			zap.String("resource id", resID),
+		)
+		resp := response.BusinessError("resource not found")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
+
+	}
+
 	verName := c.FormValue("name")
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -281,8 +301,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(resp)
 		}
 	}
-
-	var ctx = c.UserContext()
 
 	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
 		ResourceID: resID,
