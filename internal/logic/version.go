@@ -149,7 +149,7 @@ func (l *VersionLogic) GetLatestAlphaVersion(ctx context.Context, resID string) 
 func (l *VersionLogic) GetVersionNumber(ctx context.Context, resID string) (uint64, error) {
 	maxNumVer, err := l.versionRepo.GetMaxNumberVersion(ctx, resID)
 	if err == nil {
-		return maxNumVer.Number, nil
+		return maxNumVer.Number + 1, nil
 	}
 
 	if ent.IsNotFound(err) {
