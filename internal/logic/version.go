@@ -203,7 +203,40 @@ func (l *VersionLogic) CreateVersion(ctx context.Context, resID, channel, name s
 		return nil, err
 	}
 
+	// clear old version resources
+	go l.clearOldStorages(resID, verChannel, ver.ID, ver.Name)
+
 	return ver, nil
+}
+
+func (l *VersionLogic) clearOldStorages(resID string, channel version.Channel, verID int, verName string) {
+	ctx := context.Background()
+	maxRetries := 3
+	var err error
+
+	for i := 0; i < maxRetries; i++ {
+		err = l.storageLogic.ClearOldStorages(ctx, resID, channel, verID)
+		if err == nil {
+			break
+		}
+		l.logger.Warn("Failed to clear old storages, retrying...",
+			zap.Int("retry count", i+1),
+			zap.String("resource id", resID),
+			zap.String("channel", channel.String()),
+			zap.String("latest version name", verName),
+			zap.Error(err),
+		)
+		time.Sleep(2 * time.Second)
+	}
+
+	if err != nil {
+		l.logger.Error("Failed to clear old storages after multiple retries",
+			zap.String("resource id", resID),
+			zap.String("channel", channel.String()),
+			zap.String("latest version name", verName),
+			zap.Error(err),
+		)
+	}
 }
 
 func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*ent.Version, error) {

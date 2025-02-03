@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
@@ -73,4 +74,60 @@ func (r *Storage) GetIncrementalUpdatePath(ctx context.Context, verID, oldVerID 
 			storage.Arch(arch),
 		).
 		Only(ctx)
+}
+
+func (r *Storage) GetOldFullUpdateStorages(ctx context.Context, resID string, channel version.Channel, latestVerID int) ([]*ent.Storage, error) {
+	return r.db.Storage.Query().
+		Where(
+			storage.HasVersionWith(
+				version.HasResourceWith(resource.ID(resID)),
+				version.ChannelEQ(channel),
+				version.IDNEQ(latestVerID),
+			),
+			storage.UpdateTypeEQ(storage.UpdateTypeFull),
+		).
+		All(ctx)
+}
+
+func (r *Storage) ClearOldFullUpdateStorages(ctx context.Context, resID string, channel version.Channel, latestVerID int) error {
+	err := r.db.Storage.Update().
+		Where(
+			storage.HasVersionWith(
+				version.HasResourceWith(resource.ID(resID)),
+				version.ChannelEQ(channel),
+				version.IDNEQ(latestVerID),
+			),
+			storage.UpdateTypeEQ(storage.UpdateTypeFull),
+		).
+		ClearPackagePath().
+		ClearResourcePath().
+		Exec(ctx)
+	return err
+}
+
+func (r *Storage) GetOldIncrementalUpdateStorages(ctx context.Context, resID string, channel version.Channel, latestVerID int) ([]*ent.Storage, error) {
+	return r.db.Storage.Query().
+		Where(
+			storage.HasVersionWith(
+				version.HasResourceWith(resource.ID(resID)),
+				version.ChannelEQ(channel),
+				version.IDNEQ(latestVerID),
+			),
+			storage.UpdateTypeEQ(storage.UpdateTypeIncremental),
+		).
+		All(ctx)
+}
+
+func (r *Storage) DeleteOldIncrementalUpdateStorages(ctx context.Context, resID string, channel version.Channel, latestVerID int) error {
+	_, err := r.db.Storage.Delete().
+		Where(
+			storage.HasVersionWith(
+				version.HasResourceWith(resource.ID(resID)),
+				version.ChannelEQ(channel),
+				version.IDNEQ(latestVerID),
+			),
+			storage.UpdateTypeEQ(storage.UpdateTypeIncremental),
+		).
+		Exec(ctx)
+	return err
 }
