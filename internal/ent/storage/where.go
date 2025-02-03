@@ -155,16 +155,6 @@ func OsHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldOs, v))
 }
 
-// OsIsNil applies the IsNil predicate on the "os" field.
-func OsIsNil() predicate.Storage {
-	return predicate.Storage(sql.FieldIsNull(FieldOs))
-}
-
-// OsNotNil applies the NotNil predicate on the "os" field.
-func OsNotNil() predicate.Storage {
-	return predicate.Storage(sql.FieldNotNull(FieldOs))
-}
-
 // OsEqualFold applies the EqualFold predicate on the "os" field.
 func OsEqualFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEqualFold(FieldOs, v))
@@ -228,16 +218,6 @@ func ArchHasPrefix(v string) predicate.Storage {
 // ArchHasSuffix applies the HasSuffix predicate on the "arch" field.
 func ArchHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldArch, v))
-}
-
-// ArchIsNil applies the IsNil predicate on the "arch" field.
-func ArchIsNil() predicate.Storage {
-	return predicate.Storage(sql.FieldIsNull(FieldArch))
-}
-
-// ArchNotNil applies the NotNil predicate on the "arch" field.
-func ArchNotNil() predicate.Storage {
-	return predicate.Storage(sql.FieldNotNull(FieldArch))
 }
 
 // ArchEqualFold applies the EqualFold predicate on the "arch" field.

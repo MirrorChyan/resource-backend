@@ -60,8 +60,8 @@ var (
 	StoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "update_type", Type: field.TypeEnum, Enums: []string{"full", "incremental"}},
-		{Name: "os", Type: field.TypeString, Nullable: true},
-		{Name: "arch", Type: field.TypeString, Nullable: true},
+		{Name: "os", Type: field.TypeString, Default: ""},
+		{Name: "arch", Type: field.TypeString, Default: ""},
 		{Name: "package_path", Type: field.TypeString, Nullable: true},
 		{Name: "resource_path", Type: field.TypeString, Nullable: true},
 		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
