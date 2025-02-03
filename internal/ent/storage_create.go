@@ -170,6 +170,14 @@ func (sc *StorageCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (sc *StorageCreate) defaults() {
+	if _, ok := sc.mutation.Os(); !ok {
+		v := storage.DefaultOs
+		sc.mutation.SetOs(v)
+	}
+	if _, ok := sc.mutation.Arch(); !ok {
+		v := storage.DefaultArch
+		sc.mutation.SetArch(v)
+	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		v := storage.DefaultCreatedAt()
 		sc.mutation.SetCreatedAt(v)
@@ -185,6 +193,12 @@ func (sc *StorageCreate) check() error {
 		if err := storage.UpdateTypeValidator(v); err != nil {
 			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
 		}
+	}
+	if _, ok := sc.mutation.Os(); !ok {
+		return &ValidationError{Name: "os", err: errors.New(`ent: missing required field "Storage.os"`)}
+	}
+	if _, ok := sc.mutation.Arch(); !ok {
+		return &ValidationError{Name: "arch", err: errors.New(`ent: missing required field "Storage.arch"`)}
 	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Storage.created_at"`)}
@@ -357,12 +371,6 @@ func (u *StorageUpsert) UpdateOs() *StorageUpsert {
 	return u
 }
 
-// ClearOs clears the value of the "os" field.
-func (u *StorageUpsert) ClearOs() *StorageUpsert {
-	u.SetNull(storage.FieldOs)
-	return u
-}
-
 // SetArch sets the "arch" field.
 func (u *StorageUpsert) SetArch(v string) *StorageUpsert {
 	u.Set(storage.FieldArch, v)
@@ -372,12 +380,6 @@ func (u *StorageUpsert) SetArch(v string) *StorageUpsert {
 // UpdateArch sets the "arch" field to the value that was provided on create.
 func (u *StorageUpsert) UpdateArch() *StorageUpsert {
 	u.SetExcluded(storage.FieldArch)
-	return u
-}
-
-// ClearArch clears the value of the "arch" field.
-func (u *StorageUpsert) ClearArch() *StorageUpsert {
-	u.SetNull(storage.FieldArch)
 	return u
 }
 
@@ -515,13 +517,6 @@ func (u *StorageUpsertOne) UpdateOs() *StorageUpsertOne {
 	})
 }
 
-// ClearOs clears the value of the "os" field.
-func (u *StorageUpsertOne) ClearOs() *StorageUpsertOne {
-	return u.Update(func(s *StorageUpsert) {
-		s.ClearOs()
-	})
-}
-
 // SetArch sets the "arch" field.
 func (u *StorageUpsertOne) SetArch(v string) *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
@@ -533,13 +528,6 @@ func (u *StorageUpsertOne) SetArch(v string) *StorageUpsertOne {
 func (u *StorageUpsertOne) UpdateArch() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdateArch()
-	})
-}
-
-// ClearArch clears the value of the "arch" field.
-func (u *StorageUpsertOne) ClearArch() *StorageUpsertOne {
-	return u.Update(func(s *StorageUpsert) {
-		s.ClearArch()
 	})
 }
 
@@ -852,13 +840,6 @@ func (u *StorageUpsertBulk) UpdateOs() *StorageUpsertBulk {
 	})
 }
 
-// ClearOs clears the value of the "os" field.
-func (u *StorageUpsertBulk) ClearOs() *StorageUpsertBulk {
-	return u.Update(func(s *StorageUpsert) {
-		s.ClearOs()
-	})
-}
-
 // SetArch sets the "arch" field.
 func (u *StorageUpsertBulk) SetArch(v string) *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
@@ -870,13 +851,6 @@ func (u *StorageUpsertBulk) SetArch(v string) *StorageUpsertBulk {
 func (u *StorageUpsertBulk) UpdateArch() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdateArch()
-	})
-}
-
-// ClearArch clears the value of the "arch" field.
-func (u *StorageUpsertBulk) ClearArch() *StorageUpsertBulk {
-	return u.Update(func(s *StorageUpsert) {
-		s.ClearArch()
 	})
 }
 

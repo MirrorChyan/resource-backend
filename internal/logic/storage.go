@@ -3,10 +3,12 @@ package logic
 import (
 	"context"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/model"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/model"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
@@ -139,4 +141,95 @@ func (l *StorageLogic) BuildVersionPatchStorageDirPath(resID string, verID int, 
 func (l *StorageLogic) BuildVersionPatchStoragePath(resID string, verID, oldVerID int, os, arch string) string {
 	patchName := fmt.Sprintf("%d.zip", oldVerID)
 	return filepath.Join(l.BuildVersionPatchStorageDirPath(resID, verID, os, arch), patchName)
+}
+
+func (l *StorageLogic) ClearOldStorages(ctx context.Context, resID string, channel version.Channel, latestVerID int) error {
+	// get all old full update storages
+	fullUpdateStorages, err := l.storageRepo.GetOldFullUpdateStorages(ctx, resID, channel, latestVerID)
+	if err != nil {
+		l.logger.Error("get old version full update storages failed",
+			zap.String("resource id", resID),
+			zap.String("channel", channel.String()),
+			zap.Int("latest version id", latestVerID),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	// delete old full update package
+	for _, storage := range fullUpdateStorages {
+		if storage.PackagePath != "" {
+			err = os.Remove(storage.PackagePath)
+			if err != nil {
+				l.logger.Error("delete old version full update package failed",
+					zap.String("package path", storage.PackagePath),
+					zap.Error(err),
+				)
+				return err
+			}
+		}
+
+		if storage.ResourcePath == "" {
+			continue
+		}
+
+		err = os.RemoveAll(storage.ResourcePath)
+		if err != nil {
+			l.logger.Error("delete old version full update resource failed",
+				zap.String("resource path", storage.ResourcePath),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+
+	// clear old full update storages
+	err = l.storageRepo.ClearOldFullUpdateStorages(ctx, resID, channel, latestVerID)
+	if err != nil {
+		l.logger.Error("clear old version full update storages failed",
+			zap.String("resource id", resID),
+			zap.String("channel", channel.String()),
+			zap.Int("latest version id", latestVerID),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	// get all old imcremental update storages
+	incrementalUpdateStorages, err := l.storageRepo.GetOldIncrementalUpdateStorages(ctx, resID, channel, latestVerID)
+	if err != nil {
+		l.logger.Error("get old version incremental update storages failed",
+			zap.String("resource id", resID),
+			zap.String("channel", channel.String()),
+			zap.Int("latest version id", latestVerID),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	// delete old incremental update package
+	for _, storage := range incrementalUpdateStorages {
+		err = os.Remove(storage.PackagePath)
+		if err != nil {
+			l.logger.Error("delete old version incremental update package failed",
+				zap.String("package path", storage.PackagePath),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+
+	// delete old incremental update storages
+	err = l.storageRepo.DeleteOldIncrementalUpdateStorages(ctx, resID, channel, latestVerID)
+	if err != nil {
+		l.logger.Error("delete old version incremental update storages failed",
+			zap.String("resource id", resID),
+			zap.String("channel", channel.String()),
+			zap.Int("latest version id", latestVerID),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	return nil
 }

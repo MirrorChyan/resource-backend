@@ -57,12 +57,6 @@ func (su *StorageUpdate) SetNillableOs(s *string) *StorageUpdate {
 	return su
 }
 
-// ClearOs clears the value of the "os" field.
-func (su *StorageUpdate) ClearOs() *StorageUpdate {
-	su.mutation.ClearOs()
-	return su
-}
-
 // SetArch sets the "arch" field.
 func (su *StorageUpdate) SetArch(s string) *StorageUpdate {
 	su.mutation.SetArch(s)
@@ -74,12 +68,6 @@ func (su *StorageUpdate) SetNillableArch(s *string) *StorageUpdate {
 	if s != nil {
 		su.SetArch(*s)
 	}
-	return su
-}
-
-// ClearArch clears the value of the "arch" field.
-func (su *StorageUpdate) ClearArch() *StorageUpdate {
-	su.mutation.ClearArch()
 	return su
 }
 
@@ -254,14 +242,8 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := su.mutation.Os(); ok {
 		_spec.SetField(storage.FieldOs, field.TypeString, value)
 	}
-	if su.mutation.OsCleared() {
-		_spec.ClearField(storage.FieldOs, field.TypeString)
-	}
 	if value, ok := su.mutation.Arch(); ok {
 		_spec.SetField(storage.FieldArch, field.TypeString, value)
-	}
-	if su.mutation.ArchCleared() {
-		_spec.ClearField(storage.FieldArch, field.TypeString)
 	}
 	if value, ok := su.mutation.PackagePath(); ok {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
@@ -390,12 +372,6 @@ func (suo *StorageUpdateOne) SetNillableOs(s *string) *StorageUpdateOne {
 	return suo
 }
 
-// ClearOs clears the value of the "os" field.
-func (suo *StorageUpdateOne) ClearOs() *StorageUpdateOne {
-	suo.mutation.ClearOs()
-	return suo
-}
-
 // SetArch sets the "arch" field.
 func (suo *StorageUpdateOne) SetArch(s string) *StorageUpdateOne {
 	suo.mutation.SetArch(s)
@@ -407,12 +383,6 @@ func (suo *StorageUpdateOne) SetNillableArch(s *string) *StorageUpdateOne {
 	if s != nil {
 		suo.SetArch(*s)
 	}
-	return suo
-}
-
-// ClearArch clears the value of the "arch" field.
-func (suo *StorageUpdateOne) ClearArch() *StorageUpdateOne {
-	suo.mutation.ClearArch()
 	return suo
 }
 
@@ -617,14 +587,8 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	if value, ok := suo.mutation.Os(); ok {
 		_spec.SetField(storage.FieldOs, field.TypeString, value)
 	}
-	if suo.mutation.OsCleared() {
-		_spec.ClearField(storage.FieldOs, field.TypeString)
-	}
 	if value, ok := suo.mutation.Arch(); ok {
 		_spec.SetField(storage.FieldArch, field.TypeString, value)
-	}
-	if suo.mutation.ArchCleared() {
-		_spec.ClearField(storage.FieldArch, field.TypeString)
 	}
 	if value, ok := suo.mutation.PackagePath(); ok {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)

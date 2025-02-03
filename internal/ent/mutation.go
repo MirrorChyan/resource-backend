@@ -1343,22 +1343,9 @@ func (m *StorageMutation) OldOs(ctx context.Context) (v string, err error) {
 	return oldValue.Os, nil
 }
 
-// ClearOs clears the value of the "os" field.
-func (m *StorageMutation) ClearOs() {
-	m.os = nil
-	m.clearedFields[storage.FieldOs] = struct{}{}
-}
-
-// OsCleared returns if the "os" field was cleared in this mutation.
-func (m *StorageMutation) OsCleared() bool {
-	_, ok := m.clearedFields[storage.FieldOs]
-	return ok
-}
-
 // ResetOs resets all changes to the "os" field.
 func (m *StorageMutation) ResetOs() {
 	m.os = nil
-	delete(m.clearedFields, storage.FieldOs)
 }
 
 // SetArch sets the "arch" field.
@@ -1392,22 +1379,9 @@ func (m *StorageMutation) OldArch(ctx context.Context) (v string, err error) {
 	return oldValue.Arch, nil
 }
 
-// ClearArch clears the value of the "arch" field.
-func (m *StorageMutation) ClearArch() {
-	m.arch = nil
-	m.clearedFields[storage.FieldArch] = struct{}{}
-}
-
-// ArchCleared returns if the "arch" field was cleared in this mutation.
-func (m *StorageMutation) ArchCleared() bool {
-	_, ok := m.clearedFields[storage.FieldArch]
-	return ok
-}
-
 // ResetArch resets all changes to the "arch" field.
 func (m *StorageMutation) ResetArch() {
 	m.arch = nil
-	delete(m.clearedFields, storage.FieldArch)
 }
 
 // SetPackagePath sets the "package_path" field.
@@ -1860,12 +1834,6 @@ func (m *StorageMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *StorageMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(storage.FieldOs) {
-		fields = append(fields, storage.FieldOs)
-	}
-	if m.FieldCleared(storage.FieldArch) {
-		fields = append(fields, storage.FieldArch)
-	}
 	if m.FieldCleared(storage.FieldPackagePath) {
 		fields = append(fields, storage.FieldPackagePath)
 	}
@@ -1889,12 +1857,6 @@ func (m *StorageMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *StorageMutation) ClearField(name string) error {
 	switch name {
-	case storage.FieldOs:
-		m.ClearOs()
-		return nil
-	case storage.FieldArch:
-		m.ClearArch()
-		return nil
 	case storage.FieldPackagePath:
 		m.ClearPackagePath()
 		return nil

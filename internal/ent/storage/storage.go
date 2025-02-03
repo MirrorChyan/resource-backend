@@ -86,6 +86,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultOs holds the default value on creation for the "os" field.
+	DefaultOs string
+	// DefaultArch holds the default value on creation for the "arch" field.
+	DefaultArch string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 )
