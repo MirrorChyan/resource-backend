@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	entgo.io/ent v0.14.1
+	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/bytedance/sonic v1.12.8
 	github.com/dgraph-io/ristretto/v2 v2.1.0
 	github.com/go-redsync/redsync/v4 v4.13.0
@@ -24,7 +25,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic/loader v0.2.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
