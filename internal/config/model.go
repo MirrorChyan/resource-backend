@@ -50,7 +50,7 @@ type (
 		DB       int    `mapstructure:"db"`
 	}
 	ExtraConfig struct {
-		DownloadPrefix        string        `mapstructure:"download_prefix"`
+		DownloadPrefix        []string      `mapstructure:"download_prefix"`
 		DownloadEffectiveTime time.Duration `mapstructure:"download_effective_time"`
 		SqlDebugMode          bool          `mapstructure:"sql_debug_mode"`
 	}

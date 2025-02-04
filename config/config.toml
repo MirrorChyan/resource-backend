@@ -35,7 +35,14 @@ db = 0
 [extra]
 sql_debug_mode = false
 download_effective_time = "23m"
-download_prefix = "https://download.prefix.example/download"
+download_prefix = [
+    "https://download.prefixexample/download" , 1,
+    "https://download.prefixexample/download" , 2,
+    "https://download.prefixexample/download" , 3,
+]
+
+
+
 
 [billing]
 billing_checkin_url = "http://billing.checkin.example/check_in"
