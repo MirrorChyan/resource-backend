@@ -2,28 +2,6 @@ package model
 
 import "github.com/MirrorChyan/resource-backend/internal/ent"
 
-type CreateResourceParam struct {
-	ID          string
-	Name        string
-	Description string
-}
-
-type CreateVersionParam struct {
-	ResourceID        string
-	Name              string
-	OS                string
-	Arch              string
-	Channel           string
-	UploadArchivePath string
-}
-
-type VersionNameExistsParam struct {
-	ResourceID string
-	Name       string
-	OS         string
-	Arch       string
-}
-
 type ValidateCDKRequest struct {
 	CDK             string `json:"cdk"`
 	SpecificationID string `json:"specificationId,omitempty"`
@@ -37,49 +15,9 @@ type ValidateCDKResponse struct {
 	Data bool   `json:"data"`
 }
 
-type GetLatestVersionRequest struct {
-	CurrentVersion string `query:"current_version"`
-	OS             string `query:"os"`
-	Arch           string `query:"arch"`
-	CDK            string `query:"cdk"`
-	SpID           string `query:"sp_id"`
-	UserAgent      string `query:"user_agent"`
-}
-
-type QueryLatestResponseData struct {
-	VersionName   string `json:"version_name"`
-	VersionNumber uint64 `json:"version_number"`
-	Url           string `json:"url,omitempty"`
-	Channel       string `json:"channel"`
-	OS            string `json:"os,omitempty"`
-	Arch          string `json:"arch,omitempty"`
-	// UpdateType is the type of the update, it can be "full" or "incremental"
-	UpdateType string `json:"update_type,omitempty"`
-}
-
-type CreateVersionResponseData struct {
-	ID     int    `json:"id"`
-	Name   string `json:"name"`
-	Number uint64 `json:"number"`
-	OS     string `json:"os,omitempty"`
-	Arch   string `json:"arch,omitempty"`
-}
-
 type ValidateUploaderResponse struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
-}
-
-type CreateResourceRequest struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type CreateResourceResponseData struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
 }
 
 type TempDownloadInfo struct {
@@ -96,14 +34,6 @@ type BillingCheckinRequest struct {
 	Application string `json:"application"`
 	Module      string `json:"module"`
 	UserAgent   string `json:"user_agent"`
-}
-
-type ProcessUpdateParam struct {
-	ResourceID         string
-	CurrentVersionName string
-	TargetVersion      *ent.Version
-	OS                 string
-	Arch               string
 }
 
 type GetFullUpdatePackagePathParam struct {
