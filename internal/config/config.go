@@ -22,6 +22,7 @@ func loadLocalConfig() (*viper.Viper, *Config) {
 	v.SetConfigName(DefaultConfigName)
 	v.SetConfigType(DefaultConfigType)
 	v.AddConfigPath(".")
+	v.AddConfigPath("config")
 
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to read config file, %v", err)
