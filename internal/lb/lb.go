@@ -1,8 +1,6 @@
 package lb
 
-import (
-	"sync"
-)
+const cacheSize = 1200
 
 type Server struct {
 	Url    string
@@ -14,7 +12,7 @@ type WeightedRoundRobin struct {
 	index   int
 	cw      int
 	gcd     int
-	mu      sync.Mutex
+	cache   chan string
 }
 
 func calculate(weights []int) int {
@@ -23,7 +21,6 @@ func calculate(weights []int) int {
 		for weight != 0 {
 			g, weight = weight, g%weight
 		}
-		g = g
 	}
 	return g
 }
@@ -44,17 +41,23 @@ func NewWeightedRoundRobin(servers []Server) *WeightedRoundRobin {
 		weights[i] = server.Weight
 	}
 
-	return &WeightedRoundRobin{
+	ch := make(chan string, cacheSize)
+	wrr := &WeightedRoundRobin{
 		servers: servers,
 		gcd:     calculate(weights),
 		index:   -1,
+		cache:   ch,
 	}
+	go func() {
+		for {
+			ch <- wrr.next()
+		}
+	}()
+
+	return wrr
 }
 
-func (wrr *WeightedRoundRobin) Next() Server {
-	wrr.mu.Lock()
-	defer wrr.mu.Unlock()
-
+func (wrr *WeightedRoundRobin) next() string {
 	for {
 		wrr.index = (wrr.index + 1) % len(wrr.servers)
 		if wrr.index == 0 {
@@ -62,13 +65,17 @@ func (wrr *WeightedRoundRobin) Next() Server {
 			if wrr.cw <= 0 {
 				wrr.cw = maxWeight(wrr.servers)
 				if wrr.cw == 0 {
-					return Server{}
+					return wrr.servers[0].Url
 				}
 			}
 		}
 
 		if wrr.servers[wrr.index].Weight >= wrr.cw {
-			return wrr.servers[wrr.index]
+			return wrr.servers[wrr.index].Url
 		}
 	}
+}
+
+func (wrr *WeightedRoundRobin) Next() string {
+	return <-wrr.cache
 }

@@ -519,7 +519,7 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, cdk string, param Proc
 
 	next := wrr().Next()
 
-	url = strings.Join([]string{next.Url, key}, "/")
+	url = strings.Join([]string{next, key}, "/")
 
 	return
 }
