@@ -63,13 +63,7 @@ func (r RemoteError) Error() string {
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
-	// stable channel
-	r.Get("/resources/:rid/latest", h.GetLatestStable)
-	r.Get("/resources/:rid/stable/latest", h.GetLatestStable)
-	// beta channel
-	r.Get("/resources/:rid/beta/latest", h.GetLatestBeta)
-	// alpha channel
-	r.Get("/resources/:rid/alpha/latest", h.GetLatestAlpha)
+	r.Get("/resources/:rid/latest", h.GetLatest)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", h.ValidateUploader)
@@ -220,16 +214,13 @@ func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
 	return "", false
 }
 
-func (h *VersionHandler) doProcessOsAndArch(c *fiber.Ctx) (resOS string, resArch string, err error) {
-	resOS = c.FormValue("os")
-	resArch = c.FormValue("arch")
-
-	resOS, ok := h.handleOSParam(resOS)
+func (h *VersionHandler) doProcessOsAndArch(inputOS string, inputArch string) (resOS string, resArch string, err error) {
+	resOS, ok := h.handleOSParam(inputOS)
 	if !ok {
 		return "", "", errors.New("invalid os")
 	}
 
-	resArch, ok = h.handleArchParam(resArch)
+	resArch, ok = h.handleArchParam(inputArch)
 	if !ok {
 		return "", "", errors.New("invalid arch")
 	}
@@ -281,7 +272,9 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	resourceOS, resourceArch, err := h.doProcessOsAndArch(c)
+	resOS := c.FormValue("os")
+	resArch := c.FormValue("arch")
+	resourceOS, resourceArch, err := h.doProcessOsAndArch(resOS, resArch)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
@@ -485,17 +478,24 @@ func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (resID string, req *
 		return "", nil, errors.New("invalid param")
 	}
 
-	resOS, resArch, err := h.doProcessOsAndArch(c)
+	resOS, resArch, err := h.doProcessOsAndArch(req.OS, req.Arch)
 	if err != nil {
 		return "", nil, err
 	}
 
 	req.OS, req.Arch = resOS, resArch
 
+	channel, ok := h.handleChannelParam(req.Channel)
+	if !ok {
+		return "", nil, errors.New("invalid channel")
+	}
+
+	req.Channel = channel
+
 	return
 }
 
-func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx context.Context, resID string) (*ent.Version, error)) error {
+func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	resID, req, err := h.handleGetLatestParam(c)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
@@ -503,6 +503,17 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 	}
 
 	ctx := c.UserContext()
+
+	var getLatestFunc func(ctx context.Context, resID string) (*ent.Version, error)
+
+	switch req.Channel {
+	case "stable":
+		getLatestFunc = h.versionLogic.GetLatestStableVersion
+	case "beta":
+		getLatestFunc = h.versionLogic.GetLatestBetaVersion
+	case "alpha":
+		getLatestFunc = h.versionLogic.GetLatestAlphaVersion
+	}
 
 	latest, err := getLatestFunc(ctx, resID)
 
@@ -585,16 +596,4 @@ func (h *VersionHandler) handleGetLatest(c *fiber.Ctx, getLatestFunc func(ctx co
 	data.Url, data.UpdateType = url, updateType
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
-}
-
-func (h *VersionHandler) GetLatestStable(c *fiber.Ctx) error {
-	return h.handleGetLatest(c, h.versionLogic.GetLatestStableVersion)
-}
-
-func (h *VersionHandler) GetLatestBeta(c *fiber.Ctx) error {
-	return h.handleGetLatest(c, h.versionLogic.GetLatestBetaVersion)
-}
-
-func (h *VersionHandler) GetLatestAlpha(c *fiber.Ctx) error {
-	return h.handleGetLatest(c, h.versionLogic.GetLatestAlphaVersion)
 }

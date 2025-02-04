@@ -10,6 +10,7 @@ type GetLatestVersionRequest struct {
 	CurrentVersion string `query:"current_version"`
 	OS             string `query:"os"`
 	Arch           string `query:"arch"`
+	Channel        string `query:"channel"`
 	CDK            string `query:"cdk"`
 	SpID           string `query:"sp_id"`
 	UserAgent      string `query:"user_agent"`
