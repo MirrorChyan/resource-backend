@@ -73,20 +73,25 @@ func (c *VersionComparator) Compare(v1, v2 string) CompareResult {
 			Result:     parser1.Compare(parsed1, parsed2),
 		}
 	}
-	return CompareResult{Comparable: false}
+	return CompareResult{Comparable: false, Result: Invalid}
 }
 
-func (c *VersionComparator) parseVersion(v string) (interface{}, Parser) {
-	parser, ok := c.canParseWithAnyParser(v)
+func (c *VersionComparator) parseVersion(version string) (interface{}, Parser) {
+	version = c.preprocessVersion(version)
+	if version == "" {
+		return nil, nil
+	}
+
+	parser, ok := c.canParseWithAnyParser(version)
 	if !ok {
 		return nil, nil
 
 	}
 
-	parsed, err := parser.Parse(v)
+	parsed, err := parser.Parse(version)
 	if err != nil {
 		zap.L().Error("Failed to parse version",
-			zap.String("version name", v),
+			zap.String("version name", version),
 			zap.String("parser name", parser.Name()),
 			zap.Error(err),
 		)
@@ -97,16 +102,20 @@ func (c *VersionComparator) parseVersion(v string) (interface{}, Parser) {
 }
 
 func (c *VersionComparator) IsVersionParsable(version string) bool {
-	if len(version) > 0 && (version[0] == 'v' || version[0] == 'V') {
-		version = version[1:]
-	}
-
+	version = c.preprocessVersion(version)
 	if version == "" {
 		return false
 	}
 
 	_, ok := c.canParseWithAnyParser(version)
 	return ok
+}
+
+func (c *VersionComparator) preprocessVersion(version string) string {
+	if len(version) > 0 && (version[0] == 'v' || version[0] == 'V') {
+		version = version[1:]
+	}
+	return version
 }
 
 func (c *VersionComparator) canParseWithAnyParser(version string) (Parser, bool) {
