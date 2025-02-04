@@ -1,8 +1,18 @@
+[registry]
+host = "xxxx"
+port = 1234
+grpc_port = 1234
+namespace_id = "xxxx"
+group = "xxxx"
+data_id = "xxxx"
+username = "xxxx"
+password = "xxxx"
+
 [server]
 port = 8000
 
 [log]
-level = "info"
+level = "debug"
 max_size = 5
 max_backups = 10
 max_age = 30
@@ -23,7 +33,7 @@ addr = "localhost:6379"
 db = 0
 
 [extra]
-sql_debug_mode = true
+sql_debug_mode = false
 download_effective_time = "23m"
 download_prefix = "https://download.prefix.example/download"
 
@@ -33,3 +43,4 @@ billing_checkin_url = "http://billing.checkin.example/check_in"
 [auth]
 uploader_validation_url = "https://uploader.validation.example"
 cdk_validation_url = "https://cdk.validation.example"
+
