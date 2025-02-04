@@ -35,9 +35,9 @@ func (p *DateTimeParser) Compare(a, b interface{}) int {
 	timeA := a.(time.Time)
 	timeB := b.(time.Time)
 	if timeA.Before(timeB) {
-		return -1
+		return Less
 	} else if timeA.After(timeB) {
-		return 1
+		return Greater
 	}
-	return 0
+	return Equal
 }
