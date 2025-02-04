@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/middleware"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/bytedance/sonic"
 
@@ -66,73 +65,8 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	r.Get("/resources/:rid/latest", h.GetLatest)
 
 	// For Developer
-	r.Use("/resources/:rid/versions", h.ValidateUploader)
+	r.Use("/resources/:rid/versions", middleware.NewValidateUploader())
 	r.Post("/resources/:rid/versions", h.Create)
-}
-
-func (h *VersionHandler) ValidateUploader(c *fiber.Ctx) error {
-	token := c.Get("Authorization")
-	if token == "" {
-		resp := response.BusinessError("missing Authorization header")
-		return c.Status(fiber.StatusUnauthorized).JSON(resp)
-	}
-
-	var conf = config.CFG
-
-	url := fmt.Sprintf("%s?token=%s", conf.Auth.UploaderValidationURL, token)
-	resp, err := http.Post(url, "application/json", nil)
-	if err != nil {
-		h.logger.Error("Failed to request uploader validation",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	defer func(b io.ReadCloser) {
-		err := b.Close()
-		if err != nil {
-			h.logger.Error("Failed to close response body")
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		h.logger.Error("Request uploader validation status code not 200",
-			zap.Int("status code", resp.StatusCode),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusUnauthorized).JSON(resp)
-	}
-
-	var res ValidateUploaderResponse
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if err := sonic.Unmarshal(buf, &res); err != nil {
-		h.logger.Error("Failed to decode response body",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	if res.Code == 1 {
-		h.logger.Info("Uploader validation failed",
-			zap.Int("code", res.Code),
-			zap.String("msg", res.Msg),
-		)
-		resp := response.BusinessError("invalid authorization token")
-		return c.Status(fiber.StatusUnauthorized).JSON(resp)
-	} else if res.Code == -1 {
-		h.logger.Error("Uploader validation failed",
-			zap.Int("code", res.Code),
-			zap.String("msg", res.Msg),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	return c.Next()
 }
 
 func (h *VersionHandler) isValidExtension(filename string) bool {
