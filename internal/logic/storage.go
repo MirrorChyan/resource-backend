@@ -195,7 +195,7 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context, resID string, chann
 		return err
 	}
 
-	// get all old imcremental update storages
+	// get all old incremental update storages
 	incrementalUpdateStorages, err := l.storageRepo.GetOldIncrementalUpdateStorages(ctx, resID, channel, latestVerID)
 	if err != nil {
 		l.logger.Error("get old version incremental update storages failed",

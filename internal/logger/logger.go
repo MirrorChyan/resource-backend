@@ -11,21 +11,31 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+var (
+	level = zap.NewAtomicLevelAt(zap.InfoLevel)
+)
+
+func SetLevel(l string) {
+	level.SetLevel(getLevel(l))
+}
+
 func New() *zap.Logger {
+	SetLevel(config.CFG.Log.Level)
+	config.SetLogLevelChangeListener(SetLevel)
 	var (
-		conf = config.CFG
+		encoder = getConsoleEncoder()
+		core    = zapcore.NewCore(
+			encoder,
+			zapcore.AddSync(os.Stdout),
+			level,
+		)
 	)
-	encoder := getConsoleEncoder()
-	core := zapcore.NewCore(
-		encoder,
-		zapcore.AddSync(os.Stdout),
-		getLevel(conf.Log.Level),
-	)
+
 	return zap.New(core, zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel))
 }
 
-func getLevel(level string) zapcore.Level {
-	switch level {
+func getLevel(l string) zapcore.Level {
+	switch l {
 	case "debug":
 		return zap.DebugLevel
 	case "info":

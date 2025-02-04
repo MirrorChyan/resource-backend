@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
@@ -15,6 +16,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/lb"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
@@ -81,6 +83,25 @@ const (
 
 var (
 	StorageInfoNotFound = errors.New("storage info not found")
+
+	wrr = sync.OnceValue(func() *lb.WeightedRoundRobin {
+		var (
+			prefix  = config.CFG.Extra.DownloadPrefix
+			servers []lb.Server
+		)
+		l := len(prefix)
+		for i := 0; i < l; i += 2 {
+			w, err := strconv.Atoi(prefix[i+1])
+			if err != nil {
+				continue
+			}
+			servers = append(servers, lb.Server{
+				Url:    prefix[i],
+				Weight: w,
+			})
+		}
+		return lb.NewWeightedRoundRobin(servers)
+	})
 )
 
 func (l *VersionLogic) GetVersionChannel(channel string) version.Channel {
@@ -496,7 +517,9 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, cdk string, param Proc
 		return "", "", err
 	}
 
-	url = strings.Join([]string{cfg.Extra.DownloadPrefix, key}, "/")
+	next := wrr().Next()
+
+	url = strings.Join([]string{next.Url, key}, "/")
 
 	return
 }

@@ -3,106 +3,38 @@ package config
 import (
 	"github.com/spf13/viper"
 	"log"
-	"os"
-	"path"
-	"path/filepath"
-	"time"
 )
 
-type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Log      LogConfig      `mapstructure:"log"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Auth     AuthConfig     `mapstructure:"auth"`
-	Billing  BillingConfig  `mapstructure:"billing"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Extra    ExtraConfig    `mapstructure:"extra"`
-}
-
-type ServerConfig struct {
-	Port int `mapstructure:"port"`
-}
-
-type LogConfig struct {
-	Level      string `mapstructure:"level"`
-	MaxSize    int    `mapstructure:"max_size"`
-	MaxBackups int    `mapstructure:"max_backups"`
-	MaxAge     int    `mapstructure:"max_age"`
-	Compress   bool   `mapstructure:"compress"`
-}
-
-type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-	Name     string `mapstructure:"name"`
-}
-
-type RedisConfig struct {
-	Addr     string `mapstructure:"addr"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-	Name     string `mapstructure:"name"`
-	DB       int    `mapstructure:"db"`
-}
-
-type ExtraConfig struct {
-	DownloadPrefix        string        `mapstructure:"download_prefix"`
-	DownloadEffectiveTime time.Duration `mapstructure:"download_effective_time"`
-	SqlDebugMode          bool          `mapstructure:"sql_debug_mode"`
-}
-
-type AuthConfig struct {
-	UploaderValidationURL string `mapstructure:"uploader_validation_url"`
-	CDKValidationURL      string `mapstructure:"cdk_validation_url"`
-}
-
-type BillingConfig struct {
-	CheckinURL string `mapstructure:"billing_checkin_url"`
-}
-
-const DefaultPort = 8000
-
 var (
-	CFG *Config
+	CFG           *Config
+	levelListener func(level string)
 )
 
 func New() *Config {
+	v, c := loadLocalConfig()
+	loadRemoteConfig(v, c)
+	return c
+}
+
+func loadLocalConfig() (*viper.Viper, *Config) {
 	v := viper.New()
-
-	v.SetDefault("server.port", DefaultPort)
-
-	v.SetConfigName("config")
-	v.SetConfigType("toml")
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Failed to get current directory, %v", err)
-	}
-	// Search the current working directory first for the configuration file
-	v.AddConfigPath(cwd)
-
-	configDir := path.Join(cwd, "config")
-
-	v.AddConfigPath(configDir)
-
-	exePath, err := os.Executable()
-	if err != nil {
-		log.Fatalf("Failed to get executable path, %v", err)
-	}
-	exeDir := filepath.Dir(exePath)
-
-	v.AddConfigPath(exeDir)
+	v.SetDefault(ServerPortKey, DefaultPort)
+	v.SetConfigName(DefaultConfigName)
+	v.SetConfigType(DefaultConfigType)
+	v.AddConfigPath(".")
+	v.AddConfigPath("config")
 
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to read config file, %v", err)
 	}
 
-	var config Config
-	if err := v.Unmarshal(&config); err != nil {
+	var c = new(Config)
+	if err := v.Unmarshal(c); err != nil {
 		log.Fatalf("Failed to unmarshal config file, %v", err)
 	}
 
-	return &config
+	if err := v.ReadInConfig(); err != nil {
+		log.Fatalf("Failed to read config file, %v", err)
+	}
+	return v, c
 }
