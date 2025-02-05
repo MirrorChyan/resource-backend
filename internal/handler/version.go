@@ -208,7 +208,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	resOS := c.FormValue("os")
 	resArch := c.FormValue("arch")
-	resourceOS, resourceArch, err := h.doProcessOsAndArch(resOS, resArch)
+	resOS, resArch, err = h.doProcessOsAndArch(resOS, resArch)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
@@ -232,8 +232,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
 		ResourceID: resID,
 		Name:       verName,
-		OS:         resourceOS,
-		Arch:       resourceArch,
+		OS:         resOS,
+		Arch:       resArch,
 	})
 	switch {
 	case err != nil:
@@ -246,8 +246,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		h.logger.Info("Version name already exists",
 			zap.String("resource id", resID),
 			zap.String("version name", verName),
-			zap.String("resource os", resourceOS),
-			zap.String("resource arch", resourceArch),
+			zap.String("resource os", resOS),
+			zap.String("resource arch", resArch),
 		)
 		resp := response.BusinessError("version name under the current platform architecture already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
@@ -282,8 +282,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		ResourceID:        resID,
 		Name:              verName,
 		UploadArchivePath: dest,
-		OS:                resourceOS,
-		Arch:              resourceArch,
+		OS:                resOS,
+		Arch:              resArch,
 		Channel:           channel,
 	})
 	if err != nil {
@@ -297,6 +297,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	data := CreateVersionResponseData{
 		Name:   ver.Name,
 		Number: ver.Number,
+		OS:     resOS,
+		Arch:   resArch,
 	}
 	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
 }
