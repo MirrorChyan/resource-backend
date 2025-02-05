@@ -60,10 +60,6 @@ func main() {
 
 	handlerSet := wire.NewHandlerSet(zap.L(), mysql, redis, redSync, group, verComparator)
 
-	app.Use(fiberzap.New(fiberzap.Config{
-		Logger: zap.L(),
-	}))
-
 	initRoute(app, handlerSet)
 
 	addr := fmt.Sprintf(":%d", config.CFG.Server.Port)
@@ -82,6 +78,10 @@ func setUpConfigAndLog() {
 }
 
 func initRoute(app *fiber.App, handlerSet *wire.HandlerSet) {
+	app.Use(fiberzap.New(fiberzap.Config{
+		Logger: zap.L(),
+	}))
+
 	r := app.Group("/")
 
 	handlerSet.ResourceHandler.Register(r)
