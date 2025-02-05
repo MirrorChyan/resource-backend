@@ -566,29 +566,33 @@ func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
 }
 
 func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (targetStorage *ent.Storage, currentStorage *ent.Storage, err error) {
-	g, ctx := errgroup.WithContext(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	g.Go(func() error {
+	var ch = make(chan *ent.Storage, 1)
+	defer close(ch)
+
+	wg := errgroup.Group{}
+	wg.Go(func() error {
 		s, err := l.storageLogic.GetFullUpdateStorage(ctx, target, resOS, resArch)
 		if err != nil {
 			return err
 		}
-		targetStorage = s
+		ch <- s
 		return nil
 	})
 
-	g.Go(func() error {
-		s, err := l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
-		if err != nil {
-			return err
-		}
-		currentStorage = s
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
+	currentStorage, err = l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
+	if err != nil {
 		return nil, nil, err
 	}
+
+	wge := wg.Wait()
+	if wge != nil {
+		return nil, nil, wge
+	}
+
+	targetStorage = <-ch
 
 	return targetStorage, currentStorage, nil
 }
