@@ -566,31 +566,31 @@ func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
 }
 
 func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (targetStorage *ent.Storage, currentStorage *ent.Storage, err error) {
-	var ch = make(chan *ent.Storage, 1)
-	defer close(ch)
+	g, ctx := errgroup.WithContext(ctx)
 
-	wg := errgroup.Group{}
-	wg.Go(func() error {
+	g.Go(func() error {
 		s, err := l.storageLogic.GetFullUpdateStorage(ctx, target, resOS, resArch)
 		if err != nil {
 			return err
 		}
-		ch <- s
+		targetStorage = s
 		return nil
 	})
-	currentStorage, err = l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
-	wge := wg.Wait()
 
-	if err != nil {
+	g.Go(func() error {
+		s, err := l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
+		if err != nil {
+			return err
+		}
+		currentStorage = s
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, nil, err
 	}
-	if wge != nil {
-		return nil, nil, wge
-	}
 
-	targetStorage = <-ch
-
-	return
+	return targetStorage, currentStorage, nil
 }
 
 func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param ActualUpdateProcessInfo) (string, error) {
