@@ -24,6 +24,8 @@ type Version struct {
 	Name string `json:"name,omitempty"`
 	// Number holds the value of the "number" field.
 	Number uint64 `json:"number,omitempty"`
+	// ReleaseNote holds the value of the "release_note" field.
+	ReleaseNote string `json:"release_note,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -71,7 +73,7 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case version.FieldID, version.FieldNumber:
 			values[i] = new(sql.NullInt64)
-		case version.FieldChannel, version.FieldName:
+		case version.FieldChannel, version.FieldName, version.FieldReleaseNote:
 			values[i] = new(sql.NullString)
 		case version.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -115,6 +117,12 @@ func (v *Version) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field number", values[i])
 			} else if value.Valid {
 				v.Number = uint64(value.Int64)
+			}
+		case version.FieldReleaseNote:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field release_note", values[i])
+			} else if value.Valid {
+				v.ReleaseNote = value.String
 			}
 		case version.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -183,6 +191,9 @@ func (v *Version) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("number=")
 	builder.WriteString(fmt.Sprintf("%v", v.Number))
+	builder.WriteString(", ")
+	builder.WriteString("release_note=")
+	builder.WriteString(v.ReleaseNote)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(v.CreatedAt.Format(time.ANSIC))

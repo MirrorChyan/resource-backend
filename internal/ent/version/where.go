@@ -65,6 +65,11 @@ func Number(v uint64) predicate.Version {
 	return predicate.Version(sql.FieldEQ(FieldNumber, v))
 }
 
+// ReleaseNote applies equality check predicate on the "release_note" field. It's identical to ReleaseNoteEQ.
+func ReleaseNote(v string) predicate.Version {
+	return predicate.Version(sql.FieldEQ(FieldReleaseNote, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Version {
 	return predicate.Version(sql.FieldEQ(FieldCreatedAt, v))
@@ -193,6 +198,71 @@ func NumberLT(v uint64) predicate.Version {
 // NumberLTE applies the LTE predicate on the "number" field.
 func NumberLTE(v uint64) predicate.Version {
 	return predicate.Version(sql.FieldLTE(FieldNumber, v))
+}
+
+// ReleaseNoteEQ applies the EQ predicate on the "release_note" field.
+func ReleaseNoteEQ(v string) predicate.Version {
+	return predicate.Version(sql.FieldEQ(FieldReleaseNote, v))
+}
+
+// ReleaseNoteNEQ applies the NEQ predicate on the "release_note" field.
+func ReleaseNoteNEQ(v string) predicate.Version {
+	return predicate.Version(sql.FieldNEQ(FieldReleaseNote, v))
+}
+
+// ReleaseNoteIn applies the In predicate on the "release_note" field.
+func ReleaseNoteIn(vs ...string) predicate.Version {
+	return predicate.Version(sql.FieldIn(FieldReleaseNote, vs...))
+}
+
+// ReleaseNoteNotIn applies the NotIn predicate on the "release_note" field.
+func ReleaseNoteNotIn(vs ...string) predicate.Version {
+	return predicate.Version(sql.FieldNotIn(FieldReleaseNote, vs...))
+}
+
+// ReleaseNoteGT applies the GT predicate on the "release_note" field.
+func ReleaseNoteGT(v string) predicate.Version {
+	return predicate.Version(sql.FieldGT(FieldReleaseNote, v))
+}
+
+// ReleaseNoteGTE applies the GTE predicate on the "release_note" field.
+func ReleaseNoteGTE(v string) predicate.Version {
+	return predicate.Version(sql.FieldGTE(FieldReleaseNote, v))
+}
+
+// ReleaseNoteLT applies the LT predicate on the "release_note" field.
+func ReleaseNoteLT(v string) predicate.Version {
+	return predicate.Version(sql.FieldLT(FieldReleaseNote, v))
+}
+
+// ReleaseNoteLTE applies the LTE predicate on the "release_note" field.
+func ReleaseNoteLTE(v string) predicate.Version {
+	return predicate.Version(sql.FieldLTE(FieldReleaseNote, v))
+}
+
+// ReleaseNoteContains applies the Contains predicate on the "release_note" field.
+func ReleaseNoteContains(v string) predicate.Version {
+	return predicate.Version(sql.FieldContains(FieldReleaseNote, v))
+}
+
+// ReleaseNoteHasPrefix applies the HasPrefix predicate on the "release_note" field.
+func ReleaseNoteHasPrefix(v string) predicate.Version {
+	return predicate.Version(sql.FieldHasPrefix(FieldReleaseNote, v))
+}
+
+// ReleaseNoteHasSuffix applies the HasSuffix predicate on the "release_note" field.
+func ReleaseNoteHasSuffix(v string) predicate.Version {
+	return predicate.Version(sql.FieldHasSuffix(FieldReleaseNote, v))
+}
+
+// ReleaseNoteEqualFold applies the EqualFold predicate on the "release_note" field.
+func ReleaseNoteEqualFold(v string) predicate.Version {
+	return predicate.Version(sql.FieldEqualFold(FieldReleaseNote, v))
+}
+
+// ReleaseNoteContainsFold applies the ContainsFold predicate on the "release_note" field.
+func ReleaseNoteContainsFold(v string) predicate.Version {
+	return predicate.Version(sql.FieldContainsFold(FieldReleaseNote, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

@@ -79,6 +79,20 @@ func (vu *VersionUpdate) AddNumber(u int64) *VersionUpdate {
 	return vu
 }
 
+// SetReleaseNote sets the "release_note" field.
+func (vu *VersionUpdate) SetReleaseNote(s string) *VersionUpdate {
+	vu.mutation.SetReleaseNote(s)
+	return vu
+}
+
+// SetNillableReleaseNote sets the "release_note" field if the given value is not nil.
+func (vu *VersionUpdate) SetNillableReleaseNote(s *string) *VersionUpdate {
+	if s != nil {
+		vu.SetReleaseNote(*s)
+	}
+	return vu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (vu *VersionUpdate) SetCreatedAt(t time.Time) *VersionUpdate {
 	vu.mutation.SetCreatedAt(t)
@@ -225,6 +239,9 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := vu.mutation.AddedNumber(); ok {
 		_spec.AddField(version.FieldNumber, field.TypeUint64, value)
 	}
+	if value, ok := vu.mutation.ReleaseNote(); ok {
+		_spec.SetField(version.FieldReleaseNote, field.TypeString, value)
+	}
 	if value, ok := vu.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)
 	}
@@ -368,6 +385,20 @@ func (vuo *VersionUpdateOne) SetNillableNumber(u *uint64) *VersionUpdateOne {
 // AddNumber adds u to the "number" field.
 func (vuo *VersionUpdateOne) AddNumber(u int64) *VersionUpdateOne {
 	vuo.mutation.AddNumber(u)
+	return vuo
+}
+
+// SetReleaseNote sets the "release_note" field.
+func (vuo *VersionUpdateOne) SetReleaseNote(s string) *VersionUpdateOne {
+	vuo.mutation.SetReleaseNote(s)
+	return vuo
+}
+
+// SetNillableReleaseNote sets the "release_note" field if the given value is not nil.
+func (vuo *VersionUpdateOne) SetNillableReleaseNote(s *string) *VersionUpdateOne {
+	if s != nil {
+		vuo.SetReleaseNote(*s)
+	}
 	return vuo
 }
 
@@ -546,6 +577,9 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 	}
 	if value, ok := vuo.mutation.AddedNumber(); ok {
 		_spec.AddField(version.FieldNumber, field.TypeUint64, value)
+	}
+	if value, ok := vuo.mutation.ReleaseNote(); ok {
+		_spec.SetField(version.FieldReleaseNote, field.TypeString, value)
 	}
 	if value, ok := vuo.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)

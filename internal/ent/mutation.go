@@ -2001,6 +2001,7 @@ type VersionMutation struct {
 	name            *string
 	number          *uint64
 	addnumber       *int64
+	release_note    *string
 	created_at      *time.Time
 	clearedFields   map[string]struct{}
 	storages        map[int]struct{}
@@ -2239,6 +2240,42 @@ func (m *VersionMutation) ResetNumber() {
 	m.addnumber = nil
 }
 
+// SetReleaseNote sets the "release_note" field.
+func (m *VersionMutation) SetReleaseNote(s string) {
+	m.release_note = &s
+}
+
+// ReleaseNote returns the value of the "release_note" field in the mutation.
+func (m *VersionMutation) ReleaseNote() (r string, exists bool) {
+	v := m.release_note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReleaseNote returns the old "release_note" field's value of the Version entity.
+// If the Version object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VersionMutation) OldReleaseNote(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReleaseNote is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReleaseNote requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReleaseNote: %w", err)
+	}
+	return oldValue.ReleaseNote, nil
+}
+
+// ResetReleaseNote resets all changes to the "release_note" field.
+func (m *VersionMutation) ResetReleaseNote() {
+	m.release_note = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *VersionMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -2402,7 +2439,7 @@ func (m *VersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *VersionMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.channel != nil {
 		fields = append(fields, version.FieldChannel)
 	}
@@ -2411,6 +2448,9 @@ func (m *VersionMutation) Fields() []string {
 	}
 	if m.number != nil {
 		fields = append(fields, version.FieldNumber)
+	}
+	if m.release_note != nil {
+		fields = append(fields, version.FieldReleaseNote)
 	}
 	if m.created_at != nil {
 		fields = append(fields, version.FieldCreatedAt)
@@ -2429,6 +2469,8 @@ func (m *VersionMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case version.FieldNumber:
 		return m.Number()
+	case version.FieldReleaseNote:
+		return m.ReleaseNote()
 	case version.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -2446,6 +2488,8 @@ func (m *VersionMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldName(ctx)
 	case version.FieldNumber:
 		return m.OldNumber(ctx)
+	case version.FieldReleaseNote:
+		return m.OldReleaseNote(ctx)
 	case version.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -2477,6 +2521,13 @@ func (m *VersionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetNumber(v)
+		return nil
+	case version.FieldReleaseNote:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReleaseNote(v)
 		return nil
 	case version.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -2557,6 +2608,9 @@ func (m *VersionMutation) ResetField(name string) error {
 		return nil
 	case version.FieldNumber:
 		m.ResetNumber()
+		return nil
+	case version.FieldReleaseNote:
+		m.ResetReleaseNote()
 		return nil
 	case version.FieldCreatedAt:
 		m.ResetCreatedAt()

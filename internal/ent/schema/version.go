@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -22,6 +23,12 @@ func (Version) Fields() []ent.Field {
 		field.String("name").
 			NotEmpty(),
 		field.Uint64("number"),
+		field.String("release_note").
+			SchemaType(
+				map[string]string{
+					dialect.MySQL: "longtext",
+				}).
+			Default(""),
 		field.Time("created_at").
 			Default(time.Now),
 	}

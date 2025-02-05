@@ -95,6 +95,7 @@ var (
 		{Name: "channel", Type: field.TypeEnum, Enums: []string{"stable", "alpha", "beta"}, Default: "stable"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "number", Type: field.TypeUint64},
+		{Name: "release_note", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "resource_versions", Type: field.TypeString, Nullable: true},
 	}
@@ -106,7 +107,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "versions_resources_versions",
-				Columns:    []*schema.Column{VersionsColumns[5]},
+				Columns:    []*schema.Column{VersionsColumns[6]},
 				RefColumns: []*schema.Column{ResourcesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
