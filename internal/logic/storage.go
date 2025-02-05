@@ -110,7 +110,7 @@ func (l *StorageLogic) GetIncrementalUpdatePath(ctx context.Context, param model
 func (l *StorageLogic) BuildVersionStorageDirPath(resID string, verID int, os, arch string) string {
 	platformDir := l.getPlatformDirName(os, arch)
 	verIDStr := strconv.Itoa(verID)
-	return filepath.Join(l.RootDir, resID, "versions", verIDStr, platformDir)
+	return filepath.Join(l.RootDir, resID, verIDStr, platformDir)
 }
 
 func (l *StorageLogic) getPlatformDirName(os, arch string) string {
