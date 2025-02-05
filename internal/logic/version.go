@@ -623,11 +623,17 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info 
 		return val, nil
 	}
 
-	mutex := l.sync.NewMutex(mutexKey)
+	mutex := l.sync.NewMutex(mutexKey, redsync.WithExpiry(10*time.Second))
 
 	if err := mutex.Lock(); err != nil {
 		return "", err
 	}
+
+	c, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go renewMutex(c, mutex)
+
 	defer func() {
 		if ok, err := mutex.Unlock(); !ok || err != nil {
 			l.logger.Error("Failed to unlock patch mutex")
@@ -654,6 +660,24 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info 
 	}
 
 	return p, err
+}
+
+func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ok, err := mutex.Extend()
+			if !ok || err != nil {
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+
 }
 
 func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
