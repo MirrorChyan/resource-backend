@@ -62,7 +62,11 @@ func (r RemoteError) Error() string {
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
-	r.Get("/resources/:rid/latest", h.GetLatest)
+
+	// for daily active user
+	dau := middleware.NewDailyActiveUserRecorder(h.versionLogic.GetRedisClient())
+
+	r.Get("/resources/:rid/latest", dau, h.GetLatest)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", middleware.NewValidateUploader())

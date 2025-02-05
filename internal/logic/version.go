@@ -104,6 +104,10 @@ var (
 	})
 )
 
+func (l *VersionLogic) GetRedisClient() *redis.Client {
+	return l.rdb
+}
+
 func (l *VersionLogic) GetVersionChannel(channel string) version.Channel {
 	switch channel {
 	case version.ChannelStable.String():
