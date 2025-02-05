@@ -123,7 +123,7 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 	)
 
 	flag.Store(false)
-	wg.SetLimit(runtime.NumCPU() * 5)
+	wg.SetLimit(runtime.NumCPU() * 10)
 	for i := range files {
 		if flag.Load() {
 			break
