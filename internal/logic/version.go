@@ -117,8 +117,13 @@ func (l *VersionLogic) GetVersionChannel(channel string) version.Channel {
 	}
 }
 
-func (l *VersionLogic) NameExists(ctx context.Context, param VersionNameExistsParam) (bool, error) {
-	ver, err := l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.Name)
+func (l *VersionLogic) GetVersionByName(ctx context.Context, param GetVersionByNameParam) (*ent.Version, error) {
+	return l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.VersionName)
+
+}
+
+func (l *VersionLogic) ExistNameWithOSAndArch(ctx context.Context, param ExistVersionNameWithOSAndArchParam) (bool, error) {
+	ver, err := l.versionRepo.GetVersionByName(ctx, param.ResourceID, param.VersionName)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, nil
@@ -769,4 +774,8 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 
 func (l *VersionLogic) GetFullUpdatePackagePath(ctx context.Context, param GetFullUpdatePackagePathParam) (string, error) {
 	return l.storageLogic.GetFullUpdatePath(ctx, param.VersionID, param.OS, param.Arch)
+}
+
+func (l *VersionLogic) UpdateReleaseNote(ctx context.Context, param UpdateReleaseNoteParam) error {
+	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionID, param.ReleaseNote)
 }

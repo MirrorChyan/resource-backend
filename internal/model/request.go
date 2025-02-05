@@ -15,3 +15,8 @@ type GetLatestVersionRequest struct {
 	SpID           string `query:"sp_id"`
 	UserAgent      string `query:"user_agent"`
 }
+
+type UpdateVersionReleaseNoteRequest struct {
+	VersionName string `json:"version_name"`
+	ReleaseNote string `json:"release_note"`
+}
