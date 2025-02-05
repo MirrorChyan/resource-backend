@@ -28,7 +28,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 type VersionLogic struct {
@@ -569,36 +568,35 @@ func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
 	return l.cacheGroup
 }
 
-func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (targetStorage *ent.Storage, currentStorage *ent.Storage, err error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, resOS string, resArch string) (*ent.Storage, *ent.Storage, error) {
 
-	var ch = make(chan *ent.Storage, 1)
-	defer close(ch)
-
-	wg := errgroup.Group{}
-	wg.Go(func() error {
-		s, err := l.storageLogic.GetFullUpdateStorage(ctx, target, resOS, resArch)
-		if err != nil {
-			return err
-		}
-		ch <- s
-		return nil
-	})
-
-	currentStorage, err = l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
+	targetStorage, err := l.getFullUpdateStorageByCache(ctx, target, resOS, resArch)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	wge := wg.Wait()
-	if wge != nil {
-		return nil, nil, wge
+	currentStorage, err := l.getFullUpdateStorageByCache(ctx, current, resOS, resArch)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	targetStorage = <-ch
-
 	return targetStorage, currentStorage, nil
+}
+
+func (l *VersionLogic) getFullUpdateStorageByCache(ctx context.Context, versionId int, os, arch string) (*ent.Storage, error) {
+	cg := l.cacheGroup
+	cacheKey := cg.GetCacheKey(
+		strconv.Itoa(versionId),
+		os,
+		arch,
+	)
+	val, err := cg.FullUpdateStorageCache.ComputeIfAbsent(cacheKey, func() (*ent.Storage, error) {
+		return l.storageLogic.GetFullUpdateStorage(ctx, versionId, os, arch)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return *val, err
 }
 
 func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param ActualUpdateProcessInfo) (string, error) {
