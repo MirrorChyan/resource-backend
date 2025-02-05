@@ -295,7 +295,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	data := CreateVersionResponseData{
-		ID:     ver.ID,
 		Name:   ver.Name,
 		Number: ver.Number,
 	}
