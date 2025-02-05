@@ -581,8 +581,11 @@ func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, curren
 	currentStorage, err = l.storageLogic.GetFullUpdateStorage(ctx, current, resOS, resArch)
 	wge := wg.Wait()
 
-	if err != nil || wge != nil {
+	if err != nil {
 		return nil, nil, err
+	}
+	if wge != nil {
+		return nil, nil, wge
 	}
 
 	targetStorage = <-ch
