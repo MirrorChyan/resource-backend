@@ -516,7 +516,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	m := c.GetReqHeaders()
 
-	_, ok := m["X-Mirrorc-HZ"]
+	_, ok := m["X-Mirrorc-Hz"]
 
 	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ok, cdk, ProcessUpdateParam{
 		ResourceID:         resID,
