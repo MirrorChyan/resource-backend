@@ -816,6 +816,10 @@ func (l *VersionLogic) GetFullUpdatePackagePath(ctx context.Context, param GetFu
 	return l.storageLogic.GetFullUpdatePath(ctx, param.VersionID, param.OS, param.Arch)
 }
 
-func (l *VersionLogic) UpdateReleaseNote(ctx context.Context, param UpdateReleaseNoteParam) error {
-	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionID, param.ReleaseNoteSummary, param.ReleaseNoteDetail)
+func (l *VersionLogic) UpdateReleaseNoteDetail(ctx context.Context, param UpdateReleaseNoteDetailParam) error {
+	return l.versionRepo.UpdateVersionReleaseNoteDetail(ctx, param.VersionID, param.ReleaseNoteDetail)
+}
+
+func (l *VersionLogic) UpdateReleaseNoteSummary(ctx context.Context, param UpdateReleaseNoteSummaryParam) error {
+	return l.versionRepo.UpdateVersionReleaseNoteSummary(ctx, param.VersionID, param.ReleaseNoteSummary)
 }

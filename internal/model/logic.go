@@ -37,8 +37,12 @@ type ProcessUpdateParam struct {
 	Arch               string
 }
 
-type UpdateReleaseNoteParam struct {
+type UpdateReleaseNoteDetailParam struct {
+	VersionID         int
+	ReleaseNoteDetail string
+}
+
+type UpdateReleaseNoteSummaryParam struct {
 	VersionID          int
 	ReleaseNoteSummary string
-	ReleaseNoteDetail  string
 }

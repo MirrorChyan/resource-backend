@@ -16,8 +16,12 @@ type GetLatestVersionRequest struct {
 	UserAgent      string `query:"user_agent"`
 }
 
-type UpdateVersionReleaseNoteRequest struct {
-	VersionName        string `json:"version_name"`
-	ReleaseNoteSummary string `json:"release_note_summary"`
-	ReleaseNoteDetail  string `json:"release_note_detail"`
+type UpdateReleaseNoteDetailRequest struct {
+	VersionName string `json:"version_name"`
+	Content     string `json:"content"`
+}
+
+type UpdateReleaseNoteSummaryRequest struct {
+	VersionName string `json:"version_name"`
+	Content     string `json:"content"`
 }
