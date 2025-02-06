@@ -71,6 +71,20 @@ func (sc *StorageCreate) SetNillablePackagePath(s *string) *StorageCreate {
 	return sc
 }
 
+// SetPackageHash sets the "package_hash" field.
+func (sc *StorageCreate) SetPackageHash(s string) *StorageCreate {
+	sc.mutation.SetPackageHash(s)
+	return sc
+}
+
+// SetNillablePackageHash sets the "package_hash" field if the given value is not nil.
+func (sc *StorageCreate) SetNillablePackageHash(s *string) *StorageCreate {
+	if s != nil {
+		sc.SetPackageHash(*s)
+	}
+	return sc
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (sc *StorageCreate) SetResourcePath(s string) *StorageCreate {
 	sc.mutation.SetResourcePath(s)
@@ -249,6 +263,10 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
 		_node.PackagePath = value
 	}
+	if value, ok := sc.mutation.PackageHash(); ok {
+		_spec.SetField(storage.FieldPackageHash, field.TypeString, value)
+		_node.PackageHash = value
+	}
 	if value, ok := sc.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
 		_node.ResourcePath = value
@@ -401,6 +419,24 @@ func (u *StorageUpsert) ClearPackagePath() *StorageUpsert {
 	return u
 }
 
+// SetPackageHash sets the "package_hash" field.
+func (u *StorageUpsert) SetPackageHash(v string) *StorageUpsert {
+	u.Set(storage.FieldPackageHash, v)
+	return u
+}
+
+// UpdatePackageHash sets the "package_hash" field to the value that was provided on create.
+func (u *StorageUpsert) UpdatePackageHash() *StorageUpsert {
+	u.SetExcluded(storage.FieldPackageHash)
+	return u
+}
+
+// ClearPackageHash clears the value of the "package_hash" field.
+func (u *StorageUpsert) ClearPackageHash() *StorageUpsert {
+	u.SetNull(storage.FieldPackageHash)
+	return u
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (u *StorageUpsert) SetResourcePath(v string) *StorageUpsert {
 	u.Set(storage.FieldResourcePath, v)
@@ -549,6 +585,27 @@ func (u *StorageUpsertOne) UpdatePackagePath() *StorageUpsertOne {
 func (u *StorageUpsertOne) ClearPackagePath() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
 		s.ClearPackagePath()
+	})
+}
+
+// SetPackageHash sets the "package_hash" field.
+func (u *StorageUpsertOne) SetPackageHash(v string) *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.SetPackageHash(v)
+	})
+}
+
+// UpdatePackageHash sets the "package_hash" field to the value that was provided on create.
+func (u *StorageUpsertOne) UpdatePackageHash() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.UpdatePackageHash()
+	})
+}
+
+// ClearPackageHash clears the value of the "package_hash" field.
+func (u *StorageUpsertOne) ClearPackageHash() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearPackageHash()
 	})
 }
 
@@ -872,6 +929,27 @@ func (u *StorageUpsertBulk) UpdatePackagePath() *StorageUpsertBulk {
 func (u *StorageUpsertBulk) ClearPackagePath() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
 		s.ClearPackagePath()
+	})
+}
+
+// SetPackageHash sets the "package_hash" field.
+func (u *StorageUpsertBulk) SetPackageHash(v string) *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.SetPackageHash(v)
+	})
+}
+
+// UpdatePackageHash sets the "package_hash" field to the value that was provided on create.
+func (u *StorageUpsertBulk) UpdatePackageHash() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.UpdatePackageHash()
+	})
+}
+
+// ClearPackageHash clears the value of the "package_hash" field.
+func (u *StorageUpsertBulk) ClearPackageHash() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearPackageHash()
 	})
 }
 

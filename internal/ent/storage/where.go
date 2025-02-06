@@ -70,6 +70,11 @@ func PackagePath(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldPackagePath, v))
 }
 
+// PackageHash applies equality check predicate on the "package_hash" field. It's identical to PackageHashEQ.
+func PackageHash(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackageHash, v))
+}
+
 // ResourcePath applies equality check predicate on the "resource_path" field. It's identical to ResourcePathEQ.
 func ResourcePath(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldResourcePath, v))
@@ -303,6 +308,81 @@ func PackagePathEqualFold(v string) predicate.Storage {
 // PackagePathContainsFold applies the ContainsFold predicate on the "package_path" field.
 func PackagePathContainsFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldContainsFold(FieldPackagePath, v))
+}
+
+// PackageHashEQ applies the EQ predicate on the "package_hash" field.
+func PackageHashEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackageHash, v))
+}
+
+// PackageHashNEQ applies the NEQ predicate on the "package_hash" field.
+func PackageHashNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldPackageHash, v))
+}
+
+// PackageHashIn applies the In predicate on the "package_hash" field.
+func PackageHashIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldPackageHash, vs...))
+}
+
+// PackageHashNotIn applies the NotIn predicate on the "package_hash" field.
+func PackageHashNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldPackageHash, vs...))
+}
+
+// PackageHashGT applies the GT predicate on the "package_hash" field.
+func PackageHashGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldPackageHash, v))
+}
+
+// PackageHashGTE applies the GTE predicate on the "package_hash" field.
+func PackageHashGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldPackageHash, v))
+}
+
+// PackageHashLT applies the LT predicate on the "package_hash" field.
+func PackageHashLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldPackageHash, v))
+}
+
+// PackageHashLTE applies the LTE predicate on the "package_hash" field.
+func PackageHashLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldPackageHash, v))
+}
+
+// PackageHashContains applies the Contains predicate on the "package_hash" field.
+func PackageHashContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldPackageHash, v))
+}
+
+// PackageHashHasPrefix applies the HasPrefix predicate on the "package_hash" field.
+func PackageHashHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldPackageHash, v))
+}
+
+// PackageHashHasSuffix applies the HasSuffix predicate on the "package_hash" field.
+func PackageHashHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldPackageHash, v))
+}
+
+// PackageHashIsNil applies the IsNil predicate on the "package_hash" field.
+func PackageHashIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldPackageHash))
+}
+
+// PackageHashNotNil applies the NotNil predicate on the "package_hash" field.
+func PackageHashNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldPackageHash))
+}
+
+// PackageHashEqualFold applies the EqualFold predicate on the "package_hash" field.
+func PackageHashEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldPackageHash, v))
+}
+
+// PackageHashContainsFold applies the ContainsFold predicate on the "package_hash" field.
+func PackageHashContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldPackageHash, v))
 }
 
 // ResourcePathEQ applies the EQ predicate on the "resource_path" field.

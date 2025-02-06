@@ -27,6 +27,8 @@ type Storage struct {
 	Arch string `json:"arch,omitempty"`
 	// PackagePath holds the value of the "package_path" field.
 	PackagePath string `json:"package_path,omitempty"`
+	// PackageHash holds the value of the "package_hash" field.
+	PackageHash string `json:"package_hash,omitempty"`
 	// only for full update
 	ResourcePath string `json:"resource_path,omitempty"`
 	// only for full update
@@ -83,7 +85,7 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case storage.FieldID:
 			values[i] = new(sql.NullInt64)
-		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldResourcePath:
+		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHash, storage.FieldResourcePath:
 			values[i] = new(sql.NullString)
 		case storage.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -135,6 +137,12 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field package_path", values[i])
 			} else if value.Valid {
 				s.PackagePath = value.String
+			}
+		case storage.FieldPackageHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field package_hash", values[i])
+			} else if value.Valid {
+				s.PackageHash = value.String
 			}
 		case storage.FieldResourcePath:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -227,6 +235,9 @@ func (s *Storage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("package_path=")
 	builder.WriteString(s.PackagePath)
+	builder.WriteString(", ")
+	builder.WriteString("package_hash=")
+	builder.WriteString(s.PackageHash)
 	builder.WriteString(", ")
 	builder.WriteString("resource_path=")
 	builder.WriteString(s.ResourcePath)

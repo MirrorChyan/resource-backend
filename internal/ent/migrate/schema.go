@@ -63,6 +63,7 @@ var (
 		{Name: "os", Type: field.TypeString, Default: ""},
 		{Name: "arch", Type: field.TypeString, Default: ""},
 		{Name: "package_path", Type: field.TypeString, Nullable: true},
+		{Name: "package_hash", Type: field.TypeString, Nullable: true},
 		{Name: "resource_path", Type: field.TypeString, Nullable: true},
 		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
@@ -77,13 +78,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "storages_versions_old_version",
-				Columns:    []*schema.Column{StoragesColumns[8]},
+				Columns:    []*schema.Column{StoragesColumns[9]},
 				RefColumns: []*schema.Column{VersionsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "storages_versions_storages",
-				Columns:    []*schema.Column{StoragesColumns[9]},
+				Columns:    []*schema.Column{StoragesColumns[10]},
 				RefColumns: []*schema.Column{VersionsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

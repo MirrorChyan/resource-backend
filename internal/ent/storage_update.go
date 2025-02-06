@@ -91,6 +91,26 @@ func (su *StorageUpdate) ClearPackagePath() *StorageUpdate {
 	return su
 }
 
+// SetPackageHash sets the "package_hash" field.
+func (su *StorageUpdate) SetPackageHash(s string) *StorageUpdate {
+	su.mutation.SetPackageHash(s)
+	return su
+}
+
+// SetNillablePackageHash sets the "package_hash" field if the given value is not nil.
+func (su *StorageUpdate) SetNillablePackageHash(s *string) *StorageUpdate {
+	if s != nil {
+		su.SetPackageHash(*s)
+	}
+	return su
+}
+
+// ClearPackageHash clears the value of the "package_hash" field.
+func (su *StorageUpdate) ClearPackageHash() *StorageUpdate {
+	su.mutation.ClearPackageHash()
+	return su
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (su *StorageUpdate) SetResourcePath(s string) *StorageUpdate {
 	su.mutation.SetResourcePath(s)
@@ -251,6 +271,12 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if su.mutation.PackagePathCleared() {
 		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
+	if value, ok := su.mutation.PackageHash(); ok {
+		_spec.SetField(storage.FieldPackageHash, field.TypeString, value)
+	}
+	if su.mutation.PackageHashCleared() {
+		_spec.ClearField(storage.FieldPackageHash, field.TypeString)
+	}
 	if value, ok := su.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
 	}
@@ -403,6 +429,26 @@ func (suo *StorageUpdateOne) SetNillablePackagePath(s *string) *StorageUpdateOne
 // ClearPackagePath clears the value of the "package_path" field.
 func (suo *StorageUpdateOne) ClearPackagePath() *StorageUpdateOne {
 	suo.mutation.ClearPackagePath()
+	return suo
+}
+
+// SetPackageHash sets the "package_hash" field.
+func (suo *StorageUpdateOne) SetPackageHash(s string) *StorageUpdateOne {
+	suo.mutation.SetPackageHash(s)
+	return suo
+}
+
+// SetNillablePackageHash sets the "package_hash" field if the given value is not nil.
+func (suo *StorageUpdateOne) SetNillablePackageHash(s *string) *StorageUpdateOne {
+	if s != nil {
+		suo.SetPackageHash(*s)
+	}
+	return suo
+}
+
+// ClearPackageHash clears the value of the "package_hash" field.
+func (suo *StorageUpdateOne) ClearPackageHash() *StorageUpdateOne {
+	suo.mutation.ClearPackageHash()
 	return suo
 }
 
@@ -595,6 +641,12 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	}
 	if suo.mutation.PackagePathCleared() {
 		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
+	}
+	if value, ok := suo.mutation.PackageHash(); ok {
+		_spec.SetField(storage.FieldPackageHash, field.TypeString, value)
+	}
+	if suo.mutation.PackageHashCleared() {
+		_spec.ClearField(storage.FieldPackageHash, field.TypeString)
 	}
 	if value, ok := suo.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
