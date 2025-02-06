@@ -47,3 +47,10 @@ func (r *Version) CreateVersion(ctx context.Context, tx *ent.Tx, resID string, c
 		SetNumber(number).
 		Save(ctx)
 }
+
+func (r *Version) UpdateVersionReleaseNote(ctx context.Context, verID int, releaseNoteSummary, releaseNoteDetail string) error {
+	return r.db.Version.UpdateOneID(verID).
+		SetReleaseNoteSummary(releaseNoteSummary).
+		SetReleaseNoteDetail(releaseNoteDetail).
+		Exec(ctx)
+}

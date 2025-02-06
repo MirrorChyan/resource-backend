@@ -21,5 +21,7 @@ type QueryLatestResponseData struct {
 	OS            string `json:"os,omitempty"`
 	Arch          string `json:"arch,omitempty"`
 	// UpdateType is the type of the update, it can be "full" or "incremental"
-	UpdateType string `json:"update_type,omitempty"`
+	UpdateType         string `json:"update_type,omitempty"`
+	ReleaseNoteSummary string `json:"release_note_summary"`
+	ReleaseNoteDetail  string `json:"release_note_detail"`
 }

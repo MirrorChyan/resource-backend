@@ -79,6 +79,34 @@ func (vu *VersionUpdate) AddNumber(u int64) *VersionUpdate {
 	return vu
 }
 
+// SetReleaseNoteSummary sets the "release_note_summary" field.
+func (vu *VersionUpdate) SetReleaseNoteSummary(s string) *VersionUpdate {
+	vu.mutation.SetReleaseNoteSummary(s)
+	return vu
+}
+
+// SetNillableReleaseNoteSummary sets the "release_note_summary" field if the given value is not nil.
+func (vu *VersionUpdate) SetNillableReleaseNoteSummary(s *string) *VersionUpdate {
+	if s != nil {
+		vu.SetReleaseNoteSummary(*s)
+	}
+	return vu
+}
+
+// SetReleaseNoteDetail sets the "release_note_detail" field.
+func (vu *VersionUpdate) SetReleaseNoteDetail(s string) *VersionUpdate {
+	vu.mutation.SetReleaseNoteDetail(s)
+	return vu
+}
+
+// SetNillableReleaseNoteDetail sets the "release_note_detail" field if the given value is not nil.
+func (vu *VersionUpdate) SetNillableReleaseNoteDetail(s *string) *VersionUpdate {
+	if s != nil {
+		vu.SetReleaseNoteDetail(*s)
+	}
+	return vu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (vu *VersionUpdate) SetCreatedAt(t time.Time) *VersionUpdate {
 	vu.mutation.SetCreatedAt(t)
@@ -225,6 +253,12 @@ func (vu *VersionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := vu.mutation.AddedNumber(); ok {
 		_spec.AddField(version.FieldNumber, field.TypeUint64, value)
 	}
+	if value, ok := vu.mutation.ReleaseNoteSummary(); ok {
+		_spec.SetField(version.FieldReleaseNoteSummary, field.TypeString, value)
+	}
+	if value, ok := vu.mutation.ReleaseNoteDetail(); ok {
+		_spec.SetField(version.FieldReleaseNoteDetail, field.TypeString, value)
+	}
 	if value, ok := vu.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)
 	}
@@ -368,6 +402,34 @@ func (vuo *VersionUpdateOne) SetNillableNumber(u *uint64) *VersionUpdateOne {
 // AddNumber adds u to the "number" field.
 func (vuo *VersionUpdateOne) AddNumber(u int64) *VersionUpdateOne {
 	vuo.mutation.AddNumber(u)
+	return vuo
+}
+
+// SetReleaseNoteSummary sets the "release_note_summary" field.
+func (vuo *VersionUpdateOne) SetReleaseNoteSummary(s string) *VersionUpdateOne {
+	vuo.mutation.SetReleaseNoteSummary(s)
+	return vuo
+}
+
+// SetNillableReleaseNoteSummary sets the "release_note_summary" field if the given value is not nil.
+func (vuo *VersionUpdateOne) SetNillableReleaseNoteSummary(s *string) *VersionUpdateOne {
+	if s != nil {
+		vuo.SetReleaseNoteSummary(*s)
+	}
+	return vuo
+}
+
+// SetReleaseNoteDetail sets the "release_note_detail" field.
+func (vuo *VersionUpdateOne) SetReleaseNoteDetail(s string) *VersionUpdateOne {
+	vuo.mutation.SetReleaseNoteDetail(s)
+	return vuo
+}
+
+// SetNillableReleaseNoteDetail sets the "release_note_detail" field if the given value is not nil.
+func (vuo *VersionUpdateOne) SetNillableReleaseNoteDetail(s *string) *VersionUpdateOne {
+	if s != nil {
+		vuo.SetReleaseNoteDetail(*s)
+	}
 	return vuo
 }
 
@@ -546,6 +608,12 @@ func (vuo *VersionUpdateOne) sqlSave(ctx context.Context) (_node *Version, err e
 	}
 	if value, ok := vuo.mutation.AddedNumber(); ok {
 		_spec.AddField(version.FieldNumber, field.TypeUint64, value)
+	}
+	if value, ok := vuo.mutation.ReleaseNoteSummary(); ok {
+		_spec.SetField(version.FieldReleaseNoteSummary, field.TypeString, value)
+	}
+	if value, ok := vuo.mutation.ReleaseNoteDetail(); ok {
+		_spec.SetField(version.FieldReleaseNoteDetail, field.TypeString, value)
 	}
 	if value, ok := vuo.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)

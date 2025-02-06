@@ -71,6 +71,8 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	// For Developer
 	r.Use("/resources/:rid/versions", middleware.NewValidateUploader())
 	r.Post("/resources/:rid/versions", h.Create)
+
+	r.Put("/resources/:rid/versions/release-note", h.UpdateReleaseNote)
 }
 
 func (h *VersionHandler) isValidExtension(filename string) bool {
@@ -233,11 +235,11 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		}
 	}
 
-	exists, err := h.versionLogic.NameExists(ctx, VersionNameExistsParam{
-		ResourceID: resID,
-		Name:       verName,
-		OS:         resOS,
-		Arch:       resArch,
+	exists, err := h.versionLogic.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
+		ResourceID:  resID,
+		VersionName: verName,
+		OS:          resOS,
+		Arch:        resArch,
 	})
 	switch {
 	case err != nil:
@@ -471,11 +473,13 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var (
 		data = QueryLatestResponseData{
-			VersionName:   latest.Name,
-			VersionNumber: latest.Number,
-			Channel:       latest.Channel.String(),
-			OS:            req.OS,
-			Arch:          req.Arch,
+			VersionName:        latest.Name,
+			VersionNumber:      latest.Number,
+			Channel:            latest.Channel.String(),
+			OS:                 req.OS,
+			Arch:               req.Arch,
+			ReleaseNoteSummary: latest.ReleaseNoteSummary,
+			ReleaseNoteDetail:  latest.ReleaseNoteDetail,
 		}
 		cdk = req.CDK
 	)
@@ -535,4 +539,86 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.Url, data.UpdateType = url, updateType
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
+}
+
+func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+
+	resID := c.Params(resourceKey)
+	resExist, err := h.resourceLogic.Exists(ctx, resID)
+	switch {
+	case err != nil:
+		h.logger.Error("Failed to check if resource exists",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+
+	case !resExist:
+		h.logger.Info("Resource not found",
+			zap.String("resource id", resID),
+		)
+		resp := response.BusinessError("resource not found")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
+
+	}
+
+	req := &UpdateVersionReleaseNoteRequest{}
+	if err := c.BodyParser(req); err != nil {
+		h.logger.Error("failed to parse request body",
+			zap.Error(err),
+		)
+		resp := response.BusinessError("invalid param")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if len(req.ReleaseNoteSummary) > 100 {
+		resp := response.BusinessError("release note summary too long, max length is 100")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if len(req.ReleaseNoteDetail) > 10000 {
+		resp := response.BusinessError("release note detail too long, max length is 10000")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
+		ResourceID:  resID,
+		VersionName: req.VersionName,
+	})
+	switch {
+	case ent.IsNotFound(err):
+		h.logger.Info("version not found",
+			zap.String("resource id", resID),
+			zap.String("version name", req.VersionName),
+		)
+		resp := response.BusinessError("version not found")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
+	case err != nil:
+		h.logger.Error("failed to check if version exists",
+			zap.String("resource id", resID),
+			zap.String("version name", req.VersionName),
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+
+	err = h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteParam{
+		VersionID:          ver.ID,
+		ReleaseNoteSummary: req.ReleaseNoteSummary,
+		ReleaseNoteDetail:  req.ReleaseNoteDetail,
+	})
+	if err != nil {
+		h.logger.Error("failed to update version release note",
+			zap.String("resource id", resID),
+			zap.String("version name", req.VersionName),
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+
+	resp := response.Success(nil)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }

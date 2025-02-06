@@ -17,11 +17,16 @@ type CreateVersionParam struct {
 	UploadArchivePath string
 }
 
-type VersionNameExistsParam struct {
-	ResourceID string
-	Name       string
-	OS         string
-	Arch       string
+type GetVersionByNameParam struct {
+	ResourceID  string
+	VersionName string
+}
+
+type ExistVersionNameWithOSAndArchParam struct {
+	ResourceID  string
+	VersionName string
+	OS          string
+	Arch        string
 }
 
 type ProcessUpdateParam struct {
@@ -30,4 +35,10 @@ type ProcessUpdateParam struct {
 	TargetVersion      *ent.Version
 	OS                 string
 	Arch               string
+}
+
+type UpdateReleaseNoteParam struct {
+	VersionID          int
+	ReleaseNoteSummary string
+	ReleaseNoteDetail  string
 }
