@@ -514,7 +514,11 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	h.logger.Info("CDK validation success")
 
-	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, cdk, ProcessUpdateParam{
+	m := c.GetReqHeaders()
+
+	_, ok := m["X-Mirrorc-HZ"]
+
+	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ok, cdk, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		TargetVersion:      latest,

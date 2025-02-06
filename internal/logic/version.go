@@ -497,7 +497,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	return
 }
 
-func (l *VersionLogic) GetUpdateInfo(ctx context.Context, cdk string, param ProcessUpdateParam) (url string, updateType string, err error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk string, param ProcessUpdateParam) (url string, updateType string, err error) {
 	var (
 		cfg = config.CFG
 	)
@@ -525,9 +525,16 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, cdk string, param Proc
 		return "", "", err
 	}
 
-	next := wrr().Next()
+	var prefix string
 
-	url = strings.Join([]string{next, key}, "/")
+	// FIXME temporary use
+	if oriented && len(cfg.Extra.DownloadPrefix) > 2 {
+		prefix = cfg.Extra.DownloadPrefix[2]
+	} else {
+		prefix = wrr().Next()
+	}
+
+	url = strings.Join([]string{prefix, key}, "/")
 
 	return
 }
