@@ -476,13 +476,13 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var (
 		data = QueryLatestResponseData{
-			VersionName:        latest.Name,
-			VersionNumber:      latest.Number,
-			Channel:            latest.Channel.String(),
-			OS:                 req.OS,
-			Arch:               req.Arch,
-			ReleaseNoteSummary: latest.ReleaseNoteSummary,
-			ReleaseNoteDetail:  latest.ReleaseNoteDetail,
+			VersionName:   latest.Name,
+			VersionNumber: latest.Number,
+			Channel:       latest.Channel.String(),
+			OS:            req.OS,
+			Arch:          req.Arch,
+			NoteSummary:   latest.ReleaseNoteSummary,
+			NoteDetail:    latest.ReleaseNoteDetail,
 		}
 		cdk = req.CDK
 	)
