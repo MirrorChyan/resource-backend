@@ -63,7 +63,7 @@ var (
 		{Name: "os", Type: field.TypeString, Default: ""},
 		{Name: "arch", Type: field.TypeString, Default: ""},
 		{Name: "package_path", Type: field.TypeString, Nullable: true},
-		{Name: "package_hash", Type: field.TypeString, Nullable: true},
+		{Name: "package_hash_sha256", Type: field.TypeString, Nullable: true},
 		{Name: "resource_path", Type: field.TypeString, Nullable: true},
 		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},

@@ -91,23 +91,23 @@ func (su *StorageUpdate) ClearPackagePath() *StorageUpdate {
 	return su
 }
 
-// SetPackageHash sets the "package_hash" field.
-func (su *StorageUpdate) SetPackageHash(s string) *StorageUpdate {
-	su.mutation.SetPackageHash(s)
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (su *StorageUpdate) SetPackageHashSha256(s string) *StorageUpdate {
+	su.mutation.SetPackageHashSha256(s)
 	return su
 }
 
-// SetNillablePackageHash sets the "package_hash" field if the given value is not nil.
-func (su *StorageUpdate) SetNillablePackageHash(s *string) *StorageUpdate {
+// SetNillablePackageHashSha256 sets the "package_hash_sha256" field if the given value is not nil.
+func (su *StorageUpdate) SetNillablePackageHashSha256(s *string) *StorageUpdate {
 	if s != nil {
-		su.SetPackageHash(*s)
+		su.SetPackageHashSha256(*s)
 	}
 	return su
 }
 
-// ClearPackageHash clears the value of the "package_hash" field.
-func (su *StorageUpdate) ClearPackageHash() *StorageUpdate {
-	su.mutation.ClearPackageHash()
+// ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
+func (su *StorageUpdate) ClearPackageHashSha256() *StorageUpdate {
+	su.mutation.ClearPackageHashSha256()
 	return su
 }
 
@@ -271,11 +271,11 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if su.mutation.PackagePathCleared() {
 		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
-	if value, ok := su.mutation.PackageHash(); ok {
-		_spec.SetField(storage.FieldPackageHash, field.TypeString, value)
+	if value, ok := su.mutation.PackageHashSha256(); ok {
+		_spec.SetField(storage.FieldPackageHashSha256, field.TypeString, value)
 	}
-	if su.mutation.PackageHashCleared() {
-		_spec.ClearField(storage.FieldPackageHash, field.TypeString)
+	if su.mutation.PackageHashSha256Cleared() {
+		_spec.ClearField(storage.FieldPackageHashSha256, field.TypeString)
 	}
 	if value, ok := su.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
@@ -432,23 +432,23 @@ func (suo *StorageUpdateOne) ClearPackagePath() *StorageUpdateOne {
 	return suo
 }
 
-// SetPackageHash sets the "package_hash" field.
-func (suo *StorageUpdateOne) SetPackageHash(s string) *StorageUpdateOne {
-	suo.mutation.SetPackageHash(s)
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (suo *StorageUpdateOne) SetPackageHashSha256(s string) *StorageUpdateOne {
+	suo.mutation.SetPackageHashSha256(s)
 	return suo
 }
 
-// SetNillablePackageHash sets the "package_hash" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillablePackageHash(s *string) *StorageUpdateOne {
+// SetNillablePackageHashSha256 sets the "package_hash_sha256" field if the given value is not nil.
+func (suo *StorageUpdateOne) SetNillablePackageHashSha256(s *string) *StorageUpdateOne {
 	if s != nil {
-		suo.SetPackageHash(*s)
+		suo.SetPackageHashSha256(*s)
 	}
 	return suo
 }
 
-// ClearPackageHash clears the value of the "package_hash" field.
-func (suo *StorageUpdateOne) ClearPackageHash() *StorageUpdateOne {
-	suo.mutation.ClearPackageHash()
+// ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
+func (suo *StorageUpdateOne) ClearPackageHashSha256() *StorageUpdateOne {
+	suo.mutation.ClearPackageHashSha256()
 	return suo
 }
 
@@ -642,11 +642,11 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	if suo.mutation.PackagePathCleared() {
 		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
-	if value, ok := suo.mutation.PackageHash(); ok {
-		_spec.SetField(storage.FieldPackageHash, field.TypeString, value)
+	if value, ok := suo.mutation.PackageHashSha256(); ok {
+		_spec.SetField(storage.FieldPackageHashSha256, field.TypeString, value)
 	}
-	if suo.mutation.PackageHashCleared() {
-		_spec.ClearField(storage.FieldPackageHash, field.TypeString)
+	if suo.mutation.PackageHashSha256Cleared() {
+		_spec.ClearField(storage.FieldPackageHashSha256, field.TypeString)
 	}
 	if value, ok := suo.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
