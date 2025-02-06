@@ -20,3 +20,7 @@ type UpdateVersionReleaseNoteRequest struct {
 	VersionName string `json:"version_name"`
 	ReleaseNote string `json:"release_note"`
 }
+
+type GetVersionReleaseNoteRequest struct {
+	VersionName string `query:"version_name"`
+}

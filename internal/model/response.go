@@ -23,3 +23,7 @@ type QueryLatestResponseData struct {
 	// UpdateType is the type of the update, it can be "full" or "incremental"
 	UpdateType string `json:"update_type,omitempty"`
 }
+
+type GetVersionReleaseNoteResponseData struct {
+	ReleaseNote string `json:"release_note"`
+}
