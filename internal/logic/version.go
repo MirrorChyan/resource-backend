@@ -777,5 +777,5 @@ func (l *VersionLogic) GetFullUpdatePackagePath(ctx context.Context, param GetFu
 }
 
 func (l *VersionLogic) UpdateReleaseNote(ctx context.Context, param UpdateReleaseNoteParam) error {
-	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionID, param.ReleaseNote)
+	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionID, param.ReleaseNoteSummary, param.ReleaseNoteDetail)
 }

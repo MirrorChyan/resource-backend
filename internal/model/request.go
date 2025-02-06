@@ -17,10 +17,7 @@ type GetLatestVersionRequest struct {
 }
 
 type UpdateVersionReleaseNoteRequest struct {
-	VersionName string `json:"version_name"`
-	ReleaseNote string `json:"release_note"`
-}
-
-type GetVersionReleaseNoteRequest struct {
-	VersionName string `query:"version_name"`
+	VersionName        string `json:"version_name"`
+	ReleaseNoteSummary string `json:"release_note_summary"`
+	ReleaseNoteDetail  string `json:"release_note_detail"`
 }

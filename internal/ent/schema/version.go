@@ -23,7 +23,9 @@ func (Version) Fields() []ent.Field {
 		field.String("name").
 			NotEmpty(),
 		field.Uint64("number"),
-		field.String("release_note").
+		field.String("release_note_summary").
+			Default(""),
+		field.String("release_note_detail").
 			SchemaType(
 				map[string]string{
 					dialect.MySQL: "longtext",

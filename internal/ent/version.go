@@ -24,8 +24,10 @@ type Version struct {
 	Name string `json:"name,omitempty"`
 	// Number holds the value of the "number" field.
 	Number uint64 `json:"number,omitempty"`
-	// ReleaseNote holds the value of the "release_note" field.
-	ReleaseNote string `json:"release_note,omitempty"`
+	// ReleaseNoteSummary holds the value of the "release_note_summary" field.
+	ReleaseNoteSummary string `json:"release_note_summary,omitempty"`
+	// ReleaseNoteDetail holds the value of the "release_note_detail" field.
+	ReleaseNoteDetail string `json:"release_note_detail,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -73,7 +75,7 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case version.FieldID, version.FieldNumber:
 			values[i] = new(sql.NullInt64)
-		case version.FieldChannel, version.FieldName, version.FieldReleaseNote:
+		case version.FieldChannel, version.FieldName, version.FieldReleaseNoteSummary, version.FieldReleaseNoteDetail:
 			values[i] = new(sql.NullString)
 		case version.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -118,11 +120,17 @@ func (v *Version) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				v.Number = uint64(value.Int64)
 			}
-		case version.FieldReleaseNote:
+		case version.FieldReleaseNoteSummary:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field release_note", values[i])
+				return fmt.Errorf("unexpected type %T for field release_note_summary", values[i])
 			} else if value.Valid {
-				v.ReleaseNote = value.String
+				v.ReleaseNoteSummary = value.String
+			}
+		case version.FieldReleaseNoteDetail:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field release_note_detail", values[i])
+			} else if value.Valid {
+				v.ReleaseNoteDetail = value.String
 			}
 		case version.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -192,8 +200,11 @@ func (v *Version) String() string {
 	builder.WriteString("number=")
 	builder.WriteString(fmt.Sprintf("%v", v.Number))
 	builder.WriteString(", ")
-	builder.WriteString("release_note=")
-	builder.WriteString(v.ReleaseNote)
+	builder.WriteString("release_note_summary=")
+	builder.WriteString(v.ReleaseNoteSummary)
+	builder.WriteString(", ")
+	builder.WriteString("release_note_detail=")
+	builder.WriteString(v.ReleaseNoteDetail)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(v.CreatedAt.Format(time.ANSIC))

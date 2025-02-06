@@ -63,7 +63,6 @@ func (r RemoteError) Error() string {
 
 func (h *VersionHandler) Register(r fiber.Router) {
 	r.Get("/resources/:rid/latest", h.GetLatest)
-	r.Get("/resources/:rid/release-note", h.GetReleaseNote)
 
 	// For Developer
 	r.Use("/resources/:rid/versions", middleware.NewValidateUploader())
@@ -470,11 +469,13 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var (
 		data = QueryLatestResponseData{
-			VersionName:   latest.Name,
-			VersionNumber: latest.Number,
-			Channel:       latest.Channel.String(),
-			OS:            req.OS,
-			Arch:          req.Arch,
+			VersionName:        latest.Name,
+			VersionNumber:      latest.Number,
+			Channel:            latest.Channel.String(),
+			OS:                 req.OS,
+			Arch:               req.Arch,
+			ReleaseNoteSummary: latest.ReleaseNoteSummary,
+			ReleaseNoteDetail:  latest.ReleaseNoteDetail,
 		}
 		cdk = req.CDK
 	)
@@ -590,8 +591,9 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	}
 
 	err = h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteParam{
-		VersionID:   ver.ID,
-		ReleaseNote: req.ReleaseNote,
+		VersionID:          ver.ID,
+		ReleaseNoteSummary: req.ReleaseNoteSummary,
+		ReleaseNoteDetail:  req.ReleaseNoteDetail,
 	})
 	if err != nil {
 		h.logger.Error("failed to update version release note",
@@ -604,66 +606,5 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	}
 
 	resp := response.Success(nil)
-	return c.Status(fiber.StatusOK).JSON(resp)
-}
-
-func (h *VersionHandler) GetReleaseNote(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-
-	resID := c.Params(resourceKey)
-	resExist, err := h.resourceLogic.Exists(ctx, resID)
-	switch {
-	case err != nil:
-		h.logger.Error("Failed to check if resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-
-	case !resExist:
-		h.logger.Info("Resource not found",
-			zap.String("resource id", resID),
-		)
-		resp := response.BusinessError("resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	}
-
-	req := &GetVersionReleaseNoteRequest{}
-	if err := c.QueryParser(req); err != nil {
-		h.logger.Error("failed to parse request body",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid param")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
-		ResourceID:  resID,
-		VersionName: req.VersionName,
-	})
-	switch {
-	case ent.IsNotFound(err):
-		h.logger.Info("version not found",
-			zap.String("resource id", resID),
-			zap.String("version name", req.VersionName),
-		)
-		resp := response.BusinessError("version not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-
-	case err != nil:
-		h.logger.Error("failed to check if version exists",
-			zap.String("resource id", resID),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	data := GetVersionReleaseNoteResponseData{
-		ReleaseNote: ver.ReleaseNote,
-	}
-
-	resp := response.Success(data)
 	return c.Status(fiber.StatusOK).JSON(resp)
 }

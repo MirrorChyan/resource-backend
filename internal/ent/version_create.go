@@ -50,16 +50,30 @@ func (vc *VersionCreate) SetNumber(u uint64) *VersionCreate {
 	return vc
 }
 
-// SetReleaseNote sets the "release_note" field.
-func (vc *VersionCreate) SetReleaseNote(s string) *VersionCreate {
-	vc.mutation.SetReleaseNote(s)
+// SetReleaseNoteSummary sets the "release_note_summary" field.
+func (vc *VersionCreate) SetReleaseNoteSummary(s string) *VersionCreate {
+	vc.mutation.SetReleaseNoteSummary(s)
 	return vc
 }
 
-// SetNillableReleaseNote sets the "release_note" field if the given value is not nil.
-func (vc *VersionCreate) SetNillableReleaseNote(s *string) *VersionCreate {
+// SetNillableReleaseNoteSummary sets the "release_note_summary" field if the given value is not nil.
+func (vc *VersionCreate) SetNillableReleaseNoteSummary(s *string) *VersionCreate {
 	if s != nil {
-		vc.SetReleaseNote(*s)
+		vc.SetReleaseNoteSummary(*s)
+	}
+	return vc
+}
+
+// SetReleaseNoteDetail sets the "release_note_detail" field.
+func (vc *VersionCreate) SetReleaseNoteDetail(s string) *VersionCreate {
+	vc.mutation.SetReleaseNoteDetail(s)
+	return vc
+}
+
+// SetNillableReleaseNoteDetail sets the "release_note_detail" field if the given value is not nil.
+func (vc *VersionCreate) SetNillableReleaseNoteDetail(s *string) *VersionCreate {
+	if s != nil {
+		vc.SetReleaseNoteDetail(*s)
 	}
 	return vc
 }
@@ -151,9 +165,13 @@ func (vc *VersionCreate) defaults() {
 		v := version.DefaultChannel
 		vc.mutation.SetChannel(v)
 	}
-	if _, ok := vc.mutation.ReleaseNote(); !ok {
-		v := version.DefaultReleaseNote
-		vc.mutation.SetReleaseNote(v)
+	if _, ok := vc.mutation.ReleaseNoteSummary(); !ok {
+		v := version.DefaultReleaseNoteSummary
+		vc.mutation.SetReleaseNoteSummary(v)
+	}
+	if _, ok := vc.mutation.ReleaseNoteDetail(); !ok {
+		v := version.DefaultReleaseNoteDetail
+		vc.mutation.SetReleaseNoteDetail(v)
 	}
 	if _, ok := vc.mutation.CreatedAt(); !ok {
 		v := version.DefaultCreatedAt()
@@ -182,8 +200,11 @@ func (vc *VersionCreate) check() error {
 	if _, ok := vc.mutation.Number(); !ok {
 		return &ValidationError{Name: "number", err: errors.New(`ent: missing required field "Version.number"`)}
 	}
-	if _, ok := vc.mutation.ReleaseNote(); !ok {
-		return &ValidationError{Name: "release_note", err: errors.New(`ent: missing required field "Version.release_note"`)}
+	if _, ok := vc.mutation.ReleaseNoteSummary(); !ok {
+		return &ValidationError{Name: "release_note_summary", err: errors.New(`ent: missing required field "Version.release_note_summary"`)}
+	}
+	if _, ok := vc.mutation.ReleaseNoteDetail(); !ok {
+		return &ValidationError{Name: "release_note_detail", err: errors.New(`ent: missing required field "Version.release_note_detail"`)}
 	}
 	if _, ok := vc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Version.created_at"`)}
@@ -227,9 +248,13 @@ func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 		_spec.SetField(version.FieldNumber, field.TypeUint64, value)
 		_node.Number = value
 	}
-	if value, ok := vc.mutation.ReleaseNote(); ok {
-		_spec.SetField(version.FieldReleaseNote, field.TypeString, value)
-		_node.ReleaseNote = value
+	if value, ok := vc.mutation.ReleaseNoteSummary(); ok {
+		_spec.SetField(version.FieldReleaseNoteSummary, field.TypeString, value)
+		_node.ReleaseNoteSummary = value
+	}
+	if value, ok := vc.mutation.ReleaseNoteDetail(); ok {
+		_spec.SetField(version.FieldReleaseNoteDetail, field.TypeString, value)
+		_node.ReleaseNoteDetail = value
 	}
 	if value, ok := vc.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)
@@ -362,15 +387,27 @@ func (u *VersionUpsert) AddNumber(v uint64) *VersionUpsert {
 	return u
 }
 
-// SetReleaseNote sets the "release_note" field.
-func (u *VersionUpsert) SetReleaseNote(v string) *VersionUpsert {
-	u.Set(version.FieldReleaseNote, v)
+// SetReleaseNoteSummary sets the "release_note_summary" field.
+func (u *VersionUpsert) SetReleaseNoteSummary(v string) *VersionUpsert {
+	u.Set(version.FieldReleaseNoteSummary, v)
 	return u
 }
 
-// UpdateReleaseNote sets the "release_note" field to the value that was provided on create.
-func (u *VersionUpsert) UpdateReleaseNote() *VersionUpsert {
-	u.SetExcluded(version.FieldReleaseNote)
+// UpdateReleaseNoteSummary sets the "release_note_summary" field to the value that was provided on create.
+func (u *VersionUpsert) UpdateReleaseNoteSummary() *VersionUpsert {
+	u.SetExcluded(version.FieldReleaseNoteSummary)
+	return u
+}
+
+// SetReleaseNoteDetail sets the "release_note_detail" field.
+func (u *VersionUpsert) SetReleaseNoteDetail(v string) *VersionUpsert {
+	u.Set(version.FieldReleaseNoteDetail, v)
+	return u
+}
+
+// UpdateReleaseNoteDetail sets the "release_note_detail" field to the value that was provided on create.
+func (u *VersionUpsert) UpdateReleaseNoteDetail() *VersionUpsert {
+	u.SetExcluded(version.FieldReleaseNoteDetail)
 	return u
 }
 
@@ -475,17 +512,31 @@ func (u *VersionUpsertOne) UpdateNumber() *VersionUpsertOne {
 	})
 }
 
-// SetReleaseNote sets the "release_note" field.
-func (u *VersionUpsertOne) SetReleaseNote(v string) *VersionUpsertOne {
+// SetReleaseNoteSummary sets the "release_note_summary" field.
+func (u *VersionUpsertOne) SetReleaseNoteSummary(v string) *VersionUpsertOne {
 	return u.Update(func(s *VersionUpsert) {
-		s.SetReleaseNote(v)
+		s.SetReleaseNoteSummary(v)
 	})
 }
 
-// UpdateReleaseNote sets the "release_note" field to the value that was provided on create.
-func (u *VersionUpsertOne) UpdateReleaseNote() *VersionUpsertOne {
+// UpdateReleaseNoteSummary sets the "release_note_summary" field to the value that was provided on create.
+func (u *VersionUpsertOne) UpdateReleaseNoteSummary() *VersionUpsertOne {
 	return u.Update(func(s *VersionUpsert) {
-		s.UpdateReleaseNote()
+		s.UpdateReleaseNoteSummary()
+	})
+}
+
+// SetReleaseNoteDetail sets the "release_note_detail" field.
+func (u *VersionUpsertOne) SetReleaseNoteDetail(v string) *VersionUpsertOne {
+	return u.Update(func(s *VersionUpsert) {
+		s.SetReleaseNoteDetail(v)
+	})
+}
+
+// UpdateReleaseNoteDetail sets the "release_note_detail" field to the value that was provided on create.
+func (u *VersionUpsertOne) UpdateReleaseNoteDetail() *VersionUpsertOne {
+	return u.Update(func(s *VersionUpsert) {
+		s.UpdateReleaseNoteDetail()
 	})
 }
 
@@ -756,17 +807,31 @@ func (u *VersionUpsertBulk) UpdateNumber() *VersionUpsertBulk {
 	})
 }
 
-// SetReleaseNote sets the "release_note" field.
-func (u *VersionUpsertBulk) SetReleaseNote(v string) *VersionUpsertBulk {
+// SetReleaseNoteSummary sets the "release_note_summary" field.
+func (u *VersionUpsertBulk) SetReleaseNoteSummary(v string) *VersionUpsertBulk {
 	return u.Update(func(s *VersionUpsert) {
-		s.SetReleaseNote(v)
+		s.SetReleaseNoteSummary(v)
 	})
 }
 
-// UpdateReleaseNote sets the "release_note" field to the value that was provided on create.
-func (u *VersionUpsertBulk) UpdateReleaseNote() *VersionUpsertBulk {
+// UpdateReleaseNoteSummary sets the "release_note_summary" field to the value that was provided on create.
+func (u *VersionUpsertBulk) UpdateReleaseNoteSummary() *VersionUpsertBulk {
 	return u.Update(func(s *VersionUpsert) {
-		s.UpdateReleaseNote()
+		s.UpdateReleaseNoteSummary()
+	})
+}
+
+// SetReleaseNoteDetail sets the "release_note_detail" field.
+func (u *VersionUpsertBulk) SetReleaseNoteDetail(v string) *VersionUpsertBulk {
+	return u.Update(func(s *VersionUpsert) {
+		s.SetReleaseNoteDetail(v)
+	})
+}
+
+// UpdateReleaseNoteDetail sets the "release_note_detail" field to the value that was provided on create.
+func (u *VersionUpsertBulk) UpdateReleaseNoteDetail() *VersionUpsertBulk {
+	return u.Update(func(s *VersionUpsert) {
+		s.UpdateReleaseNoteDetail()
 	})
 }
 

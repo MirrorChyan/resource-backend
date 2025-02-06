@@ -48,8 +48,9 @@ func (r *Version) CreateVersion(ctx context.Context, tx *ent.Tx, resID string, c
 		Save(ctx)
 }
 
-func (r *Version) UpdateVersionReleaseNote(ctx context.Context, verID int, releaseNote string) error {
+func (r *Version) UpdateVersionReleaseNote(ctx context.Context, verID int, releaseNoteSummary, releaseNoteDetail string) error {
 	return r.db.Version.UpdateOneID(verID).
-		SetReleaseNote(releaseNote).
+		SetReleaseNoteSummary(releaseNoteSummary).
+		SetReleaseNoteDetail(releaseNoteDetail).
 		Exec(ctx)
 }

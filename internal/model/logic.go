@@ -38,6 +38,7 @@ type ProcessUpdateParam struct {
 }
 
 type UpdateReleaseNoteParam struct {
-	VersionID   int
-	ReleaseNote string
+	VersionID          int
+	ReleaseNoteSummary string
+	ReleaseNoteDetail  string
 }
