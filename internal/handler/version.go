@@ -568,6 +568,16 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
+	if len(req.ReleaseNoteSummary) > 100 {
+		resp := response.BusinessError("release note summary too long, max length is 100")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if len(req.ReleaseNoteDetail) > 10000 {
+		resp := response.BusinessError("release note detail too long, max length is 10000")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
 	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
 		ResourceID:  resID,
 		VersionName: req.VersionName,
