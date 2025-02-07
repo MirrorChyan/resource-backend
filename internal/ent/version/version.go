@@ -21,10 +21,10 @@ const (
 	FieldName = "name"
 	// FieldNumber holds the string denoting the number field in the database.
 	FieldNumber = "number"
-	// FieldReleaseNoteSummary holds the string denoting the release_note_summary field in the database.
-	FieldReleaseNoteSummary = "release_note_summary"
-	// FieldReleaseNoteDetail holds the string denoting the release_note_detail field in the database.
-	FieldReleaseNoteDetail = "release_note_detail"
+	// FieldReleaseNote holds the string denoting the release_note field in the database.
+	FieldReleaseNote = "release_note"
+	// FieldCustomData holds the string denoting the custom_data field in the database.
+	FieldCustomData = "custom_data"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeStorages holds the string denoting the storages edge name in mutations.
@@ -55,8 +55,8 @@ var Columns = []string{
 	FieldChannel,
 	FieldName,
 	FieldNumber,
-	FieldReleaseNoteSummary,
-	FieldReleaseNoteDetail,
+	FieldReleaseNote,
+	FieldCustomData,
 	FieldCreatedAt,
 }
 
@@ -84,10 +84,10 @@ func ValidColumn(column string) bool {
 var (
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
-	// DefaultReleaseNoteSummary holds the default value on creation for the "release_note_summary" field.
-	DefaultReleaseNoteSummary string
-	// DefaultReleaseNoteDetail holds the default value on creation for the "release_note_detail" field.
-	DefaultReleaseNoteDetail string
+	// DefaultReleaseNote holds the default value on creation for the "release_note" field.
+	DefaultReleaseNote string
+	// DefaultCustomData holds the default value on creation for the "custom_data" field.
+	DefaultCustomData string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 )
@@ -142,14 +142,14 @@ func ByNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNumber, opts...).ToFunc()
 }
 
-// ByReleaseNoteSummary orders the results by the release_note_summary field.
-func ByReleaseNoteSummary(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldReleaseNoteSummary, opts...).ToFunc()
+// ByReleaseNote orders the results by the release_note field.
+func ByReleaseNote(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReleaseNote, opts...).ToFunc()
 }
 
-// ByReleaseNoteDetail orders the results by the release_note_detail field.
-func ByReleaseNoteDetail(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldReleaseNoteDetail, opts...).ToFunc()
+// ByCustomData orders the results by the custom_data field.
+func ByCustomData(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCustomData, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -24,10 +24,10 @@ type Version struct {
 	Name string `json:"name,omitempty"`
 	// Number holds the value of the "number" field.
 	Number uint64 `json:"number,omitempty"`
-	// ReleaseNoteSummary holds the value of the "release_note_summary" field.
-	ReleaseNoteSummary string `json:"release_note_summary,omitempty"`
-	// ReleaseNoteDetail holds the value of the "release_note_detail" field.
-	ReleaseNoteDetail string `json:"release_note_detail,omitempty"`
+	// ReleaseNote holds the value of the "release_note" field.
+	ReleaseNote string `json:"release_note,omitempty"`
+	// CustomData holds the value of the "custom_data" field.
+	CustomData string `json:"custom_data,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -75,7 +75,7 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case version.FieldID, version.FieldNumber:
 			values[i] = new(sql.NullInt64)
-		case version.FieldChannel, version.FieldName, version.FieldReleaseNoteSummary, version.FieldReleaseNoteDetail:
+		case version.FieldChannel, version.FieldName, version.FieldReleaseNote, version.FieldCustomData:
 			values[i] = new(sql.NullString)
 		case version.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -120,17 +120,17 @@ func (v *Version) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				v.Number = uint64(value.Int64)
 			}
-		case version.FieldReleaseNoteSummary:
+		case version.FieldReleaseNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field release_note_summary", values[i])
+				return fmt.Errorf("unexpected type %T for field release_note", values[i])
 			} else if value.Valid {
-				v.ReleaseNoteSummary = value.String
+				v.ReleaseNote = value.String
 			}
-		case version.FieldReleaseNoteDetail:
+		case version.FieldCustomData:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field release_note_detail", values[i])
+				return fmt.Errorf("unexpected type %T for field custom_data", values[i])
 			} else if value.Valid {
-				v.ReleaseNoteDetail = value.String
+				v.CustomData = value.String
 			}
 		case version.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -200,11 +200,11 @@ func (v *Version) String() string {
 	builder.WriteString("number=")
 	builder.WriteString(fmt.Sprintf("%v", v.Number))
 	builder.WriteString(", ")
-	builder.WriteString("release_note_summary=")
-	builder.WriteString(v.ReleaseNoteSummary)
+	builder.WriteString("release_note=")
+	builder.WriteString(v.ReleaseNote)
 	builder.WriteString(", ")
-	builder.WriteString("release_note_detail=")
-	builder.WriteString(v.ReleaseNoteDetail)
+	builder.WriteString("custom_data=")
+	builder.WriteString(v.CustomData)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(v.CreatedAt.Format(time.ANSIC))

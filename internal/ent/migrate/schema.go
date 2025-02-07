@@ -96,8 +96,8 @@ var (
 		{Name: "channel", Type: field.TypeEnum, Enums: []string{"stable", "alpha", "beta"}, Default: "stable"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "number", Type: field.TypeUint64},
-		{Name: "release_note_summary", Type: field.TypeString, Default: ""},
-		{Name: "release_note_detail", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
+		{Name: "release_note", Type: field.TypeString, Default: ""},
+		{Name: "custom_data", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "resource_versions", Type: field.TypeString, Nullable: true},
 	}

@@ -481,8 +481,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			Channel:       latest.Channel.String(),
 			OS:            req.OS,
 			Arch:          req.Arch,
-			CustomData:   latest.ReleaseNoteSummary,
-			ReleaseNote:    latest.ReleaseNoteDetail,
+			CustomData:    latest.CustomData,
+			ReleaseNote:   latest.ReleaseNote,
 		}
 		cdk = req.CDK
 	)

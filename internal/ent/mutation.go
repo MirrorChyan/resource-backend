@@ -2067,25 +2067,25 @@ func (m *StorageMutation) ResetEdge(name string) error {
 // VersionMutation represents an operation that mutates the Version nodes in the graph.
 type VersionMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	channel              *version.Channel
-	name                 *string
-	number               *uint64
-	addnumber            *int64
-	release_note_summary *string
-	release_note_detail  *string
-	created_at           *time.Time
-	clearedFields        map[string]struct{}
-	storages             map[int]struct{}
-	removedstorages      map[int]struct{}
-	clearedstorages      bool
-	resource             *string
-	clearedresource      bool
-	done                 bool
-	oldValue             func(context.Context) (*Version, error)
-	predicates           []predicate.Version
+	op              Op
+	typ             string
+	id              *int
+	channel         *version.Channel
+	name            *string
+	number          *uint64
+	addnumber       *int64
+	release_note    *string
+	custom_data     *string
+	created_at      *time.Time
+	clearedFields   map[string]struct{}
+	storages        map[int]struct{}
+	removedstorages map[int]struct{}
+	clearedstorages bool
+	resource        *string
+	clearedresource bool
+	done            bool
+	oldValue        func(context.Context) (*Version, error)
+	predicates      []predicate.Version
 }
 
 var _ ent.Mutation = (*VersionMutation)(nil)
@@ -2314,76 +2314,76 @@ func (m *VersionMutation) ResetNumber() {
 	m.addnumber = nil
 }
 
-// SetReleaseNoteSummary sets the "release_note_summary" field.
-func (m *VersionMutation) SetReleaseNoteSummary(s string) {
-	m.release_note_summary = &s
+// SetReleaseNote sets the "release_note" field.
+func (m *VersionMutation) SetReleaseNote(s string) {
+	m.release_note = &s
 }
 
-// ReleaseNoteSummary returns the value of the "release_note_summary" field in the mutation.
-func (m *VersionMutation) ReleaseNoteSummary() (r string, exists bool) {
-	v := m.release_note_summary
+// ReleaseNote returns the value of the "release_note" field in the mutation.
+func (m *VersionMutation) ReleaseNote() (r string, exists bool) {
+	v := m.release_note
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldReleaseNoteSummary returns the old "release_note_summary" field's value of the Version entity.
+// OldReleaseNote returns the old "release_note" field's value of the Version entity.
 // If the Version object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *VersionMutation) OldReleaseNoteSummary(ctx context.Context) (v string, err error) {
+func (m *VersionMutation) OldReleaseNote(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldReleaseNoteSummary is only allowed on UpdateOne operations")
+		return v, errors.New("OldReleaseNote is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldReleaseNoteSummary requires an ID field in the mutation")
+		return v, errors.New("OldReleaseNote requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldReleaseNoteSummary: %w", err)
+		return v, fmt.Errorf("querying old value for OldReleaseNote: %w", err)
 	}
-	return oldValue.ReleaseNoteSummary, nil
+	return oldValue.ReleaseNote, nil
 }
 
-// ResetReleaseNoteSummary resets all changes to the "release_note_summary" field.
-func (m *VersionMutation) ResetReleaseNoteSummary() {
-	m.release_note_summary = nil
+// ResetReleaseNote resets all changes to the "release_note" field.
+func (m *VersionMutation) ResetReleaseNote() {
+	m.release_note = nil
 }
 
-// SetReleaseNoteDetail sets the "release_note_detail" field.
-func (m *VersionMutation) SetReleaseNoteDetail(s string) {
-	m.release_note_detail = &s
+// SetCustomData sets the "custom_data" field.
+func (m *VersionMutation) SetCustomData(s string) {
+	m.custom_data = &s
 }
 
-// ReleaseNoteDetail returns the value of the "release_note_detail" field in the mutation.
-func (m *VersionMutation) ReleaseNoteDetail() (r string, exists bool) {
-	v := m.release_note_detail
+// CustomData returns the value of the "custom_data" field in the mutation.
+func (m *VersionMutation) CustomData() (r string, exists bool) {
+	v := m.custom_data
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldReleaseNoteDetail returns the old "release_note_detail" field's value of the Version entity.
+// OldCustomData returns the old "custom_data" field's value of the Version entity.
 // If the Version object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *VersionMutation) OldReleaseNoteDetail(ctx context.Context) (v string, err error) {
+func (m *VersionMutation) OldCustomData(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldReleaseNoteDetail is only allowed on UpdateOne operations")
+		return v, errors.New("OldCustomData is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldReleaseNoteDetail requires an ID field in the mutation")
+		return v, errors.New("OldCustomData requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldReleaseNoteDetail: %w", err)
+		return v, fmt.Errorf("querying old value for OldCustomData: %w", err)
 	}
-	return oldValue.ReleaseNoteDetail, nil
+	return oldValue.CustomData, nil
 }
 
-// ResetReleaseNoteDetail resets all changes to the "release_note_detail" field.
-func (m *VersionMutation) ResetReleaseNoteDetail() {
-	m.release_note_detail = nil
+// ResetCustomData resets all changes to the "custom_data" field.
+func (m *VersionMutation) ResetCustomData() {
+	m.custom_data = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -2559,11 +2559,11 @@ func (m *VersionMutation) Fields() []string {
 	if m.number != nil {
 		fields = append(fields, version.FieldNumber)
 	}
-	if m.release_note_summary != nil {
-		fields = append(fields, version.FieldReleaseNoteSummary)
+	if m.release_note != nil {
+		fields = append(fields, version.FieldReleaseNote)
 	}
-	if m.release_note_detail != nil {
-		fields = append(fields, version.FieldReleaseNoteDetail)
+	if m.custom_data != nil {
+		fields = append(fields, version.FieldCustomData)
 	}
 	if m.created_at != nil {
 		fields = append(fields, version.FieldCreatedAt)
@@ -2582,10 +2582,10 @@ func (m *VersionMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case version.FieldNumber:
 		return m.Number()
-	case version.FieldReleaseNoteSummary:
-		return m.ReleaseNoteSummary()
-	case version.FieldReleaseNoteDetail:
-		return m.ReleaseNoteDetail()
+	case version.FieldReleaseNote:
+		return m.ReleaseNote()
+	case version.FieldCustomData:
+		return m.CustomData()
 	case version.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -2603,10 +2603,10 @@ func (m *VersionMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldName(ctx)
 	case version.FieldNumber:
 		return m.OldNumber(ctx)
-	case version.FieldReleaseNoteSummary:
-		return m.OldReleaseNoteSummary(ctx)
-	case version.FieldReleaseNoteDetail:
-		return m.OldReleaseNoteDetail(ctx)
+	case version.FieldReleaseNote:
+		return m.OldReleaseNote(ctx)
+	case version.FieldCustomData:
+		return m.OldCustomData(ctx)
 	case version.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -2639,19 +2639,19 @@ func (m *VersionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetNumber(v)
 		return nil
-	case version.FieldReleaseNoteSummary:
+	case version.FieldReleaseNote:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetReleaseNoteSummary(v)
+		m.SetReleaseNote(v)
 		return nil
-	case version.FieldReleaseNoteDetail:
+	case version.FieldCustomData:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetReleaseNoteDetail(v)
+		m.SetCustomData(v)
 		return nil
 	case version.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -2733,11 +2733,11 @@ func (m *VersionMutation) ResetField(name string) error {
 	case version.FieldNumber:
 		m.ResetNumber()
 		return nil
-	case version.FieldReleaseNoteSummary:
-		m.ResetReleaseNoteSummary()
+	case version.FieldReleaseNote:
+		m.ResetReleaseNote()
 		return nil
-	case version.FieldReleaseNoteDetail:
-		m.ResetReleaseNoteDetail()
+	case version.FieldCustomData:
+		m.ResetCustomData()
 		return nil
 	case version.FieldCreatedAt:
 		m.ResetCreatedAt()
