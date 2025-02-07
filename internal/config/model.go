@@ -59,6 +59,5 @@ type (
 		CDKValidationURL      string `mapstructure:"cdk_validation_url"`
 	}
 	BillingConfig struct {
-		CheckinURL string `mapstructure:"billing_checkin_url"`
 	}
 )

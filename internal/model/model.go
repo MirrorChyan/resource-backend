@@ -7,12 +7,12 @@ type ValidateCDKRequest struct {
 	SpecificationID string `json:"specificationId,omitempty"`
 	Source          string `json:"source"`
 	UA              string `json:"ua"`
+	IP              string `json:"ip"`
 }
 
 type ValidateCDKResponse struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
-	Data bool   `json:"data"`
 }
 
 type ValidateUploaderResponse struct {

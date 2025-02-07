@@ -12,9 +12,13 @@ import (
 
 type VersionCacheGroup struct {
 	// value store pointer don't modify it
-	VersionLatestCache            *Cache[string, *ent.Version]
-	VersionNameCache              *Cache[string, *ent.Version]
-	FullUpdateStorageCache        *Cache[string, *ent.Storage]
+	// key: resourceId:channelName
+	VersionLatestCache *Cache[string, *ent.Version]
+	// key: resourceId:versionName
+	VersionNameCache *Cache[string, *ent.Version]
+	// key: versionId:os:arch
+	FullUpdateStorageCache *Cache[string, *ent.Storage]
+	// key: targetVersionId:currentVersionId:os:arch
 	IncrementalUpdateStorageCache *Cache[string, *ent.Storage]
 }
 
