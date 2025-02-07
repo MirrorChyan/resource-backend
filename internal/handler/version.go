@@ -654,8 +654,8 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if len(req.Content) > 100 {
-		resp := response.BusinessError("release note summary too long, max length is 100")
+	if len(req.Content) > 10000 {
+		resp := response.BusinessError("cumstom data too long, max length is 10000")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
@@ -686,7 +686,7 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		ReleaseNoteSummary: req.Content,
 	})
 	if err != nil {
-		h.logger.Error("failed to update version release note",
+		h.logger.Error("failed to update version custom data",
 			zap.String("resource id", resID),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
