@@ -579,7 +579,7 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	}
 
 	if len(req.Content) > 10000 {
-		resp := response.BusinessError("release note detail too long, max length is 10000")
+		resp := response.BusinessError("release note too long, max length is 10000")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
