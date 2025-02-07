@@ -56,3 +56,8 @@ type ActualUpdateProcessInfo struct {
 	Target  *ent.Storage
 	Current *ent.Storage
 }
+
+type UpdatePackage struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}

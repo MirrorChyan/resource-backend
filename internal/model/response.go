@@ -17,6 +17,7 @@ type QueryLatestResponseData struct {
 	VersionName   string `json:"version_name"`
 	VersionNumber uint64 `json:"version_number"`
 	Url           string `json:"url,omitempty"`
+	SHA256        string `json:"sha256,omitempty"`
 	Channel       string `json:"channel"`
 	OS            string `json:"os,omitempty"`
 	Arch          string `json:"arch,omitempty"`
