@@ -49,7 +49,7 @@ func init() {
 	// storage.DefaultArch holds the default value on creation for the arch field.
 	storage.DefaultArch = storageDescArch.Default.(string)
 	// storageDescCreatedAt is the schema descriptor for created_at field.
-	storageDescCreatedAt := storageFields[6].Descriptor()
+	storageDescCreatedAt := storageFields[7].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.
 	storage.DefaultCreatedAt = storageDescCreatedAt.Default.(func() time.Time)
 	versionFields := schema.Version{}.Fields()

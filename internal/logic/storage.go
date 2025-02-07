@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
-	"github.com/MirrorChyan/resource-backend/internal/model"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
@@ -35,8 +34,8 @@ func NewStorageLogic(logger *zap.Logger, storageRepo *repo.Storage) *StorageLogi
 	}
 }
 
-func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, verID int, os, arch, fullUpdatePath, resourcePath string, fileHashes map[string]string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.CreateFullUpdateStorage(ctx, tx, verID, os, arch, fullUpdatePath, resourcePath, fileHashes)
+func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, verID int, os, arch, fullUpdatePath, packageSHA256, resourcePath string, fileHashes map[string]string) (*ent.Storage, error) {
+	storage, err := l.storageRepo.CreateFullUpdateStorage(ctx, tx, verID, os, arch, fullUpdatePath, packageSHA256, resourcePath, fileHashes)
 	if err != nil {
 		l.logger.Error("create full update storage failed",
 			zap.Error(err),
@@ -47,8 +46,8 @@ func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, 
 	return storage, nil
 }
 
-func (l *StorageLogic) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, target, current int, os, arch, incrementalUpdatePath string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.CreateIncrementalUpdateStorage(ctx, tx, target, current, os, arch, incrementalUpdatePath)
+func (l *StorageLogic) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, target, current int, os, arch, incrementalUpdatePath, packageSHA256 string) (*ent.Storage, error) {
+	storage, err := l.storageRepo.CreateIncrementalUpdateStorage(ctx, tx, target, current, os, arch, incrementalUpdatePath, packageSHA256)
 	if err != nil {
 		l.logger.Error("create incremental update storage failed",
 			zap.Error(err),
@@ -72,39 +71,11 @@ func (l *StorageLogic) CheckStorageExist(ctx context.Context, verID int, os, arc
 }
 
 func (l *StorageLogic) GetFullUpdateStorage(ctx context.Context, versionId int, os, arch string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.GetFullUpdateStorage(ctx, versionId, os, arch)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, err
-		}
-		l.logger.Error("get full update storage failed",
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
-	return storage, nil
+	return l.storageRepo.GetFullUpdateStorage(ctx, versionId, os, arch)
 }
 
-func (l *StorageLogic) GetFullUpdatePath(ctx context.Context, versionId int, os, arch string) (string, error) {
-	storage, err := l.GetFullUpdateStorage(ctx, versionId, os, arch)
-	if err != nil {
-		return "", err
-	}
-
-	return storage.PackagePath, nil
-}
-
-func (l *StorageLogic) GetIncrementalUpdatePath(ctx context.Context, param model.UpdateProcessInfo) (string, error) {
-	storage, err := l.storageRepo.GetIncrementalUpdatePath(
-		ctx,
-		param.TargetVersionID, param.CurrentVersionID,
-		param.OS, param.Arch,
-	)
-	if err != nil {
-		return "", err
-	}
-	return storage.PackagePath, nil
+func (l *StorageLogic) GetIncrementalUpdateStorage(ctx context.Context, targerVerID, currentVerID int, os, arch string) (*ent.Storage, error) {
+	return l.storageRepo.GetIncrementalUpdateStorage(ctx, targerVerID, currentVerID, os, arch)
 }
 
 func (l *StorageLogic) BuildVersionStorageDirPath(resID string, verID int, os, arch string) string {
@@ -232,4 +203,8 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context, resID string, chann
 	}
 
 	return nil
+}
+
+func (l *StorageLogic) SetPackageSHA256(ctx context.Context, storageID int, sha256 string) error {
+	return l.storageRepo.SetPackageHashSHA256(ctx, storageID, sha256)
 }

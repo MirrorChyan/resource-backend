@@ -23,6 +23,8 @@ const (
 	FieldArch = "arch"
 	// FieldPackagePath holds the string denoting the package_path field in the database.
 	FieldPackagePath = "package_path"
+	// FieldPackageHashSha256 holds the string denoting the package_hash_sha256 field in the database.
+	FieldPackageHashSha256 = "package_hash_sha256"
 	// FieldResourcePath holds the string denoting the resource_path field in the database.
 	FieldResourcePath = "resource_path"
 	// FieldFileHashes holds the string denoting the file_hashes field in the database.
@@ -58,6 +60,7 @@ var Columns = []string{
 	FieldOs,
 	FieldArch,
 	FieldPackagePath,
+	FieldPackageHashSha256,
 	FieldResourcePath,
 	FieldFileHashes,
 	FieldCreatedAt,
@@ -143,6 +146,11 @@ func ByArch(opts ...sql.OrderTermOption) OrderOption {
 // ByPackagePath orders the results by the package_path field.
 func ByPackagePath(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPackagePath, opts...).ToFunc()
+}
+
+// ByPackageHashSha256 orders the results by the package_hash_sha256 field.
+func ByPackageHashSha256(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPackageHashSha256, opts...).ToFunc()
 }
 
 // ByResourcePath orders the results by the resource_path field.

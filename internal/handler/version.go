@@ -492,23 +492,23 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	if isFirstBind, err := h.validateCDK(cdk, req.SpID, req.UserAgent, resID); err != nil {
-		var e RemoteError
-		switch {
-		case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
-			resp := response.BusinessError(err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(resp)
-		case errors.As(err, &e):
-			resp := response.BusinessError(e.Error())
-			return c.Status(fiber.StatusForbidden).JSON(resp)
-		default:
-			resp := response.UnexpectedError()
-			return c.Status(fiber.StatusInternalServerError).JSON(resp)
-		}
-	} else if isFirstBind {
-		// at-most-once callback
-		go h.sendBillingCheckinRequest(resID, cdk, req.UserAgent)
-	}
+	// if isFirstBind, err := h.validateCDK(cdk, req.SpID, req.UserAgent, resID); err != nil {
+	// 	var e RemoteError
+	// 	switch {
+	// 	case errors.Is(err, CdkNotfound) || errors.Is(err, SpIdNotfound):
+	// 		resp := response.BusinessError(err.Error())
+	// 		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	// 	case errors.As(err, &e):
+	// 		resp := response.BusinessError(e.Error())
+	// 		return c.Status(fiber.StatusForbidden).JSON(resp)
+	// 	default:
+	// 		resp := response.UnexpectedError()
+	// 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	// 	}
+	// } else if isFirstBind {
+	// 	// at-most-once callback
+	// 	go h.sendBillingCheckinRequest(resID, cdk, req.UserAgent)
+	// }
 
 	if latest.Name == req.CurrentVersion {
 		resp := response.Success(data, "current version is latest")
@@ -521,7 +521,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	_, ok := m["X-Mirrorc-Hz"]
 
-	url, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ok, cdk, ProcessUpdateParam{
+	url, packageSHA256, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ok, cdk, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: req.CurrentVersion,
 		TargetVersion:      latest,
@@ -543,7 +543,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	data.Url, data.UpdateType = url, updateType
+	data.Url, data.SHA256, data.UpdateType = url, packageSHA256, updateType
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 }

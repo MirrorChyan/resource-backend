@@ -2,20 +2,20 @@ package cache
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"strings"
-	"time"
 )
 
 type VersionCacheGroup struct {
-	IncrementalUpdatePathCache *Cache[string, string]
-	FullUpdatePathCache        *Cache[string, string]
 	// value store pointer don't modify it
-	VersionLatestCache     *Cache[string, *ent.Version]
-	VersionNameCache       *Cache[string, *ent.Version]
-	FullUpdateStorageCache *Cache[string, *ent.Storage]
+	VersionLatestCache            *Cache[string, *ent.Version]
+	VersionNameCache              *Cache[string, *ent.Version]
+	FullUpdateStorageCache        *Cache[string, *ent.Storage]
+	IncrementalUpdateStorageCache *Cache[string, *ent.Storage]
 }
 
 func (g *VersionCacheGroup) GetCacheKey(elems ...string) string {
@@ -25,18 +25,16 @@ func (g *VersionCacheGroup) GetCacheKey(elems ...string) string {
 func (g *VersionCacheGroup) EvictAll() {
 	g.VersionLatestCache.EvictAll()
 	g.VersionNameCache.EvictAll()
-	g.IncrementalUpdatePathCache.EvictAll()
-	g.FullUpdatePathCache.EvictAll()
 	g.FullUpdateStorageCache.EvictAll()
+	g.IncrementalUpdateStorageCache.EvictAll()
 }
 
 func NewVersionCacheGroup(rdb *redis.Client) *VersionCacheGroup {
 	group := &VersionCacheGroup{
-		VersionLatestCache:         NewCache[string, *ent.Version](6 * time.Hour),
-		VersionNameCache:           NewCache[string, *ent.Version](6 * time.Hour),
-		IncrementalUpdatePathCache: NewCache[string, string](6 * time.Hour),
-		FullUpdatePathCache:        NewCache[string, string](6 * time.Hour),
-		FullUpdateStorageCache:     NewCache[string, *ent.Storage](6 * time.Hour),
+		VersionLatestCache:            NewCache[string, *ent.Version](6 * time.Hour),
+		VersionNameCache:              NewCache[string, *ent.Version](6 * time.Hour),
+		FullUpdateStorageCache:        NewCache[string, *ent.Storage](6 * time.Hour),
+		IncrementalUpdateStorageCache: NewCache[string, *ent.Storage](6 * time.Hour),
 	}
 	subscribeCacheEvict(rdb, group)
 	return group

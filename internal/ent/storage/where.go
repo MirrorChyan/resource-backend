@@ -70,6 +70,11 @@ func PackagePath(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldPackagePath, v))
 }
 
+// PackageHashSha256 applies equality check predicate on the "package_hash_sha256" field. It's identical to PackageHashSha256EQ.
+func PackageHashSha256(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackageHashSha256, v))
+}
+
 // ResourcePath applies equality check predicate on the "resource_path" field. It's identical to ResourcePathEQ.
 func ResourcePath(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldResourcePath, v))
@@ -303,6 +308,81 @@ func PackagePathEqualFold(v string) predicate.Storage {
 // PackagePathContainsFold applies the ContainsFold predicate on the "package_path" field.
 func PackagePathContainsFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldContainsFold(FieldPackagePath, v))
+}
+
+// PackageHashSha256EQ applies the EQ predicate on the "package_hash_sha256" field.
+func PackageHashSha256EQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256NEQ applies the NEQ predicate on the "package_hash_sha256" field.
+func PackageHashSha256NEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256In applies the In predicate on the "package_hash_sha256" field.
+func PackageHashSha256In(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldPackageHashSha256, vs...))
+}
+
+// PackageHashSha256NotIn applies the NotIn predicate on the "package_hash_sha256" field.
+func PackageHashSha256NotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldPackageHashSha256, vs...))
+}
+
+// PackageHashSha256GT applies the GT predicate on the "package_hash_sha256" field.
+func PackageHashSha256GT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256GTE applies the GTE predicate on the "package_hash_sha256" field.
+func PackageHashSha256GTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256LT applies the LT predicate on the "package_hash_sha256" field.
+func PackageHashSha256LT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256LTE applies the LTE predicate on the "package_hash_sha256" field.
+func PackageHashSha256LTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256Contains applies the Contains predicate on the "package_hash_sha256" field.
+func PackageHashSha256Contains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256HasPrefix applies the HasPrefix predicate on the "package_hash_sha256" field.
+func PackageHashSha256HasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256HasSuffix applies the HasSuffix predicate on the "package_hash_sha256" field.
+func PackageHashSha256HasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256IsNil applies the IsNil predicate on the "package_hash_sha256" field.
+func PackageHashSha256IsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldPackageHashSha256))
+}
+
+// PackageHashSha256NotNil applies the NotNil predicate on the "package_hash_sha256" field.
+func PackageHashSha256NotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldPackageHashSha256))
+}
+
+// PackageHashSha256EqualFold applies the EqualFold predicate on the "package_hash_sha256" field.
+func PackageHashSha256EqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldPackageHashSha256, v))
+}
+
+// PackageHashSha256ContainsFold applies the ContainsFold predicate on the "package_hash_sha256" field.
+func PackageHashSha256ContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldPackageHashSha256, v))
 }
 
 // ResourcePathEQ applies the EQ predicate on the "resource_path" field.

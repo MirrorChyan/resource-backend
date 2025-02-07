@@ -366,6 +366,18 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 
 		}
 
+		packageSHA256, err := filehash.Calculate(archivePath)
+		if err != nil {
+			l.logger.Error("Failed to calculate full update package hash",
+				zap.String("resource id", param.ResourceID),
+				zap.String("version name", param.Name),
+				zap.String("os", param.OS),
+				zap.String("arch", param.Arch),
+				zap.Error(err),
+			)
+			return err
+		}
+
 		hashes, err := filehash.GetAll(saveDir)
 		if err != nil {
 			l.logger.Error("Failed to get file hashes",
@@ -375,7 +387,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			return err
 		}
 
-		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, ver.ID, param.OS, param.Arch, archivePath, saveDir, hashes)
+		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, ver.ID, param.OS, param.Arch, archivePath, packageSHA256, saveDir, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
 				zap.Error(err),
@@ -401,7 +413,7 @@ func (l *VersionLogic) doPostCreateResources(resID, channel string) {
 	l.cacheGroup.VersionLatestCache.Delete(cacheKey)
 }
 
-func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (packagePath string, updateType string, err error) {
+func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param ProcessUpdateParam) (packagePath, packageSHA256, updateType string, err error) {
 	// if current version is not provided, we will download the full version
 	var (
 		cacheGroup     = l.cacheGroup
@@ -422,7 +434,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 		case err == nil:
 			currentVersion = *val
 		case !ent.IsNotFound(err):
-			return "", "", err
+			return "", "", "", err
 		default:
 			isFull = true
 		}
@@ -430,35 +442,45 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	}
 
 	if isFull {
-		cacheKey := cacheGroup.GetCacheKey(
-			param.OS,
-			param.Arch,
-			strconv.Itoa(param.TargetVersion.ID),
-		)
-		var val *string
-		val, err = cacheGroup.FullUpdatePathCache.ComputeIfAbsent(cacheKey, func() (string, error) {
-			return l.GetFullUpdatePackagePath(ctx, GetFullUpdatePackagePathParam{
-				ResourceID: resourceID,
-				VersionID:  param.TargetVersion.ID,
-				OS:         param.OS,
-				Arch:       param.Arch,
-			})
-		})
+		fullUpdateStorage, err := l.getFullUpdateStorageByCache(ctx, param.TargetVersion.ID, param.OS, param.Arch)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return "", "", StorageInfoNotFound
+				return "", "", "", StorageInfoNotFound
 			}
 			l.logger.Error("failed to get full storage info",
 				zap.Error(err),
 			)
-			return "", "", err
+			return "", "", "", err
 		}
 
-		packagePath = *val
+		// TODO: this part is going to be removed when the data of the old version has a hash value in the future
+		if fullUpdateStorage.PackageHashSha256 == "" {
+			fullUpdateStorage.PackageHashSha256, err = filehash.Calculate(fullUpdateStorage.PackagePath)
+			if err != nil {
+				l.logger.Error("failed to calculate full update package hash",
+					zap.String("resource id", resourceID),
+					zap.String("version name", param.TargetVersion.Name),
+					zap.String("os", param.OS),
+					zap.String("arch", param.Arch),
+					zap.Error(err),
+				)
+			}
+
+			err = l.storageLogic.SetPackageSHA256(ctx, fullUpdateStorage.ID, fullUpdateStorage.PackageHashSha256)
+			if err != nil {
+				l.logger.Error("failed to set full udpate package hash",
+					zap.Int("storage id", fullUpdateStorage.ID),
+					zap.Error(err),
+				)
+				return "", "", "", err
+			}
+		}
+
+		packagePath = fullUpdateStorage.PackagePath
+		packageSHA256 = fullUpdateStorage.PackageHashSha256
 		updateType = FullUpdateType
 
-		return
-
+		return packagePath, packageSHA256, updateType, nil
 	}
 
 	info := ActualUpdateProcessInfo{
@@ -476,35 +498,37 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	info.Target, info.Current, err = l.fetchStorageInfoTuple(ctx, targetVersion.ID, currentVersion.ID, param.OS, param.Arch)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return "", "", StorageInfoNotFound
+			return "", "", "", StorageInfoNotFound
 		}
 		l.logger.Error("failed to get storage info",
 			zap.Error(err),
 		)
-		return "", "", err
+		return "", "", "", err
 	}
 
-	packagePath, err = l.GetIncrementalUpdatePackagePath(ctx, info)
+	incrementalUpdatePackage, err := l.GetIncrementalUpdatePackage(ctx, info)
 	if err != nil {
 		l.logger.Error("failed to get incremental update package path",
 			zap.Error(err),
 		)
-		return "", "", err
+		return "", "", "", err
 	}
 
+	packagePath = incrementalUpdatePackage.Path
+	packageSHA256 = incrementalUpdatePackage.SHA256
 	updateType = IncrementalUpdateType
 
-	return
+	return packagePath, packageSHA256, updateType, nil
 }
 
-func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk string, param ProcessUpdateParam) (url string, updateType string, err error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk string, param ProcessUpdateParam) (url, packageSHA256, updateType string, err error) {
 	var (
 		cfg = config.CFG
 	)
 	// path is the download path, type is the update type
-	packagePath, updateType, err := l.doProcessPatchOrFullUpdate(ctx, param)
+	packagePath, packageSHA256, updateType, err := l.doProcessPatchOrFullUpdate(ctx, param)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	rel := l.cleanPath(packagePath)
@@ -517,12 +541,12 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk str
 		"path": rel,
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	_, err = l.rdb.Set(ctx, sk, value, cfg.Extra.DownloadEffectiveTime).Result()
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	var prefix string
@@ -536,7 +560,7 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk str
 
 	url = strings.Join([]string{prefix, key}, "/")
 
-	return
+	return url, packageSHA256, updateType, nil
 }
 
 func (l *VersionLogic) cleanPath(p string) string {
@@ -546,30 +570,47 @@ func (l *VersionLogic) cleanPath(p string) string {
 	return rel
 }
 
-func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (string, bool, error) {
+func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (UpdatePackage, bool, error) {
 	result, err := l.rdb.Get(ctx, cacheKey).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
-		return "", false, nil
+		return UpdatePackage{}, false, nil
 	}
 
 	if result != "" {
 		r := strings.Split(result, specificSeparator)
 		if len(r) > 2 {
-			return "", false, errors.New("patch cache error")
+			return UpdatePackage{}, false, errors.New("patch cache error")
 		}
 
 		if len(r) == 1 || r[1] == "" {
-			return r[0], true, nil
+			var p UpdatePackage
+			err = sonic.Unmarshal([]byte(r[0]), &p)
+			if err != nil {
+				return UpdatePackage{}, false, err
+			}
+
+			return p, true, nil
 		}
 
-		return r[0], true, errors.New(r[1])
+		var p UpdatePackage
+		err = sonic.Unmarshal([]byte(r[0]), &p)
+		if err != nil {
+			return UpdatePackage{}, false, err
+		}
+
+		return p, true, errors.New(r[1])
 	}
-	return "", false, nil
+	return UpdatePackage{}, false, nil
 }
 
-func (l *VersionLogic) StorePatchInfo(ctx context.Context, cacheKey, p, e string) error {
-	val := strings.Join([]string{p, e}, specificSeparator)
-	_, err := l.rdb.Set(ctx, cacheKey, val, time.Minute*5).Result()
+func (l *VersionLogic) StorePatchInfo(ctx context.Context, cacheKey string, p UpdatePackage, e string) error {
+	pData, err := sonic.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	val := strings.Join([]string{string(pData), e}, specificSeparator)
+	_, err = l.rdb.Set(ctx, cacheKey, val, time.Minute*5).Result()
 	if err != nil {
 		return err
 	}
@@ -611,11 +652,23 @@ func (l *VersionLogic) getFullUpdateStorageByCache(ctx context.Context, versionI
 	return *val, err
 }
 
-func (l *VersionLogic) GetIncrementalUpdatePackagePath(ctx context.Context, param ActualUpdateProcessInfo) (string, error) {
-	return l.doGetIncrementalUpdatePackagePath(ctx, param)
+func (l *VersionLogic) getIncrementalUpdateStorageByCache(ctx context.Context, targetVerID, currentVerID int, os, arch string) (*ent.Storage, error) {
+	cacheKey := l.cacheGroup.GetCacheKey(
+		strconv.Itoa(targetVerID),
+		strconv.Itoa(currentVerID),
+		os,
+		arch,
+	)
+	val, err := l.cacheGroup.IncrementalUpdateStorageCache.ComputeIfAbsent(cacheKey, func() (*ent.Storage, error) {
+		return l.storageLogic.GetIncrementalUpdateStorage(ctx, targetVerID, currentVerID, os, arch)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return *val, err
 }
 
-func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
+func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (UpdatePackage, error) {
 	var (
 		param          = info.Info
 		targetVersion  = strconv.Itoa(param.TargetVersionID)
@@ -630,15 +683,18 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info 
 	val, done, err := l.isPatchLoaded(ctx, cacheKey)
 	switch {
 	case err != nil:
-		return "", err
+		return UpdatePackage{}, err
 	case done:
-		return val, nil
+		return UpdatePackage{
+			Path:   val.Path,
+			SHA256: val.SHA256,
+		}, nil
 	}
 
 	mutex := l.sync.NewMutex(mutexKey, redsync.WithExpiry(10*time.Second))
 
 	if err := mutex.Lock(); err != nil {
-		return "", err
+		return UpdatePackage{}, err
 	}
 
 	c, cancel := context.WithCancel(ctx)
@@ -655,23 +711,32 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info 
 	val, done, err = l.isPatchLoaded(ctx, cacheKey)
 	switch {
 	case err != nil:
-		return "", err
+		return UpdatePackage{}, err
 	case done:
-		return val, nil
+		return UpdatePackage{
+			Path:   val.Path,
+			SHA256: val.SHA256,
+		}, nil
 	}
 
-	p, err := l.doCreateIncrementalUpdatePackage(ctx, info)
+	packagePath, packageSHA256, err := l.doCreateIncrementalUpdatePackage(ctx, info)
 
 	var e string
 	if err != nil {
 		e = err.Error()
 	}
 
-	if err := l.StorePatchInfo(ctx, cacheKey, p, e); err != nil {
-		return "", err
+	if err := l.StorePatchInfo(ctx, cacheKey, UpdatePackage{
+		Path:   packagePath,
+		SHA256: packageSHA256,
+	}, e); err != nil {
+		return UpdatePackage{}, err
 	}
 
-	return p, err
+	return UpdatePackage{
+		Path:   packagePath,
+		SHA256: packageSHA256,
+	}, nil
 }
 
 func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
@@ -692,47 +757,60 @@ func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
 
 }
 
-func (l *VersionLogic) doGetIncrementalUpdatePackagePath(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
+func (l *VersionLogic) GetIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (UpdatePackage, error) {
 
 	var (
 		param = info.Info
 	)
 
 	// find existing incremental update
-	cacheKey := strings.Join([]string{
-		param.OS,
-		param.Arch,
-		strconv.Itoa(param.CurrentVersionID),
-		strconv.Itoa(param.TargetVersionID),
-	}, ":")
-	p, err := l.cacheGroup.IncrementalUpdatePathCache.ComputeIfAbsent(cacheKey, func() (string, error) {
-		return l.storageLogic.GetIncrementalUpdatePath(ctx, param)
-	})
-
+	incrementalUpdateStorage, err := l.getIncrementalUpdateStorageByCache(ctx, param.TargetVersionID, param.CurrentVersionID, param.OS, param.Arch)
 	switch {
 	case err != nil && !ent.IsNotFound(err):
 		l.logger.Error("Failed to get incremental update package path",
 			zap.Error(err),
 		)
-		return "", err
+		return UpdatePackage{}, err
 	case err == nil:
-		return *p, nil
+		// TODO: this part is going to be removed when the data of the old version has a hash value in the future
+		if incrementalUpdateStorage.PackageHashSha256 == "" {
+			incrementalUpdateStorage.PackageHashSha256, err = filehash.Calculate(incrementalUpdateStorage.PackagePath)
+			if err != nil {
+				l.logger.Error("Failed to calculate incremental update package hash",
+					zap.Int("storage id", incrementalUpdateStorage.ID),
+					zap.Error(err),
+				)
+			}
+
+			err = l.storageLogic.SetPackageSHA256(ctx, incrementalUpdateStorage.ID, incrementalUpdateStorage.PackageHashSha256)
+			if err != nil {
+				l.logger.Error("Failed to set incremental update package hash",
+					zap.Int("storage id", incrementalUpdateStorage.ID),
+					zap.Error(err),
+				)
+			}
+		}
+
+		return UpdatePackage{
+			Path:   incrementalUpdateStorage.PackagePath,
+			SHA256: incrementalUpdateStorage.PackageHashSha256,
+		}, nil
 	default:
 		// create not existed incremental update
 	}
 
-	packagePath, err := l.CreateIncrementalUpdatePackage(ctx, info)
+	incrementalUpdatePackage, err := l.CreateIncrementalUpdatePackage(ctx, info)
 	if err != nil {
 		l.logger.Error("Failed to generate incremental update package",
 			zap.Error(err),
 		)
-		return "", err
+		return UpdatePackage{}, err
 	}
 
-	return packagePath, nil
+	return incrementalUpdatePackage, nil
 }
 
-func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (string, error) {
+func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, info ActualUpdateProcessInfo) (packagePath, packageSHA256 string, err error) {
 
 	var (
 		param      = info.Info
@@ -741,8 +819,6 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 		current    = param.CurrentVersionID
 		resOS      = param.OS
 		resArch    = param.Arch
-
-		packagePath string
 
 		targetStorage  = info.Target
 		currentStorage = info.Current
@@ -753,7 +829,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 		l.logger.Error("Failed to calculate diff",
 			zap.Error(err),
 		)
-		return "", err
+		return "", "", err
 	}
 
 	patchDir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceID, target, resOS, resArch)
@@ -768,7 +844,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 		l.logger.Error("Failed to generate patch package",
 			zap.Error(err),
 		)
-		return "", err
+		return "", "", err
 	}
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
@@ -791,7 +867,19 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 		})
 
 		packagePath = filepath.Join(patchDir, patchName)
-		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, resOS, resArch, packagePath)
+		packageSHA256, err := filehash.Calculate(packagePath)
+		if err != nil {
+			l.logger.Error("Failed to calculate incremental update package hash",
+				zap.String("resource id", info.Info.ResourceID),
+				zap.Int("target version id", info.Info.TargetVersionID),
+				zap.Int("current version id", info.Info.CurrentVersionID),
+				zap.String("os", info.Info.OS),
+				zap.String("arch", info.Info.Arch),
+				zap.Error(err),
+			)
+			return err
+		}
+		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, resOS, resArch, packagePath, packageSHA256)
 		if err != nil {
 			l.logger.Error("Failed to create incremental update storage",
 				zap.Error(err),
@@ -806,14 +894,10 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 		l.logger.Error("Failed to commit transaction",
 			zap.Error(err),
 		)
-		return "", err
+		return "", "", err
 	}
 
-	return packagePath, nil
-}
-
-func (l *VersionLogic) GetFullUpdatePackagePath(ctx context.Context, param GetFullUpdatePackagePathParam) (string, error) {
-	return l.storageLogic.GetFullUpdatePath(ctx, param.VersionID, param.OS, param.Arch)
+	return packagePath, packageSHA256, nil
 }
 
 func (l *VersionLogic) UpdateReleaseNoteDetail(ctx context.Context, param UpdateReleaseNoteDetailParam) error {

@@ -24,6 +24,8 @@ func (Storage) Fields() []ent.Field {
 			Default(""),
 		field.String("package_path").
 			Optional(),
+		field.String("package_hash_sha256").
+			Optional(),
 		field.String("resource_path").
 			Optional().
 			Comment("only for full update"),

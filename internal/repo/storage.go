@@ -19,24 +19,26 @@ func NewStorage(db *ent.Client) *Storage {
 	}
 }
 
-func (r *Storage) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, verID int, os, arch, fullUpdatePath, resourcePath string, fileHashes map[string]string) (*ent.Storage, error) {
+func (r *Storage) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, verID int, os, arch, fullUpdatePath, packageSHA256, resourcePath string, fileHashes map[string]string) (*ent.Storage, error) {
 	return tx.Storage.Create().
 		SetUpdateType(storage.UpdateTypeFull).
 		SetOs(os).
 		SetArch(arch).
 		SetPackagePath(fullUpdatePath).
+		SetPackageHashSha256(packageSHA256).
 		SetResourcePath(resourcePath).
 		SetFileHashes(fileHashes).
 		SetVersionID(verID).
 		Save(ctx)
 }
 
-func (r *Storage) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, verID, oldVerID int, os, arch, incrementalUpdatePath string) (*ent.Storage, error) {
+func (r *Storage) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, verID, oldVerID int, os, arch, incrementalUpdatePath, packageSHA256 string) (*ent.Storage, error) {
 	return tx.Storage.Create().
 		SetUpdateType(storage.UpdateTypeIncremental).
 		SetOs(os).
 		SetArch(arch).
 		SetPackagePath(incrementalUpdatePath).
+		SetPackageHashSha256(packageSHA256).
 		SetVersionID(verID).
 		SetOldVersionID(oldVerID).
 		Save(ctx)
@@ -63,7 +65,7 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 		Only(ctx)
 }
 
-func (r *Storage) GetIncrementalUpdatePath(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {
+func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {
 	return r.db.Storage.Query().
 		Select(storage.FieldPackagePath).
 		Where(
@@ -130,4 +132,10 @@ func (r *Storage) DeleteOldIncrementalUpdateStorages(ctx context.Context, resID 
 		).
 		Exec(ctx)
 	return err
+}
+
+func (r *Storage) SetPackageHashSHA256(ctx context.Context, storageID int, packageSHA256 string) error {
+	return r.db.Storage.UpdateOneID(storageID).
+		SetPackageHashSha256(packageSHA256).
+		Exec(ctx)
 }

@@ -71,6 +71,20 @@ func (sc *StorageCreate) SetNillablePackagePath(s *string) *StorageCreate {
 	return sc
 }
 
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (sc *StorageCreate) SetPackageHashSha256(s string) *StorageCreate {
+	sc.mutation.SetPackageHashSha256(s)
+	return sc
+}
+
+// SetNillablePackageHashSha256 sets the "package_hash_sha256" field if the given value is not nil.
+func (sc *StorageCreate) SetNillablePackageHashSha256(s *string) *StorageCreate {
+	if s != nil {
+		sc.SetPackageHashSha256(*s)
+	}
+	return sc
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (sc *StorageCreate) SetResourcePath(s string) *StorageCreate {
 	sc.mutation.SetResourcePath(s)
@@ -249,6 +263,10 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
 		_node.PackagePath = value
 	}
+	if value, ok := sc.mutation.PackageHashSha256(); ok {
+		_spec.SetField(storage.FieldPackageHashSha256, field.TypeString, value)
+		_node.PackageHashSha256 = value
+	}
 	if value, ok := sc.mutation.ResourcePath(); ok {
 		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
 		_node.ResourcePath = value
@@ -401,6 +419,24 @@ func (u *StorageUpsert) ClearPackagePath() *StorageUpsert {
 	return u
 }
 
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (u *StorageUpsert) SetPackageHashSha256(v string) *StorageUpsert {
+	u.Set(storage.FieldPackageHashSha256, v)
+	return u
+}
+
+// UpdatePackageHashSha256 sets the "package_hash_sha256" field to the value that was provided on create.
+func (u *StorageUpsert) UpdatePackageHashSha256() *StorageUpsert {
+	u.SetExcluded(storage.FieldPackageHashSha256)
+	return u
+}
+
+// ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
+func (u *StorageUpsert) ClearPackageHashSha256() *StorageUpsert {
+	u.SetNull(storage.FieldPackageHashSha256)
+	return u
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (u *StorageUpsert) SetResourcePath(v string) *StorageUpsert {
 	u.Set(storage.FieldResourcePath, v)
@@ -549,6 +585,27 @@ func (u *StorageUpsertOne) UpdatePackagePath() *StorageUpsertOne {
 func (u *StorageUpsertOne) ClearPackagePath() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
 		s.ClearPackagePath()
+	})
+}
+
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (u *StorageUpsertOne) SetPackageHashSha256(v string) *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.SetPackageHashSha256(v)
+	})
+}
+
+// UpdatePackageHashSha256 sets the "package_hash_sha256" field to the value that was provided on create.
+func (u *StorageUpsertOne) UpdatePackageHashSha256() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.UpdatePackageHashSha256()
+	})
+}
+
+// ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
+func (u *StorageUpsertOne) ClearPackageHashSha256() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearPackageHashSha256()
 	})
 }
 
@@ -872,6 +929,27 @@ func (u *StorageUpsertBulk) UpdatePackagePath() *StorageUpsertBulk {
 func (u *StorageUpsertBulk) ClearPackagePath() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
 		s.ClearPackagePath()
+	})
+}
+
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (u *StorageUpsertBulk) SetPackageHashSha256(v string) *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.SetPackageHashSha256(v)
+	})
+}
+
+// UpdatePackageHashSha256 sets the "package_hash_sha256" field to the value that was provided on create.
+func (u *StorageUpsertBulk) UpdatePackageHashSha256() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.UpdatePackageHashSha256()
+	})
+}
+
+// ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
+func (u *StorageUpsertBulk) ClearPackageHashSha256() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearPackageHashSha256()
 	})
 }
 

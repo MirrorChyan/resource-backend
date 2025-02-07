@@ -1158,24 +1158,25 @@ func (m *ResourceMutation) ResetEdge(name string) error {
 // StorageMutation represents an operation that mutates the Storage nodes in the graph.
 type StorageMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int
-	update_type        *storage.UpdateType
-	os                 *string
-	arch               *string
-	package_path       *string
-	resource_path      *string
-	file_hashes        *map[string]string
-	created_at         *time.Time
-	clearedFields      map[string]struct{}
-	version            *int
-	clearedversion     bool
-	old_version        *int
-	clearedold_version bool
-	done               bool
-	oldValue           func(context.Context) (*Storage, error)
-	predicates         []predicate.Storage
+	op                  Op
+	typ                 string
+	id                  *int
+	update_type         *storage.UpdateType
+	os                  *string
+	arch                *string
+	package_path        *string
+	package_hash_sha256 *string
+	resource_path       *string
+	file_hashes         *map[string]string
+	created_at          *time.Time
+	clearedFields       map[string]struct{}
+	version             *int
+	clearedversion      bool
+	old_version         *int
+	clearedold_version  bool
+	done                bool
+	oldValue            func(context.Context) (*Storage, error)
+	predicates          []predicate.Storage
 }
 
 var _ ent.Mutation = (*StorageMutation)(nil)
@@ -1433,6 +1434,55 @@ func (m *StorageMutation) ResetPackagePath() {
 	delete(m.clearedFields, storage.FieldPackagePath)
 }
 
+// SetPackageHashSha256 sets the "package_hash_sha256" field.
+func (m *StorageMutation) SetPackageHashSha256(s string) {
+	m.package_hash_sha256 = &s
+}
+
+// PackageHashSha256 returns the value of the "package_hash_sha256" field in the mutation.
+func (m *StorageMutation) PackageHashSha256() (r string, exists bool) {
+	v := m.package_hash_sha256
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPackageHashSha256 returns the old "package_hash_sha256" field's value of the Storage entity.
+// If the Storage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageMutation) OldPackageHashSha256(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPackageHashSha256 is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPackageHashSha256 requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPackageHashSha256: %w", err)
+	}
+	return oldValue.PackageHashSha256, nil
+}
+
+// ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
+func (m *StorageMutation) ClearPackageHashSha256() {
+	m.package_hash_sha256 = nil
+	m.clearedFields[storage.FieldPackageHashSha256] = struct{}{}
+}
+
+// PackageHashSha256Cleared returns if the "package_hash_sha256" field was cleared in this mutation.
+func (m *StorageMutation) PackageHashSha256Cleared() bool {
+	_, ok := m.clearedFields[storage.FieldPackageHashSha256]
+	return ok
+}
+
+// ResetPackageHashSha256 resets all changes to the "package_hash_sha256" field.
+func (m *StorageMutation) ResetPackageHashSha256() {
+	m.package_hash_sha256 = nil
+	delete(m.clearedFields, storage.FieldPackageHashSha256)
+}
+
 // SetResourcePath sets the "resource_path" field.
 func (m *StorageMutation) SetResourcePath(s string) {
 	m.resource_path = &s
@@ -1679,7 +1729,7 @@ func (m *StorageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StorageMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.update_type != nil {
 		fields = append(fields, storage.FieldUpdateType)
 	}
@@ -1691,6 +1741,9 @@ func (m *StorageMutation) Fields() []string {
 	}
 	if m.package_path != nil {
 		fields = append(fields, storage.FieldPackagePath)
+	}
+	if m.package_hash_sha256 != nil {
+		fields = append(fields, storage.FieldPackageHashSha256)
 	}
 	if m.resource_path != nil {
 		fields = append(fields, storage.FieldResourcePath)
@@ -1717,6 +1770,8 @@ func (m *StorageMutation) Field(name string) (ent.Value, bool) {
 		return m.Arch()
 	case storage.FieldPackagePath:
 		return m.PackagePath()
+	case storage.FieldPackageHashSha256:
+		return m.PackageHashSha256()
 	case storage.FieldResourcePath:
 		return m.ResourcePath()
 	case storage.FieldFileHashes:
@@ -1740,6 +1795,8 @@ func (m *StorageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldArch(ctx)
 	case storage.FieldPackagePath:
 		return m.OldPackagePath(ctx)
+	case storage.FieldPackageHashSha256:
+		return m.OldPackageHashSha256(ctx)
 	case storage.FieldResourcePath:
 		return m.OldResourcePath(ctx)
 	case storage.FieldFileHashes:
@@ -1782,6 +1839,13 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPackagePath(v)
+		return nil
+	case storage.FieldPackageHashSha256:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPackageHashSha256(v)
 		return nil
 	case storage.FieldResourcePath:
 		v, ok := value.(string)
@@ -1837,6 +1901,9 @@ func (m *StorageMutation) ClearedFields() []string {
 	if m.FieldCleared(storage.FieldPackagePath) {
 		fields = append(fields, storage.FieldPackagePath)
 	}
+	if m.FieldCleared(storage.FieldPackageHashSha256) {
+		fields = append(fields, storage.FieldPackageHashSha256)
+	}
 	if m.FieldCleared(storage.FieldResourcePath) {
 		fields = append(fields, storage.FieldResourcePath)
 	}
@@ -1859,6 +1926,9 @@ func (m *StorageMutation) ClearField(name string) error {
 	switch name {
 	case storage.FieldPackagePath:
 		m.ClearPackagePath()
+		return nil
+	case storage.FieldPackageHashSha256:
+		m.ClearPackageHashSha256()
 		return nil
 	case storage.FieldResourcePath:
 		m.ClearResourcePath()
@@ -1885,6 +1955,9 @@ func (m *StorageMutation) ResetField(name string) error {
 		return nil
 	case storage.FieldPackagePath:
 		m.ResetPackagePath()
+		return nil
+	case storage.FieldPackageHashSha256:
+		m.ResetPackageHashSha256()
 		return nil
 	case storage.FieldResourcePath:
 		m.ResetResourcePath()
