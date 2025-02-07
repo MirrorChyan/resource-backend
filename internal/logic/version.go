@@ -900,10 +900,10 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, inf
 	return packagePath, packageSHA256, nil
 }
 
-func (l *VersionLogic) UpdateReleaseNoteDetail(ctx context.Context, param UpdateReleaseNoteDetailParam) error {
-	return l.versionRepo.UpdateVersionReleaseNoteDetail(ctx, param.VersionID, param.ReleaseNoteDetail)
+func (l *VersionLogic) UpdateReleaseNote(ctx context.Context, param UpdateReleaseNoteDetailParam) error {
+	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionID, param.ReleaseNoteDetail)
 }
 
-func (l *VersionLogic) UpdateReleaseNoteSummary(ctx context.Context, param UpdateReleaseNoteSummaryParam) error {
-	return l.versionRepo.UpdateVersionReleaseNoteSummary(ctx, param.VersionID, param.ReleaseNoteSummary)
+func (l *VersionLogic) UpdateCustomData(ctx context.Context, param UpdateReleaseNoteSummaryParam) error {
+	return l.versionRepo.UpdateVersionCustomData(ctx, param.VersionID, param.ReleaseNoteSummary)
 }

@@ -48,13 +48,13 @@ func (r *Version) CreateVersion(ctx context.Context, tx *ent.Tx, resID string, c
 		Save(ctx)
 }
 
-func (r *Version) UpdateVersionReleaseNoteDetail(ctx context.Context, verID int, releaseNote string) error {
+func (r *Version) UpdateVersionReleaseNote(ctx context.Context, verID int, releaseNote string) error {
 	return r.db.Version.UpdateOneID(verID).
 		SetReleaseNote(releaseNote).
 		Exec(ctx)
 }
 
-func (r *Version) UpdateVersionReleaseNoteSummary(ctx context.Context, verID int, customData string) error {
+func (r *Version) UpdateVersionCustomData(ctx context.Context, verID int, customData string) error {
 	return r.db.Version.UpdateOneID(verID).
 		SetCustomData(customData).
 		Exec(ctx)

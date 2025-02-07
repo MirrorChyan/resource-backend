@@ -73,9 +73,8 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	versions.Use("/", middleware.NewValidateUploader())
 	versions.Post("/", h.Create)
 
-	releaseNote := versions.Group("/release-note")
-	releaseNote.Put("/detail", h.UpdateReleaseNoteDetail)
-	releaseNote.Put("/summary", h.UpdateReleaseNoteSummary)
+	versions.Put("/release-note", h.UpdateReleaseNote)
+	versions.Put("/custom-data", h.UpdateCustomData)
 }
 
 func (h *VersionHandler) isValidExtension(filename string) bool {
@@ -548,7 +547,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 }
 
-func (h *VersionHandler) UpdateReleaseNoteDetail(c *fiber.Ctx) error {
+func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
 	resID := c.Params(resourceKey)
@@ -606,7 +605,7 @@ func (h *VersionHandler) UpdateReleaseNoteDetail(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	err = h.versionLogic.UpdateReleaseNoteDetail(ctx, UpdateReleaseNoteDetailParam{
+	err = h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteDetailParam{
 		VersionID:         ver.ID,
 		ReleaseNoteDetail: req.Content,
 	})
@@ -624,7 +623,7 @@ func (h *VersionHandler) UpdateReleaseNoteDetail(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
-func (h *VersionHandler) UpdateReleaseNoteSummary(c *fiber.Ctx) error {
+func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
 	resID := c.Params(resourceKey)
@@ -682,7 +681,7 @@ func (h *VersionHandler) UpdateReleaseNoteSummary(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	err = h.versionLogic.UpdateReleaseNoteSummary(ctx, UpdateReleaseNoteSummaryParam{
+	err = h.versionLogic.UpdateCustomData(ctx, UpdateReleaseNoteSummaryParam{
 		VersionID:          ver.ID,
 		ReleaseNoteSummary: req.Content,
 	})
