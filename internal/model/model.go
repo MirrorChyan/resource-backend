@@ -3,11 +3,10 @@ package model
 import "github.com/MirrorChyan/resource-backend/internal/ent"
 
 type ValidateCDKRequest struct {
-	CDK             string `json:"cdk"`
-	SpecificationID string `json:"specificationId,omitempty"`
-	Source          string `json:"source"`
-	UA              string `json:"ua"`
-	IP              string `json:"ip"`
+	CDK      string `json:"cdk"`
+	Resource string `json:"resource"`
+	UA       string `json:"ua"`
+	IP       string `json:"ip"`
 }
 
 type ValidateCDKResponse struct {
