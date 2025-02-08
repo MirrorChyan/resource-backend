@@ -244,7 +244,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	case exists:
-		h.logger.Info("Version name already exists",
+		h.logger.Warn("Version name already exists",
 			zap.String("resource id", resID),
 			zap.String("version name", verName),
 			zap.String("resource os", resOS),
