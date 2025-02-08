@@ -50,9 +50,10 @@ type (
 		DB       int    `mapstructure:"db"`
 	}
 	ExtraConfig struct {
-		DownloadPrefix        []string      `mapstructure:"download_prefix"`
-		DownloadEffectiveTime time.Duration `mapstructure:"download_effective_time"`
-		SqlDebugMode          bool          `mapstructure:"sql_debug_mode"`
+		DownloadPrefix          []string      `mapstructure:"download_prefix"`
+		DownloadEffectiveTime   time.Duration `mapstructure:"download_effective_time"`
+		SqlDebugMode            bool          `mapstructure:"sql_debug_mode"`
+		CreateNewVersionWebhook string        `mapstructure:"create_new_version_webhook"`
 	}
 	AuthConfig struct {
 		UploaderValidationURL string `mapstructure:"uploader_validation_url"`
