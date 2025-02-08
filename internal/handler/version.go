@@ -378,7 +378,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resId, ip 
 	return nil
 }
 
-func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (req *GetLatestVersionRequest, err error) {
+func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
 
 	var (
 		request GetLatestVersionRequest
@@ -398,16 +398,16 @@ func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (req *GetLatestVersi
 		return nil, err
 	}
 
-	req.OS, req.Arch = resOS, resArch
+	request.OS, request.Arch = resOS, resArch
 
 	channel, ok := h.handleChannelParam(request.Channel)
 	if !ok {
 		return nil, errors.New("invalid channel")
 	}
 
-	req.Channel = channel
+	request.Channel = channel
 
-	return
+	return &request, nil
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
