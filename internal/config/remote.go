@@ -2,83 +2,84 @@ package config
 
 import (
 	"bytes"
-	"github.com/nacos-group/nacos-sdk-go/v2/clients"
-	"github.com/nacos-group/nacos-sdk-go/v2/common/constant"
-	"github.com/nacos-group/nacos-sdk-go/v2/vo"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
-	"os"
+	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"log"
+	"time"
+
+	"github.com/hashicorp/consul/api"
 )
 
-func loadRemoteConfig(v *viper.Viper, config *Config) {
+func doLoadRemoteConfig() {
 	var (
-		registry = config.Registry
+		cfg    = GConfig
+		client = NewConsulClient()
+		path   = cfg.Registry.Path
 	)
-	clientConfig := constant.NewClientConfig(
-		constant.WithNamespaceId(registry.NamespaceId),
-		constant.WithUsername(registry.Username),
-		constant.WithPassword(registry.Password),
-		constant.WithTimeoutMs(5000),
-		constant.WithLogLevel("debug"),
-		constant.WithLogDir(os.TempDir()),
-		constant.WithCacheDir(os.TempDir()),
-		constant.WithNotLoadCacheAtStart(true),
-	)
-	zap.L().Info(" - Parsing Config For Nacos")
-	client, err := clients.NewConfigClient(vo.NacosClientParam{
-		ClientConfig: clientConfig,
-		ServerConfigs: []constant.ServerConfig{
-			{
-				IpAddr:   registry.Host,
-				Port:     registry.Port,
-				GrpcPort: registry.GrpcPort,
-			},
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
-	c, err := client.GetConfig(vo.ConfigParam{
-		Group:  registry.Group,
-		DataId: registry.DataId,
-	})
-	if err != nil {
-		panic(err)
-	}
-	if err := v.MergeConfig(bytes.NewReader([]byte(c))); err != nil {
-		zap.L().Fatal("Error Parsed, Check Your Remote Config Syntax %v ", zap.Error(err))
-		panic(err)
-	}
-	if err := v.Unmarshal(&config); err != nil {
-		zap.L().Fatal("Failed to unmarshal remote config, %v", zap.Error(err))
-		panic(err)
-	}
 
-	err = client.ListenConfig(vo.ConfigParam{
-		Group:  registry.Group,
-		DataId: registry.DataId,
-		OnChange: func(namespace, group, dataId, data string) {
-			if err := v.MergeConfig(bytes.NewReader([]byte(data))); err != nil {
-				zap.L().Error("Update Config Error", zap.Error(err))
-				return
-			}
-			origin := config.Log.Level
-			if e := v.Unmarshal(&config); e != nil {
-				zap.L().Error("Update Config Error", zap.Error(e))
-				return
-			}
-			if origin != config.Log.Level && levelListener != nil {
-				levelListener(config.Log.Level)
-			}
+	poll := poller{client.KV(), 0}
+	poll.pollRemoteConfig(path)
 
-			zap.L().Info("Nacos Config Update")
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
+	doRegisterService(client)
+
 }
 
-func SetLogLevelChangeListener(listener func(level string)) {
-	levelListener = listener
+func triggerUpdate(update func() error) {
+	var (
+		origin      = *GConfig
+		originValue []any
+	)
+	for _, l := range listeners {
+		val := vp.Get(l.Key)
+		originValue = append(originValue, val)
+	}
+
+	if err := update(); err != nil {
+		log.Printf("failed to dynamic update config file, %v\n", err)
+		return
+	}
+
+	if err := vp.Unmarshal(GConfig); err != nil {
+		GConfig = &origin
+		log.Printf("failed to dynamic update config file, %v\n", err)
+	}
+
+	for i, l := range listeners {
+		val := vp.Get(l.Key)
+		if cmp.Equal(val, originValue[i]) && l.Listener != nil {
+			l.Listener(val)
+		}
+
+	}
+
+}
+
+type poller struct {
+	store     *api.KV
+	waitIndex uint64
+}
+
+func (p *poller) pollRemoteConfig(path string) {
+	var key = fmt.Sprintf("%s/%s.%s", path, DefaultConfigName, DefaultConfigType)
+	go func() {
+		for {
+			keypair, meta, err := p.store.Get(key, &api.QueryOptions{
+				WaitIndex: p.waitIndex,
+			})
+			if keypair == nil && err == nil {
+				err = fmt.Errorf("key ( %s ) was not found", key)
+			}
+			if err != nil {
+				log.Println("Remote Config Update Error", err)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			p.waitIndex = meta.LastIndex
+			log.Println("Remote Config Update")
+			triggerUpdate(func() error {
+				return vp.MergeConfig(bytes.NewReader(keypair.Value))
+			})
+		}
+	}()
+
 }

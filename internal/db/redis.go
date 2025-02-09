@@ -11,7 +11,7 @@ import (
 
 func NewRedis() *redis.Client {
 	var (
-		conf = config.CFG
+		conf = config.GConfig
 	)
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     conf.Redis.Addr,

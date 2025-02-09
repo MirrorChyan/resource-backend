@@ -21,7 +21,7 @@ func NewValidateUploader() fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(resp)
 		}
 
-		var conf = config.CFG
+		var conf = config.GConfig
 
 		url := fmt.Sprintf("%s?token=%s", conf.Auth.UploaderValidationURL, token)
 		resp, err := http.Post(url, "application/json", nil)

@@ -1,27 +1,36 @@
 package logger
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/MirrorChyan/resource-backend/internal/config"
+	"os"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
 	level = zap.NewAtomicLevelAt(zap.InfoLevel)
 )
 
+func init() {
+	config.RegisterKeyListener(config.KeyListener{
+		Key: "log.level",
+		Listener: func(l any) {
+			val, ok := l.(string)
+			if !ok {
+				return
+			}
+			SetLevel(val)
+		},
+	})
+}
+
 func SetLevel(l string) {
 	level.SetLevel(getLevel(l))
 }
 
 func New() *zap.Logger {
-	SetLevel(config.CFG.Log.Level)
-	config.SetLogLevelChangeListener(SetLevel)
+	SetLevel(config.GConfig.Log.Level)
 	var (
 		encoder = getConsoleEncoder()
 		core    = zapcore.NewCore(
@@ -49,22 +58,6 @@ func getLevel(l string) zapcore.Level {
 	default:
 		return zap.InfoLevel
 	}
-}
-
-func getLumberjackLogger(conf *config.Config) (lumberjack.Logger, error) {
-	exePath, err := os.Getwd()
-	if err != nil {
-		return lumberjack.Logger{}, err
-	}
-	exeDir := exePath
-	logPath := filepath.Join(exeDir, "debug", "log.jsonl")
-	return lumberjack.Logger{
-		Filename:   logPath,
-		MaxSize:    conf.Log.MaxSize,
-		MaxBackups: conf.Log.MaxBackups,
-		MaxAge:     conf.Log.MaxAge,
-		Compress:   conf.Log.Compress,
-	}, nil
 }
 
 func getConsoleEncoder() zapcore.Encoder {
