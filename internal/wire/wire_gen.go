@@ -43,12 +43,13 @@ var repoProviderSet = wire.NewSet(repo.NewRepo, repo.NewResource, repo.NewVersio
 
 var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewLatestVersionLogic, logic.NewStorageLogic)
 
-var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler, handler.NewMetricsHandler)
+var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler, handler.NewMetricsHandler, handler.NewHeathCheckHandlerHandler)
 
 type HandlerSet struct {
-	ResourceHandler *handler.ResourceHandler
-	VersionHandler  *handler.VersionHandler
-	MetricsHandler  *handler.MetricsHandler
+	ResourceHandler   *handler.ResourceHandler
+	VersionHandler    *handler.VersionHandler
+	MetricsHandler    *handler.MetricsHandler
+	HeathCheckHandler *handler.HeathCheckHandler
 }
 
 func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *handler.VersionHandler) *HandlerSet {

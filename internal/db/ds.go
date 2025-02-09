@@ -10,7 +10,7 @@ import (
 
 func NewDataSource() (*ent.Client, error) {
 	var (
-		conf = config.CFG
+		conf = config.GConfig
 	)
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=True",

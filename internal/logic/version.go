@@ -9,11 +9,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
-	"github.com/MirrorChyan/resource-backend/internal/config"
+	. "github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -80,25 +79,6 @@ const (
 
 var (
 	StorageInfoNotFound = errors.New("storage info not found")
-
-	wrr = sync.OnceValue(func() *lb.WeightedRoundRobin {
-		var (
-			prefix  = config.CFG.Extra.DownloadPrefix
-			servers []lb.Server
-		)
-		l := len(prefix)
-		for i := 0; i < l; i += 2 {
-			w, err := strconv.Atoi(prefix[i+1])
-			if err != nil {
-				continue
-			}
-			servers = append(servers, lb.Server{
-				Url:    prefix[i],
-				Weight: w,
-			})
-		}
-		return lb.NewWeightedRoundRobin(servers)
-	})
 )
 
 func (l *VersionLogic) GetRedisClient() *redis.Client {
@@ -430,7 +410,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 
 func (l *VersionLogic) doWebhookNotify(resourceID, versionName, channel, os, arch string, ok bool) {
 	var (
-		cfg     = config.CFG
+		cfg     = GConfig
 		webhook = cfg.Extra.CreateNewVersionWebhook
 	)
 
@@ -567,7 +547,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 
 func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk string, param ProcessUpdateParam) (url, packageSHA256, updateType string, err error) {
 	var (
-		cfg = config.CFG
+		cfg = GConfig
 	)
 	// path is the download path, type is the update type
 	packagePath, packageSHA256, updateType, err := l.doProcessPatchOrFullUpdate(ctx, param)
@@ -595,11 +575,11 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk str
 
 	var prefix string
 
-	// FIXME temporary use
-	if oriented && len(cfg.Extra.DownloadPrefix) > 2 {
-		prefix = cfg.Extra.DownloadPrefix[2]
+	// FIXME
+	if oriented && len(cfg.Extra.DownloadPrefixInfo["hz"]) > 0 {
+		prefix = cfg.Extra.DownloadPrefixInfo["hz"][0].Url
 	} else {
-		prefix = wrr().Next()
+		prefix = lb.Robin().Next()
 	}
 
 	url = strings.Join([]string{prefix, key}, "/")

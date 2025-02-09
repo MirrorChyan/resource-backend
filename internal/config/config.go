@@ -3,38 +3,62 @@ package config
 import (
 	"github.com/spf13/viper"
 	"log"
+	"os"
 )
 
 var (
-	CFG           *Config
-	levelListener func(level string)
+	GConfig = new(Config)
+	vp      *viper.Viper
 )
 
-func New() *Config {
-	v, c := loadLocalConfig()
-	loadRemoteConfig(v, c)
-	return c
+func InitGlobalConfig() {
+	doLoadLocalConfig()
+	if GConfig.Instance.OnlyLocal {
+		log.Println("Use Standalone mode")
+		return
+	}
+	log.Println("Use Cluster mode")
+	doLoadRemoteConfig()
 }
 
-func loadLocalConfig() (*viper.Viper, *Config) {
-	v := viper.New()
-	v.SetDefault(ServerPortKey, DefaultPort)
-	v.SetConfigName(DefaultConfigName)
-	v.SetConfigType(DefaultConfigType)
-	v.AddConfigPath(".")
-	v.AddConfigPath("config")
+func doLoadLocalConfig() {
+	vp = viper.New()
+	vp.SetConfigName(DefaultConfigName)
+	vp.SetConfigType(DefaultConfigType)
+	vp.AddConfigPath(".")
+	vp.AddConfigPath("config")
 
-	if err := v.ReadInConfig(); err != nil {
+	if err := vp.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to read config file, %v", err)
 	}
 
-	var c = new(Config)
-	if err := v.Unmarshal(c); err != nil {
+	if err := vp.Unmarshal(GConfig); err != nil {
 		log.Fatalf("Failed to unmarshal config file, %v", err)
 	}
 
-	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to read config file, %v", err)
+	supplyExtraConfig()
+}
+
+func supplyExtraConfig() {
+	if GConfig.Instance.OnlyLocal {
+		return
 	}
-	return v, c
+	ip, ok := os.LookupEnv(instanceIp)
+	if !ok {
+		panic("please set environment variable " + instanceIp)
+	}
+	id, ok := os.LookupEnv(serviceId)
+	if !ok {
+		panic("please set environment variable " + serviceId)
+	}
+	rid, ok := os.LookupEnv(regionId)
+	if !ok {
+		rid = "default"
+	}
+
+	GConfig.Instance.RegionId = rid
+	GConfig.Instance.Address = ip
+	GConfig.Instance.Port = DefaultPort
+	GConfig.Registry.ServiceId = id
+
 }

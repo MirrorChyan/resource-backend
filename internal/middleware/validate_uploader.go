@@ -25,7 +25,7 @@ func NewValidateUploader() fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(resp)
 		}
 
-		var conf = config.CFG
+		var conf = config.GConfig
 
 		rid := c.Params(resourceKey)
 

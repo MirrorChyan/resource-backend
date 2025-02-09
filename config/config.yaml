@@ -1,0 +1,54 @@
+instance:
+  port: 8000
+  only_local: false
+
+log:
+  level: "debug"
+
+registry:
+  endpoint: "http://127.0.0.1:8500"
+  path: "/dev"
+
+redis:
+  addr: "localhost:6379"
+  #  username: "username"
+  #  password: "password"
+  #  name: "name"
+  db: 0
+database:
+  host: "localhost"
+  port: 3306
+  username: "example"
+  password: "example"
+  name: "res"
+
+auth:
+  uploader_validation_url: "https://uploader.validation.example"
+  cdk_validation_url: "https://cdk.validation.example"
+
+extra:
+  create_new_version_webhook: "https://example.com/message"
+  sql_debug_mode: false
+  download_effective_time: "23m"
+  download_prefix_info:
+    "default":
+      - url: "https://download.prefixexample/download1"
+        weight: 1
+      - url: "https://download.prefixexample/download2"
+        weight: 2
+    "hk":
+      - url: "https://download.prefixexample/download3"
+        weight: 1
+      - url: "https://download.prefixexample/download4"
+        weight: 2
+    "kr":
+      - url: "https://download.prefixexample/download5"
+        weight: 1
+      - url: "https://download.prefixexample/download6"
+        weight: 2
+    "hz":
+      - url: "https://download.prefixexample/download7"
+        weight: 1
+      - url: "https://download.prefixexample/download8"
+        weight: 2
+

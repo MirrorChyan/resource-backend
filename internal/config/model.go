@@ -4,36 +4,30 @@ import "time"
 
 type (
 	Config struct {
-		Server   ServerConfig   `mapstructure:"server"`
+		Instance InstanceConfig `mapstructure:"instance"`
 		Log      LogConfig      `mapstructure:"log"`
 		Registry Registration   `mapstructure:"registry"`
 		Database DatabaseConfig `mapstructure:"database"`
 		Auth     AuthConfig     `mapstructure:"auth"`
-		Billing  BillingConfig  `mapstructure:"billing"`
 		Redis    RedisConfig    `mapstructure:"redis"`
 		Extra    ExtraConfig    `mapstructure:"extra"`
 	}
-	ServerConfig struct {
-		Port int `mapstructure:"port"`
+	InstanceConfig struct {
+		Address string
+		Port    int `mapstructure:"port"`
+		// only_local is used to indicate whether to only use local config
+		OnlyLocal bool   `mapstructure:"only_local"`
+		RegionId  string `mapstructure:"region_id"`
 	}
 
 	Registration struct {
-		Host        string `mapstructure:"host"`
-		Port        uint64 `mapstructure:"port"`
-		GrpcPort    uint64 `mapstructure:"grpc_port"`
-		NamespaceId string `mapstructure:"namespace_id"`
-		Group       string `mapstructure:"group"`
-		DataId      string `mapstructure:"data_id"`
-		Username    string `mapstructure:"username"`
-		Password    string `mapstructure:"password"`
+		Endpoint  string `mapstructure:"endpoint"`
+		Path      string `mapstructure:"path"`
+		ServiceId string `mapstructure:"service_id"`
 	}
 
 	LogConfig struct {
-		Level      string `mapstructure:"level"`
-		MaxSize    int    `mapstructure:"max_size"`
-		MaxBackups int    `mapstructure:"max_backups"`
-		MaxAge     int    `mapstructure:"max_age"`
-		Compress   bool   `mapstructure:"compress"`
+		Level string `mapstructure:"level"`
 	}
 	DatabaseConfig struct {
 		Host     string `mapstructure:"host"`
@@ -50,15 +44,19 @@ type (
 		DB       int    `mapstructure:"db"`
 	}
 	ExtraConfig struct {
-		DownloadPrefix          []string      `mapstructure:"download_prefix"`
-		DownloadEffectiveTime   time.Duration `mapstructure:"download_effective_time"`
-		SqlDebugMode            bool          `mapstructure:"sql_debug_mode"`
-		CreateNewVersionWebhook string        `mapstructure:"create_new_version_webhook"`
+		DownloadPrefixInfo      map[string][]RobinServer `mapstructure:"download_prefix_info"`
+		DownloadEffectiveTime   time.Duration            `mapstructure:"download_effective_time"`
+		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
+		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
 	}
+
+	RobinServer struct {
+		Url    string `mapstructure:"url"`
+		Weight int    `mapstructure:"weight"`
+	}
+
 	AuthConfig struct {
 		UploaderValidationURL string `mapstructure:"uploader_validation_url"`
 		CDKValidationURL      string `mapstructure:"cdk_validation_url"`
-	}
-	BillingConfig struct {
 	}
 )
