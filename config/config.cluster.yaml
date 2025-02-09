@@ -1,0 +1,7 @@
+instance:
+  port: 8000
+  only_local: false
+
+registry:
+  endpoint: "http://127.0.0.1:8500"
+  path: "/dev"
