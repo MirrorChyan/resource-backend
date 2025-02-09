@@ -71,7 +71,7 @@ func NewValidateUploader() fiber.Handler {
 				zap.Int("code", res.Code),
 				zap.String("msg", res.Msg),
 			)
-			resp := response.BusinessError("invalid authorization token")
+			resp := response.BusinessError(res.Msg)
 			return c.Status(fiber.StatusUnauthorized).JSON(resp)
 		} else if res.Code == -1 {
 			zap.L().Error("Uploader validation failed",

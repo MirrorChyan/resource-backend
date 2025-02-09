@@ -232,8 +232,15 @@ func (l *VersionLogic) CreateVersion(ctx context.Context, resID, channel, name s
 		return nil, err
 	}
 
-	// clear old version resources
-	go l.clearOldStorages(resID, verChannel, ver.ID, ver.Name)
+	// clear old version resources after 30 minutes
+	go func() {
+		timer := time.NewTimer(30 * time.Minute)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			l.clearOldStorages(resID, verChannel, ver.ID, ver.Name)
+		}
+	}()
 
 	return ver, nil
 }

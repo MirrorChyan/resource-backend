@@ -1,6 +1,8 @@
 package archive
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/pkg"
+
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
@@ -163,7 +165,9 @@ func CompressToZip(srcDir, destZip string) error {
 			return err
 		}
 
-		_, err = io.Copy(zipFileWriter, file)
+		buf := pkg.GetBuffer()
+		defer pkg.PutBuffer(buf)
+		_, err = io.CopyBuffer(zipFileWriter, file, buf)
 		return err
 	})
 }

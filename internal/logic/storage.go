@@ -131,7 +131,7 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context, resID string, chann
 	for _, storage := range fullUpdateStorages {
 		if storage.PackagePath != "" {
 			err = os.Remove(storage.PackagePath)
-			if err != nil {
+			if err != nil && !os.IsNotExist(err) {
 				l.logger.Error("delete old version full update package failed",
 					zap.String("package path", storage.PackagePath),
 					zap.Error(err),
@@ -144,8 +144,7 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context, resID string, chann
 			continue
 		}
 
-		err = os.RemoveAll(storage.ResourcePath)
-		if err != nil {
+		if err = os.RemoveAll(storage.ResourcePath); err != nil {
 			l.logger.Error("delete old version full update resource failed",
 				zap.String("resource path", storage.ResourcePath),
 				zap.Error(err),
