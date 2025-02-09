@@ -2,14 +2,12 @@ instance:
   port: 8000
   only_local: false
 
-registry:
-  endpoint: "http://127.0.0.1:8500"
-  path: "/dev"
-
 log:
   level: "debug"
 
-
+registry:
+  endpoint: "http://127.0.0.1:8500"
+  path: "/dev"
 
 redis:
   addr: "localhost:6379"
