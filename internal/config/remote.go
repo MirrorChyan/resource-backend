@@ -3,10 +3,10 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"github.com/google/go-cmp/cmp"
 	"log"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/hashicorp/consul/api"
 )
 
@@ -24,6 +24,10 @@ func doLoadRemoteConfig() {
 
 }
 
+var c = sonic.Config{
+	SortMapKeys: true,
+}.Froze()
+
 func triggerUpdate(update func() error) {
 	var (
 		origin      = *GConfig
@@ -31,7 +35,11 @@ func triggerUpdate(update func() error) {
 	)
 	for _, l := range listeners {
 		val := vp.Get(l.Key)
-		originValue = append(originValue, val)
+		str, err := c.MarshalToString(val)
+		if err != nil {
+			log.Printf("failed to marshal val, %v\n", err)
+		}
+		originValue = append(originValue, str)
 	}
 
 	if err := update(); err != nil {
@@ -46,7 +54,11 @@ func triggerUpdate(update func() error) {
 
 	for i, l := range listeners {
 		val := vp.Get(l.Key)
-		if cmp.Equal(val, originValue[i]) && l.Listener != nil {
+		str, err := c.MarshalToString(val)
+		if err != nil {
+			log.Printf("failed to marshal val, %v\n", err)
+		}
+		if str != originValue[i] && l.Listener != nil {
 			l.Listener(val)
 		}
 

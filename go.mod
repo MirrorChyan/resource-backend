@@ -12,7 +12,6 @@ require (
 	github.com/gofiber/contrib/fiberzap/v2 v2.1.4
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/google/go-cmp v0.6.0
 	github.com/google/wire v0.6.0
 	github.com/hashicorp/consul/api v1.28.2
 	github.com/minio/sha256-simd v1.0.1
@@ -44,6 +43,7 @@ require (
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

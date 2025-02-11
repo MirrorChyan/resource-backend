@@ -460,26 +460,26 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		cdk = param.CDK
 	)
 
-	//if cdk == "" {
-	//	resp := response.Success(data, "current resource latest version is "+latest.Name)
-	//	return c.Status(fiber.StatusOK).JSON(resp)
-	//}
-	//
-	//if err := h.doValidateCDK(param, resID, c.IP()); err != nil {
-	//	var e RemoteError
-	//	if errors.As(err, &e) {
-	//		resp := response.BusinessError(e.Error())
-	//		return c.Status(fiber.StatusForbidden).JSON(resp)
-	//	} else {
-	//		resp := response.UnexpectedError()
-	//		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	//	}
-	//}
-	//
-	//if latest.Name == param.CurrentVersion {
-	//	resp := response.Success(data, "current version is latest")
-	//	return c.Status(fiber.StatusOK).JSON(resp)
-	//}
+	if cdk == "" {
+		resp := response.Success(data, "current resource latest version is "+latest.Name)
+		return c.Status(fiber.StatusOK).JSON(resp)
+	}
+
+	if err := h.doValidateCDK(param, resID, c.IP()); err != nil {
+		var e RemoteError
+		if errors.As(err, &e) {
+			resp := response.BusinessError(e.Error())
+			return c.Status(fiber.StatusForbidden).JSON(resp)
+		} else {
+			resp := response.UnexpectedError()
+			return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		}
+	}
+
+	if latest.Name == param.CurrentVersion {
+		resp := response.Success(data, "current version is latest")
+		return c.Status(fiber.StatusOK).JSON(resp)
+	}
 
 	m := c.GetReqHeaders()
 
