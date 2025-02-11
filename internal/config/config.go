@@ -60,7 +60,6 @@ func supplyExtraConfig() {
 
 	GConfig.Instance.RegionId = rid
 	GConfig.Instance.Address = ip
-	GConfig.Instance.Port = DefaultPort
 	GConfig.Registry.ServiceId = sid
 
 	log.Println(instanceIp, ip, serviceId, sid, regionId, rid)
