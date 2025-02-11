@@ -1,6 +1,6 @@
 instance:
   port: 8000
-  only_local: false
+  only_local: true
 
 log:
   level: "debug"

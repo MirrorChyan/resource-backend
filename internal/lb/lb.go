@@ -18,9 +18,15 @@ func init() {
 				cfg  = config.GConfig
 				info = cfg.Extra.DownloadPrefixInfo
 			)
-			Robin().UpdateServers(info[cfg.Instance.RegionId])
 
-			zap.L().Info("LB update servers")
+			val, ok := info[cfg.Instance.RegionId]
+			if !ok || len(val) == 0 {
+				val = info[config.DefaultRobinKey]
+			}
+
+			Robin().UpdateServers(val)
+
+			zap.L().Info("LB update servers", zap.Int("Robin Server Len", len(val)))
 		},
 	})
 }

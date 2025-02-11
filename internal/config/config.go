@@ -11,6 +11,8 @@ var (
 	vp      *viper.Viper
 )
 
+const DefaultRobinKey = "default"
+
 func InitGlobalConfig() {
 	doLoadLocalConfig()
 	if GConfig.Instance.OnlyLocal {
@@ -47,18 +49,20 @@ func supplyExtraConfig() {
 	if !ok {
 		panic("please set environment variable " + instanceIp)
 	}
-	id, ok := os.LookupEnv(serviceId)
+	sid, ok := os.LookupEnv(serviceId)
 	if !ok {
 		panic("please set environment variable " + serviceId)
 	}
 	rid, ok := os.LookupEnv(regionId)
 	if !ok {
-		rid = "default"
+		rid = DefaultRobinKey
 	}
 
 	GConfig.Instance.RegionId = rid
 	GConfig.Instance.Address = ip
 	GConfig.Instance.Port = DefaultPort
-	GConfig.Registry.ServiceId = id
+	GConfig.Registry.ServiceId = sid
+
+	log.Println(instanceIp, ip, serviceId, sid, regionId, rid)
 
 }
