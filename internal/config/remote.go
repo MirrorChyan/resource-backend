@@ -59,6 +59,7 @@ func triggerUpdate(update func() error) {
 			log.Printf("failed to marshal val, %v\n", err)
 		}
 		if str != originValue[i] && l.Listener != nil {
+			log.Println("Remote Config Update")
 			l.Listener(val)
 		}
 
@@ -87,7 +88,6 @@ func (p *poller) pollRemoteConfig(path string) {
 				continue
 			}
 			p.waitIndex = meta.LastIndex
-			log.Println("Remote Config Update")
 			triggerUpdate(func() error {
 				return vp.MergeConfig(bytes.NewReader(keypair.Value))
 			})
