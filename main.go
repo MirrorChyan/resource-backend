@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	_ "github.com/MirrorChyan/resource-backend/internal/banner"
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	. "github.com/MirrorChyan/resource-backend/internal/config"
@@ -11,6 +12,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logger"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -51,6 +53,8 @@ func main() {
 		app           = fiber.New(fiber.Config{
 			BodyLimit:   BodyLimit,
 			ProxyHeader: fiber.HeaderXForwardedFor,
+			JSONEncoder: sonic.Marshal,
+			JSONDecoder: sonic.Unmarshal,
 		})
 	)
 
