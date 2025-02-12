@@ -545,7 +545,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	return packagePath, packageSHA256, updateType, nil
 }
 
-func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk string, param ProcessUpdateParam) (url, packageSHA256, updateType string, err error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, region, cdk string, param ProcessUpdateParam) (url, packageSHA256, updateType string, err error) {
 	var (
 		cfg = GConfig
 	)
@@ -573,14 +573,11 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, oriented bool, cdk str
 		return "", "", "", err
 	}
 
-	var prefix string
-
-	// FIXME
-	if oriented && len(cfg.Extra.DownloadPrefixInfo["hz"]) > 0 {
-		prefix = cfg.Extra.DownloadPrefixInfo["hz"][0].Url
-	} else {
-		prefix = lb.Robin().Next()
-	}
+	// Acquire and Next is not atomic operation
+	var (
+		wrr    = lb.WRR().Acquire(region)
+		prefix = wrr.Next()
+	)
 
 	url = strings.Join([]string{prefix, key}, "/")
 

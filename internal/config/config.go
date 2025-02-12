@@ -11,7 +11,7 @@ var (
 	vp      *viper.Viper
 )
 
-const DefaultRobinKey = "default"
+const DefaultRegion = "default"
 
 func InitGlobalConfig() {
 	doLoadLocalConfig()
@@ -55,7 +55,7 @@ func supplyExtraConfig() {
 	}
 	rid, ok := os.LookupEnv(regionId)
 	if !ok {
-		rid = DefaultRobinKey
+		rid = DefaultRegion
 	}
 
 	GConfig.Instance.RegionId = rid

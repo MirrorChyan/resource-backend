@@ -45,7 +45,8 @@ func NewVersionHandler(
 }
 
 const (
-	resourceKey = "rid"
+	resourceKey     = "rid"
+	regionHeaderKey = "X-Region"
 )
 
 type RemoteError string
@@ -481,11 +482,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
-	m := c.GetReqHeaders()
+	region := string(c.Request().Header.Peek(regionHeaderKey))
+	if region == "" {
+		region = config.GConfig.Instance.RegionId
+	}
 
-	_, ok := m["X-Mirrorc-Hz"]
-
-	url, packageSHA256, updateType, err := h.versionLogic.GetUpdateInfo(ctx, ok, cdk, ProcessUpdateParam{
+	url, packageSHA256, updateType, err := h.versionLogic.GetUpdateInfo(ctx, region, cdk, ProcessUpdateParam{
 		ResourceID:         resID,
 		CurrentVersionName: param.CurrentVersion,
 		TargetVersion:      latest,
