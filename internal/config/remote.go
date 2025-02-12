@@ -17,10 +17,30 @@ func doLoadRemoteConfig() {
 		path   = cfg.Registry.Path
 	)
 
-	poll := poller{client.KV(), 0}
-	poll.pollRemoteConfig(path)
+	worker := poller{
+		store:     client.KV(),
+		waitIndex: 0,
+		key:       fmt.Sprintf("%s/%s.%s", path, DefaultConfigName, DefaultConfigType),
+	}
+	worker.loadRemoteConfigImmediately()
+	worker.doPollRemoteConfig()
 
 	doRegisterService(client)
+
+}
+func (p *poller) loadRemoteConfigImmediately() {
+
+	keypair, _, err := p.store.Get(p.key, &api.QueryOptions{})
+	if err != nil {
+		log.Fatal("Load Remote Config Error", err)
+	}
+
+	triggerUpdate(func() error {
+		if err = vp.MergeConfig(bytes.NewReader(keypair.Value)); err != nil {
+			log.Fatal("MergeConfig Remote Config Error", err)
+		}
+		return nil
+	})
 
 }
 
@@ -70,17 +90,17 @@ func triggerUpdate(update func() error) {
 type poller struct {
 	store     *api.KV
 	waitIndex uint64
+	key       string
 }
 
-func (p *poller) pollRemoteConfig(path string) {
-	var key = fmt.Sprintf("%s/%s.%s", path, DefaultConfigName, DefaultConfigType)
+func (p *poller) doPollRemoteConfig() {
 	go func() {
 		for {
-			keypair, meta, err := p.store.Get(key, &api.QueryOptions{
+			keypair, meta, err := p.store.Get(p.key, &api.QueryOptions{
 				WaitIndex: p.waitIndex,
 			})
 			if keypair == nil && err == nil {
-				err = fmt.Errorf("key ( %s ) was not found", key)
+				err = fmt.Errorf("key ( %s ) was not found", p.key)
 			}
 			if err != nil {
 				log.Println("Remote Config Update Error", err)
