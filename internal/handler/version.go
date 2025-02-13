@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/valyala/fasthttp"
 
@@ -411,6 +413,18 @@ func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRe
 	return &request, nil
 }
 
+var LIT = &sync.Map{}
+
+func CompareIfAbsent(m *sync.Map, key string) *atomic.Int32 {
+	value, ok := m.Load(key)
+	if ok {
+		return value.(*atomic.Int32)
+	}
+
+	r, _ := m.LoadOrStore(key, &atomic.Int32{})
+	return r.(*atomic.Int32)
+}
+
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	param, err := h.handleGetLatestParam(c)
 	if err != nil {
@@ -458,12 +472,26 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			CustomData:    latest.CustomData,
 			ReleaseNote:   latest.ReleaseNote,
 		}
-		cdk = param.CDK
+		cdk     = param.CDK
+		con     = config.GConfig.Extra.Concurrency
+		counter = CompareIfAbsent(LIT, resID)
 	)
+
+	counter.Add(1)
+	defer func() {
+		counter.Add(-1)
+	}()
 
 	if cdk == "" {
 		resp := response.Success(data, "current resource latest version is "+latest.Name)
 		return c.Status(fiber.StatusOK).JSON(resp)
+	}
+	// limit concurrent requests by download
+	if con != 0 && counter.Load() > con {
+		data.VersionName = param.CurrentVersion
+		resp := response.Success(data, "current resource latest version is "+latest.Name)
+		h.logger.Info("limit by", zap.Int32("concurrency", counter.Load()))
+		return c.Status(fiber.StatusMultiStatus).JSON(resp)
 	}
 
 	if err := h.doValidateCDK(param, resID, c.IP()); err != nil {

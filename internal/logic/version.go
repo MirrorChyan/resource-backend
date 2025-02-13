@@ -548,6 +548,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 func (l *VersionLogic) GetUpdateInfo(ctx context.Context, region, cdk string, param ProcessUpdateParam) (url, packageSHA256, updateType string, err error) {
 	var (
 		cfg = GConfig
+		rid = param.ResourceID
 	)
 	// path is the download path, type is the update type
 	packagePath, packageSHA256, updateType, err := l.doProcessPatchOrFullUpdate(ctx, param)
@@ -563,6 +564,7 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, region, cdk string, pa
 	value, err := sonic.Marshal(map[string]string{
 		"cdk":  cdk,
 		"path": rel,
+		"rid":  rid,
 	})
 	if err != nil {
 		return "", "", "", err

@@ -64,4 +64,7 @@ func supplyExtraConfig() {
 
 	log.Println(instanceIp, ip, serviceId, sid, regionId, rid)
 
+	// default concurrency
+	GConfig.Extra.Concurrency = 100
+
 }

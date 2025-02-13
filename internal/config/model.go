@@ -48,6 +48,7 @@ type (
 		DownloadEffectiveTime   time.Duration            `mapstructure:"download_effective_time"`
 		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
 		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
+		Concurrency             int32                    `mapstructure:"concurrency"`
 	}
 
 	RobinServer struct {
