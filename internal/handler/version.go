@@ -506,6 +506,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if latest.Name == param.CurrentVersion {
+		data.ReleaseNote = ""
+		data.CustomData = ""
 		resp := response.Success(data, "current version is latest")
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
