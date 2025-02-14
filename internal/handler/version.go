@@ -469,7 +469,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			Channel:       latest.Channel.String(),
 			OS:            param.OS,
 			Arch:          param.Arch,
-			CustomData:    latest.CustomData,
 			ReleaseNote:   latest.ReleaseNote,
 		}
 		cdk     = param.CDK
@@ -507,7 +506,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	if latest.Name == param.CurrentVersion {
 		data.ReleaseNote = ""
-		data.CustomData = ""
 		resp := response.Success(data, "current version is latest")
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
@@ -539,7 +537,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	data.Url, data.SHA256, data.UpdateType = url, packageSHA256, updateType
+	data.Url = url
+	data.SHA256 = packageSHA256
+	data.UpdateType = updateType
+	data.CustomData = latest.CustomData
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 }
