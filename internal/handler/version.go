@@ -482,6 +482,9 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}()
 
 	if cdk == "" {
+		if latest.Name == param.CurrentVersion {
+			data.ReleaseNote = "placeholder"
+		}
 		resp := response.Success(data, "current resource latest version is "+latest.Name)
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
@@ -505,7 +508,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if latest.Name == param.CurrentVersion {
-		data.ReleaseNote = ""
+		data.ReleaseNote = "placeholder"
 		resp := response.Success(data, "current version is latest")
 		return c.Status(fiber.StatusOK).JSON(resp)
 	}
