@@ -37,8 +37,9 @@ extra:
   #  download_redirect_prefix: "http://127.0.0.1:8000/resources/download"
   download_redirect_prefix: ""
   cdn_prefix: "https://cdn.example.com"
-#  [0-100] use wrr to distribute
-  distribute_ratio: 70
+  #  [0-100] use wrr to distribute
+  distribute_cdn_ratio: 70
+  distribute_cdn_region: [ "default", "" ]
   download_prefix_info:
     "default":
       - url: "1"

@@ -68,8 +68,8 @@ type UpdateInfo struct {
 }
 
 type DistributeInfo struct {
-	Region   string
-	CDK      string
-	RelPath  string
-	Resource string
+	Region   string `json:"region"`
+	CDK      string `json:"cdk"`
+	RelPath  string `json:"rel_path"`
+	Resource string `json:"resource"`
 }

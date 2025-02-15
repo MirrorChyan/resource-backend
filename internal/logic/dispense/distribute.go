@@ -6,6 +6,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"math/rand"
+	"slices"
 )
 
 type DistributeLogic struct {
@@ -39,15 +40,16 @@ type Distributor interface {
 
 func (l *DistributeLogic) Distribute(info *model.DistributeInfo) (string, error) {
 	var (
-		ds    = l.distributors
-		cfg   = config.GConfig
-		first = ds[0]
-		ratio = cfg.Extra.DistributeRatio
+		ds      = l.distributors
+		cfg     = config.GConfig
+		wrr     = ds[0]
+		ratio   = cfg.Extra.DistributeCdnRatio
+		regions = cfg.Extra.DistributeCdnRegion
 	)
 
-	if rand.Intn(totalWeight) > ratio {
+	if rand.Intn(totalWeight) < ratio && slices.Contains(regions, info.Region) {
 		return ds[1].Distribute(info)
 	}
 
-	return first.Distribute(info)
+	return wrr.Distribute(info)
 }

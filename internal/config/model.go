@@ -51,7 +51,8 @@ type (
 		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
 		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
 		CdnPrefix               string                   `mapstructure:"cdn_prefix"`
-		DistributeRatio         int                      `mapstructure:"distribute_ratio"`
+		DistributeCdnRatio      int                      `mapstructure:"distribute_cdn_ratio"`
+		DistributeCdnRegion     []string                 `mapstructure:"distribute_cdn_region"`
 		Concurrency             int32                    `mapstructure:"concurrency"`
 	}
 
