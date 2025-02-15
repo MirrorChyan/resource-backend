@@ -15,7 +15,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/go-redsync/redsync/v4"
-	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -54,5 +53,3 @@ type HandlerSet struct {
 	MetricsHandler    *handler.MetricsHandler
 	HeathCheckHandler *handler.HeathCheckHandler
 }
-
-var handlerSetStruct = wire.Struct(new(HandlerSet), "*")

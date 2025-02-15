@@ -22,8 +22,6 @@ type HandlerSet struct {
 	HeathCheckHandler *handler.HeathCheckHandler
 }
 
-var handlerSetStruct = wire.Struct(new(HandlerSet), "*")
-
 func NewHandlerSet(
 	logger *zap.Logger,
 	db *ent.Client,
@@ -36,6 +34,6 @@ func NewHandlerSet(
 		provider.RepoSet,
 		provider.LogicSet,
 		provider.HandlerSet,
-		handlerSetStruct,
+		wire.Struct(new(HandlerSet), "*"),
 	))
 }
