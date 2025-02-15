@@ -35,17 +35,18 @@ func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsyn
 	distributeLogic := dispense.NewDistributeLogic(logger, rdb)
 	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, latestVersionLogic, storageLogic, rdb, redsync2, cg, distributeLogic)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, verComparator)
-	handlerSet := provideHandlerSet(resourceHandler, versionHandler)
+	metricsHandler := handler.NewMetricsHandler()
+	heathCheckHandler := handler.NewHeathCheckHandlerHandler()
+	handlerSet := &HandlerSet{
+		ResourceHandler:   resourceHandler,
+		VersionHandler:    versionHandler,
+		MetricsHandler:    metricsHandler,
+		HeathCheckHandler: heathCheckHandler,
+	}
 	return handlerSet
 }
 
 // wire.go:
-
-var repoProviderSet = wire.NewSet(repo.NewRepo, repo.NewResource, repo.NewVersion, repo.NewLatestVersion, repo.NewStorage)
-
-var logicProviderSet = wire.NewSet(logic.NewResourceLogic, logic.NewVersionLogic, logic.NewLatestVersionLogic, logic.NewStorageLogic, dispense.NewDistributeLogic)
-
-var handlerProviderSet = wire.NewSet(handler.NewResourceHandler, handler.NewVersionHandler, handler.NewMetricsHandler, handler.NewHeathCheckHandlerHandler)
 
 type HandlerSet struct {
 	ResourceHandler   *handler.ResourceHandler
@@ -54,12 +55,4 @@ type HandlerSet struct {
 	HeathCheckHandler *handler.HeathCheckHandler
 }
 
-func provideHandlerSet(
-	resourceHandler *handler.ResourceHandler,
-	versionHandler *handler.VersionHandler,
-) *HandlerSet {
-	return &HandlerSet{
-		ResourceHandler: resourceHandler,
-		VersionHandler:  versionHandler,
-	}
-}
+var handlerSetStruct = wire.Struct(new(HandlerSet), "*")
