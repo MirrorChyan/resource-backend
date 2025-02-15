@@ -60,3 +60,16 @@ type UpdatePackage struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
 }
+
+type UpdateInfo struct {
+	RelPath    string
+	SHA256     string
+	UpdateType string
+}
+
+type DistributeInfo struct {
+	Region   string
+	CDK      string
+	RelPath  string
+	Resource string
+}

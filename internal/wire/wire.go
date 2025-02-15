@@ -8,6 +8,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
+	"github.com/MirrorChyan/resource-backend/internal/logic/dispense"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/go-redsync/redsync/v4"
@@ -29,6 +30,7 @@ var logicProviderSet = wire.NewSet(
 	logic.NewVersionLogic,
 	logic.NewLatestVersionLogic,
 	logic.NewStorageLogic,
+	dispense.NewDistributeLogic,
 )
 
 var handlerProviderSet = wire.NewSet(
@@ -45,7 +47,10 @@ type HandlerSet struct {
 	HeathCheckHandler *handler.HeathCheckHandler
 }
 
-func provideHandlerSet(resourceHandler *handler.ResourceHandler, versionHandler *handler.VersionHandler) *HandlerSet {
+func provideHandlerSet(
+	resourceHandler *handler.ResourceHandler,
+	versionHandler *handler.VersionHandler,
+) *HandlerSet {
 	return &HandlerSet{
 		ResourceHandler: resourceHandler,
 		VersionHandler:  versionHandler,

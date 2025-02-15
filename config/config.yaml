@@ -1,13 +1,13 @@
 instance:
   port: 8000
-  only_local: false
+  only_local: true
 
 registry:
   endpoint: "http://127.0.0.1:8500"
   path: "/dev"
 
 log:
-  level: "debug"
+  level: "info"
 
 
 
@@ -20,23 +20,30 @@ redis:
 database:
   host: "localhost"
   port: 3306
-  username: "example"
-  password: "example"
+  username: "root"
+  password: "admin"
   name: "res"
 
 auth:
+  sign_secret: "secret"
   uploader_validation_url: "https://uploader.validation.example"
   cdk_validation_url: "https://cdk.validation.example"
 
 extra:
   create_new_version_webhook: "https://example.com/message"
   sql_debug_mode: false
-  download_effective_time: "23m"
+  download_effective_time: "10m"
+  download_limit_count: 10
+  #  download_redirect_prefix: "http://127.0.0.1:8000/resources/download"
+  download_redirect_prefix: ""
+  cdn_prefix: "https://cdn.example.com"
+#  [0-100] use wrr to distribute
+  distribute_ratio: 70
   download_prefix_info:
     "default":
-      - url: "https://download.prefixexample/download1"
+      - url: "1"
         weight: 1
-      - url: "https://download.prefixexample/download2"
+      - url: "2"
         weight: 2
     "hk":
       - url: "https://download.prefixexample/download3"

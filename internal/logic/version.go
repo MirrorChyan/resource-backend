@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/segmentio/ksuid"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,7 +17,8 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
-	"github.com/MirrorChyan/resource-backend/internal/lb"
+	"github.com/MirrorChyan/resource-backend/internal/logic/dispense"
+	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
@@ -26,7 +28,6 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/redis/go-redis/v9"
-	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
 )
 
@@ -36,6 +37,7 @@ type VersionLogic struct {
 	versionRepo        *repo.Version
 	storageRepo        *repo.Storage
 	latestVersionLogic *LatestVersionLogic
+	distributeLogic    *dispense.DistributeLogic
 	storageLogic       *StorageLogic
 	rdb                *redis.Client
 	sync               *redsync.Redsync
@@ -52,6 +54,7 @@ func NewVersionLogic(
 	rdb *redis.Client,
 	sync *redsync.Redsync,
 	cacheGroup *cache.VersionCacheGroup,
+	distributeLogic *dispense.DistributeLogic,
 ) *VersionLogic {
 	return &VersionLogic{
 		logger:             logger,
@@ -60,26 +63,12 @@ func NewVersionLogic(
 		storageRepo:        storageRepo,
 		latestVersionLogic: latestVersionLogic,
 		storageLogic:       storageLogic,
+		distributeLogic:    distributeLogic,
 		rdb:                rdb,
 		sync:               sync,
 		cacheGroup:         cacheGroup,
 	}
 }
-
-const (
-	FullUpdateType        = "full"
-	IncrementalUpdateType = "incremental"
-
-	resourcePrefix = "Res"
-
-	zipSuffix         = ".zip"
-	tarGzSuffix       = ".tar.gz"
-	specificSeparator = "$#@"
-)
-
-var (
-	StorageInfoNotFound = errors.New("storage info not found")
-)
 
 func (l *VersionLogic) GetRedisClient() *redis.Client {
 	return l.rdb
@@ -299,9 +288,9 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 			}
 
 			switch {
-			case strings.HasSuffix(param.UploadArchivePath, zipSuffix):
+			case strings.HasSuffix(param.UploadArchivePath, misc.ZipSuffix):
 				err = archive.UnpackZip(param.UploadArchivePath, saveDir)
-			case strings.HasSuffix(param.UploadArchivePath, tarGzSuffix):
+			case strings.HasSuffix(param.UploadArchivePath, misc.TarGzSuffix):
 				err = archive.UnpackTarGz(param.UploadArchivePath, saveDir)
 			default:
 				l.logger.Error("Unknown archive extension",
@@ -337,7 +326,7 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 
 			archivePath = l.storageLogic.BuildVersionResourceStoragePath(resourceID, ver.ID, system, arch)
 
-			if strings.HasSuffix(param.UploadArchivePath, zipSuffix) {
+			if strings.HasSuffix(param.UploadArchivePath, misc.ZipSuffix) {
 				err = fileops.MoveFile(param.UploadArchivePath, archivePath)
 				if err != nil {
 					l.logger.Error("Failed to move archive file",
@@ -469,7 +458,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 		fullUpdateStorage, err := l.getFullUpdateStorageByCache(ctx, param.TargetVersion.ID, param.OS, param.Arch)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return "", "", "", StorageInfoNotFound
+				return "", "", "", misc.StorageInfoNotFound
 			}
 			l.logger.Error("failed to get full storage info",
 				zap.Error(err),
@@ -502,7 +491,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 
 		packagePath = fullUpdateStorage.PackagePath
 		packageSHA256 = fullUpdateStorage.PackageHashSha256
-		updateType = FullUpdateType
+		updateType = misc.FullUpdateType
 
 		return packagePath, packageSHA256, updateType, nil
 	}
@@ -522,7 +511,7 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 	info.Target, info.Current, err = l.fetchStorageInfoTuple(ctx, targetVersion.ID, currentVersion.ID, param.OS, param.Arch)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return "", "", "", StorageInfoNotFound
+			return "", "", "", misc.StorageInfoNotFound
 		}
 		l.logger.Error("failed to get storage info",
 			zap.Error(err),
@@ -540,57 +529,82 @@ func (l *VersionLogic) doProcessPatchOrFullUpdate(ctx context.Context, param Pro
 
 	packagePath = incrementalUpdatePackage.Path
 	packageSHA256 = incrementalUpdatePackage.SHA256
-	updateType = IncrementalUpdateType
+	updateType = misc.IncrementalUpdateType
 
 	return packagePath, packageSHA256, updateType, nil
 }
 
-func (l *VersionLogic) GetUpdateInfo(ctx context.Context, region, cdk string, param ProcessUpdateParam) (url, packageSHA256, updateType string, err error) {
-	var (
-		cfg = GConfig
-		rid = param.ResourceID
-	)
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param ProcessUpdateParam) (*UpdateInfo, error) {
+
 	// path is the download path, type is the update type
 	packagePath, packageSHA256, updateType, err := l.doProcessPatchOrFullUpdate(ctx, param)
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
-	rel := l.cleanPath(packagePath)
+	rel := l.cleanStoragePath(packagePath)
 
-	key := ksuid.New().String()
-	sk := strings.Join([]string{resourcePrefix, key}, ":")
-
-	value, err := sonic.Marshal(map[string]string{
-		"cdk":  cdk,
-		"path": rel,
-		"rid":  rid,
-	})
-	if err != nil {
-		return "", "", "", err
-	}
-
-	_, err = l.rdb.Set(ctx, sk, value, cfg.Extra.DownloadEffectiveTime).Result()
-	if err != nil {
-		return "", "", "", err
-	}
-
-	// Acquire and Next is not atomic operation
-	var (
-		wrr    = lb.WRR().Acquire(region)
-		prefix = wrr.Next()
-	)
-
-	url = strings.Join([]string{prefix, key}, "/")
-
-	return url, packageSHA256, updateType, nil
+	return &UpdateInfo{
+		RelPath:    rel,
+		SHA256:     packageSHA256,
+		UpdateType: updateType,
+	}, nil
 }
 
-func (l *VersionLogic) cleanPath(p string) string {
+func (l *VersionLogic) cleanStoragePath(p string) string {
 	rel := strings.TrimPrefix(p, l.storageLogic.RootDir)
 	rel = strings.TrimPrefix(rel, string(os.PathSeparator))
-	rel = strings.ReplaceAll(rel, string(os.PathSeparator), "/")
-	return rel
+	return strings.ReplaceAll(rel, string(os.PathSeparator), "/")
+}
+
+func (l *VersionLogic) GetDistributeURL(info *DistributeInfo) (string, error) {
+	// 可以改成无状态的
+	var (
+		ctx    = context.Background()
+		prefix = GConfig.Extra.DownloadRedirectPrefix
+		rk     = ksuid.New().String()
+	)
+
+	val, err := sonic.MarshalString(info)
+	if err != nil {
+		l.logger.Error("Failed to marshal string",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	key := strings.Join([]string{misc.DispensePrefix, rk}, ":")
+
+	_, err = l.rdb.Set(ctx, key, val, time.Minute*5).Result()
+	if err != nil {
+		l.logger.Error("failed to set distribute info",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	url := strings.Join([]string{prefix, rk}, "/")
+	return url, nil
+}
+
+func (l *VersionLogic) GetDistributeLocation(ctx context.Context, rk string) (string, error) {
+	key := strings.Join([]string{misc.DispensePrefix, rk}, ":")
+	val, err := l.rdb.Get(ctx, key).Result()
+	if err != nil {
+		return "", err
+	}
+	info := &DistributeInfo{}
+	err = sonic.UnmarshalString(val, info)
+	if err != nil {
+		return "", err
+	}
+
+	url, err := l.distributeLogic.Distribute(info)
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
 }
 
 func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (UpdatePackage, bool, error) {
@@ -600,7 +614,7 @@ func (l *VersionLogic) isPatchLoaded(ctx context.Context, cacheKey string) (Upda
 	}
 
 	if result != "" {
-		r := strings.Split(result, specificSeparator)
+		r := strings.Split(result, misc.SpecificSeparator)
 		if len(r) > 2 {
 			return UpdatePackage{}, false, errors.New("patch cache error")
 		}
@@ -632,7 +646,7 @@ func (l *VersionLogic) StorePatchInfo(ctx context.Context, cacheKey string, p Up
 		return err
 	}
 
-	val := strings.Join([]string{string(pData), e}, specificSeparator)
+	val := strings.Join([]string{string(pData), e}, misc.SpecificSeparator)
 	_, err = l.rdb.Set(ctx, cacheKey, val, time.Minute*5).Result()
 	if err != nil {
 		return err

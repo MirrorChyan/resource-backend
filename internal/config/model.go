@@ -46,8 +46,12 @@ type (
 	ExtraConfig struct {
 		DownloadPrefixInfo      map[string][]RobinServer `mapstructure:"download_prefix_info"`
 		DownloadEffectiveTime   time.Duration            `mapstructure:"download_effective_time"`
+		DownloadLimitCount      int64                    `mapstructure:"download_limit_count"`
+		DownloadRedirectPrefix  string                   `mapstructure:"download_redirect_prefix"`
 		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
 		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
+		CdnPrefix               string                   `mapstructure:"cdn_prefix"`
+		DistributeRatio         int                      `mapstructure:"distribute_ratio"`
 		Concurrency             int32                    `mapstructure:"concurrency"`
 	}
 
@@ -57,6 +61,8 @@ type (
 	}
 
 	AuthConfig struct {
+		SignSecret            string `mapstructure:"sign_secret"`
+		PrivateKey            string `mapstructure:"private_key"`
 		UploaderValidationURL string `mapstructure:"uploader_validation_url"`
 		CDKValidationURL      string `mapstructure:"cdk_validation_url"`
 	}
