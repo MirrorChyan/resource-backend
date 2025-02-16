@@ -82,10 +82,23 @@ func (h *StorageHandler) Clear(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	if err := h.storageLogic.ClearOldStorages(ctx, resID, version.Channel(channel), latest.ID); err != nil {
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
+	go func() {
+		h.logger.Info("start clear old storages",
+			zap.String("resource id", resID),
+			zap.String("channel", channel),
+		)
+		err := h.storageLogic.ClearOldStorages(context.Background(), resID, version.Channel(channel), latest.ID)
+		if err != nil {
+			h.logger.Error("clear old storages failed",
+				zap.Error(err),
+			)
+			return
+		}
+		h.logger.Info("complete clear old storages",
+			zap.String("resource id", resID),
+			zap.String("channel", channel),
+		)
+	}()
 
 	resp := response.Success(nil)
 	return c.Status(fiber.StatusOK).JSON(resp)
