@@ -505,7 +505,7 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
 	}
 	h.logger.Info("RedirectToDownload",
-		zap.String("resource id", rk),
+		zap.String("distribute key", rk),
 		zap.String("download url", url),
 	)
 	return c.Redirect(url)
@@ -583,6 +583,8 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
+	h.clearAllChannelCache(resID)
+
 	resp := response.Success(nil)
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
@@ -618,7 +620,7 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if len(req.Content) > 10000 {
+	if len(req.Content) > 30000 {
 		resp := response.BusinessError("cumstom data too long, max length is 10000")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
@@ -659,6 +661,19 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
+	h.clearAllChannelCache(resID)
+
 	resp := response.Success(nil)
 	return c.Status(fiber.StatusOK).JSON(resp)
+}
+
+func (h *VersionHandler) clearAllChannelCache(resourceId string) {
+	var (
+		cg    = h.versionLogic.GetCacheGroup()
+		cache = cg.VersionLatestCache
+	)
+	for _, ch := range AllChannel {
+		key := cg.GetCacheKey(resourceId, ch)
+		cache.Delete(key)
+	}
 }

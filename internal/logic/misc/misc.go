@@ -94,6 +94,7 @@ var (
 		// alpha
 		"alpha": "alpha",
 	}
+	AllChannel = []string{"stable", "beta", "alpha"}
 )
 
 var LIT = &sync.Map{}
