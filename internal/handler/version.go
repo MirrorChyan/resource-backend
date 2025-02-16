@@ -620,7 +620,7 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if len(req.Content) > 30000 {
+	if len(req.Content) > 10000 {
 		resp := response.BusinessError("cumstom data too long, max length is 10000")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
