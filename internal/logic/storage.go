@@ -180,7 +180,7 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context, resID string, chann
 	// delete old incremental update package
 	for _, storage := range incrementalUpdateStorages {
 		err = os.Remove(storage.PackagePath)
-		if err != nil {
+		if err != nil && !os.IsNotExist(err) {
 			l.logger.Error("delete old version incremental update package failed",
 				zap.String("package path", storage.PackagePath),
 				zap.Error(err),
