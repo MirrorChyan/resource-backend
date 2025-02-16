@@ -3,12 +3,13 @@ package handler
 import (
 	"context"
 	"errors"
-	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
-	"github.com/redis/go-redis/v9"
-	"github.com/valyala/fasthttp"
 	"os"
 	"path/filepath"
 	"strings"
+
+	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
+	"github.com/redis/go-redis/v9"
+	"github.com/valyala/fasthttp"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -542,9 +543,8 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if len(req.Content) > 10000 {
-		resp := response.BusinessError("release note too long, max length is 10000")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	if len(req.Content) > 30000 {
+		req.Content = req.Content[:30000]
 	}
 
 	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
