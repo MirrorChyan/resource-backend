@@ -93,6 +93,8 @@ func initRoute(app *fiber.App, handlerSet *wire.HandlerSet) {
 
 	handlerSet.VersionHandler.Register(r)
 
+	handlerSet.StorageHandler.Register(r)
+
 	handlerSet.MetricsHandler.Register(r)
 
 	handlerSet.HeathCheckHandler.Register(r)

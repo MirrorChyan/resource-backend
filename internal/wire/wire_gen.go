@@ -34,11 +34,13 @@ func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsyn
 	distributeLogic := dispense.NewDistributeLogic(logger, rdb)
 	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, latestVersionLogic, storageLogic, rdb, redsync2, cg, distributeLogic)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, verComparator)
+	storageHandler := handler.NewStorageHandler(logger, resourceLogic, versionLogic, storageLogic)
 	metricsHandler := handler.NewMetricsHandler()
 	heathCheckHandler := handler.NewHeathCheckHandlerHandler()
 	handlerSet := &HandlerSet{
 		ResourceHandler:   resourceHandler,
 		VersionHandler:    versionHandler,
+		StorageHandler:    storageHandler,
 		MetricsHandler:    metricsHandler,
 		HeathCheckHandler: heathCheckHandler,
 	}
@@ -50,6 +52,7 @@ func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsyn
 type HandlerSet struct {
 	ResourceHandler   *handler.ResourceHandler
 	VersionHandler    *handler.VersionHandler
+	StorageHandler    *handler.StorageHandler
 	MetricsHandler    *handler.MetricsHandler
 	HeathCheckHandler *handler.HeathCheckHandler
 }

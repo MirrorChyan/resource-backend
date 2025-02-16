@@ -25,3 +25,7 @@ type UpdateReleaseNoteSummaryRequest struct {
 	VersionName string `json:"version_name"`
 	Content     string `json:"content"`
 }
+
+type ClearOldStorageRequest struct {
+	Channel string `json:"channel"`
+}

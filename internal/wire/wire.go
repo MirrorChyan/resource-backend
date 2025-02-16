@@ -18,6 +18,7 @@ import (
 type HandlerSet struct {
 	ResourceHandler   *handler.ResourceHandler
 	VersionHandler    *handler.VersionHandler
+	StorageHandler    *handler.StorageHandler
 	MetricsHandler    *handler.MetricsHandler
 	HeathCheckHandler *handler.HeathCheckHandler
 }
