@@ -106,7 +106,7 @@ func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	var ctx = c.UserContext()
 
-	resID := c.Params(RegionHeaderKey)
+	resID := c.Params(ResourceKey)
 	resExist, err := h.resourceLogic.Exists(ctx, resID)
 	switch {
 	case err != nil:

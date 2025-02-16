@@ -28,13 +28,15 @@ func (d *ContentDeliveryNetworkDistributor) Distribute(info *model.DistributeInf
 	var (
 		ctx = context.Background()
 		t   = time.Now().Format(time.DateOnly)
+		key = strings.Join([]string{"limit", t, info.CDK}, ":")
 	)
 
-	result, err := d.rdb.Incr(ctx, strings.Join([]string{"limit", t, info.CDK}, ":")).Result()
+	result, err := d.rdb.Incr(ctx, key).Result()
 	if err != nil {
 		return "", err
 	}
-	if result > config.GConfig.Extra.DownloadLimitCount {
+
+	if result-1 > config.GConfig.Extra.DownloadLimitCount {
 		return "", misc.ResourceLimitError
 	}
 
