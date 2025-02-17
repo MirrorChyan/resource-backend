@@ -2,6 +2,7 @@ package dispense
 
 import (
 	"context"
+	"fmt"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/lb"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -53,7 +54,8 @@ func (d *WeightedRoundRobinDistributor) Distribute(info *model.DistributeInfo) (
 		prefix = wrr.Next()
 	)
 
-	url := strings.Join([]string{prefix, key}, "/")
+	root := strings.Join([]string{prefix, info.RelPath}, "/")
+	url := fmt.Sprintf("%s?key=%s", root, key)
 
 	return url, nil
 }

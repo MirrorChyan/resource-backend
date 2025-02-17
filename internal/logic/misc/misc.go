@@ -15,7 +15,7 @@ const (
 	FullUpdateType        = "full"
 	IncrementalUpdateType = "incremental"
 
-	ResourcePrefix = "Res"
+	ResourcePrefix = "res"
 
 	ZipSuffix         = ".zip"
 	TarGzSuffix       = ".tar.gz"
