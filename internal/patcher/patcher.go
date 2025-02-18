@@ -5,6 +5,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/bytedance/sonic"
 	"golang.org/x/sync/errgroup"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -86,6 +87,8 @@ func Generate(patchName, resDir, targetDir string, changes []Change) (string, er
 	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return "", fmt.Errorf("failed to create target directory: %w", err)
 	}
+
+	log.Println("Start Generate", resDir, targetDir, patchName)
 
 	var files [][2]string
 

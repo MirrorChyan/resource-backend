@@ -763,10 +763,14 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info 
 		e = err.Error()
 	}
 
-	if err := l.StorePatchInfo(ctx, cacheKey, UpdatePackage{
+	if e := l.StorePatchInfo(ctx, cacheKey, UpdatePackage{
 		Path:   packagePath,
 		SHA256: packageSHA256,
-	}, e); err != nil {
+	}, e); e != nil {
+		return UpdatePackage{}, e
+	}
+
+	if err != nil {
 		return UpdatePackage{}, err
 	}
 
