@@ -202,14 +202,15 @@ func (l *VersionLogic) CreateVersion(ctx context.Context, resID, channel, name s
 	}
 
 	// clear old version resources after 30 minutes
-	go func() {
-		timer := time.NewTimer(30 * time.Minute)
-		defer timer.Stop()
-		select {
-		case <-timer.C:
-			l.clearOldStorages(resID, verChannel, ver.ID, ver.Name)
-		}
-	}()
+	// FIXME
+	//go func() {
+	//	timer := time.NewTimer(30 * time.Minute)
+	//	defer timer.Stop()
+	//	select {
+	//	case <-timer.C:
+	//		l.clearOldStorages(resID, verChannel, ver.ID, ver.Name)
+	//	}
+	//}()
 
 	return ver, nil
 }
@@ -720,6 +721,7 @@ func (l *VersionLogic) CreateIncrementalUpdatePackage(ctx context.Context, info 
 	val, done, err := l.isPatchLoaded(ctx, cacheKey)
 	switch {
 	case err != nil:
+		l.logger.Warn("fast fail hit the patch cache", zap.String("err", err.Error()))
 		return UpdatePackage{}, err
 	case done:
 		return UpdatePackage{

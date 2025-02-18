@@ -67,7 +67,6 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 
 func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {
 	return r.db.Storage.Query().
-		Select(storage.FieldPackagePath).
 		Where(
 			storage.HasVersionWith(version.ID(verID)),
 			storage.HasOldVersionWith(version.ID(oldVerID)),
