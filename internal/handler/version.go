@@ -465,11 +465,11 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 
 	var (
-		ctx   = c.UserContext()
-		resID = c.Params(ResourceKey)
+		ctx        = c.UserContext()
+		resourceId = c.Params(ResourceKey)
 	)
 
-	resExist, err := h.resourceLogic.Exists(ctx, resID)
+	resExist, err := h.resourceLogic.Exists(ctx, resourceId)
 	switch {
 	case err != nil:
 		h.logger.Error("Failed to check if resource exists",
@@ -480,7 +480,7 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 
 	case !resExist:
 		h.logger.Info("Resource not found",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 		)
 		resp := response.BusinessError("resource not found")
 		return c.Status(fiber.StatusNotFound).JSON(resp)
@@ -501,20 +501,20 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	}
 
 	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
-		ResourceID:  resID,
+		ResourceID:  resourceId,
 		VersionName: req.VersionName,
 	})
 	switch {
 	case ent.IsNotFound(err):
 		h.logger.Info("version not found",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 		)
 		resp := response.BusinessError("version not found")
 		return c.Status(fiber.StatusNotFound).JSON(resp)
 	case err != nil:
 		h.logger.Error("failed to check if version exists",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
 		)
@@ -528,7 +528,7 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		h.logger.Error("failed to update version release note",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
 		)
@@ -536,7 +536,7 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	h.clearAllChannelCache(resID)
+	h.doEvictCache(resourceId)
 
 	resp := response.Success(nil)
 	return c.Status(fiber.StatusOK).JSON(resp)
@@ -544,10 +544,10 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 
 func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 	var (
-		ctx   = c.UserContext()
-		resID = c.Params(ResourceKey)
+		ctx        = c.UserContext()
+		resourceId = c.Params(ResourceKey)
 	)
-	resExist, err := h.resourceLogic.Exists(ctx, resID)
+	resExist, err := h.resourceLogic.Exists(ctx, resourceId)
 	switch {
 	case err != nil:
 		h.logger.Error("Failed to check if resource exists",
@@ -558,7 +558,7 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 
 	case !resExist:
 		h.logger.Info("Resource not found",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 		)
 		resp := response.BusinessError("resource not found")
 		return c.Status(fiber.StatusNotFound).JSON(resp)
@@ -580,20 +580,20 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 	}
 
 	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
-		ResourceID:  resID,
+		ResourceID:  resourceId,
 		VersionName: req.VersionName,
 	})
 	switch {
 	case ent.IsNotFound(err):
 		h.logger.Info("version not found",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 		)
 		resp := response.BusinessError("version not found")
 		return c.Status(fiber.StatusNotFound).JSON(resp)
 	case err != nil:
 		h.logger.Error("failed to check if version exists",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
 		)
@@ -607,7 +607,7 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		h.logger.Error("failed to update version custom data",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
 		)
@@ -615,19 +615,21 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	h.clearAllChannelCache(resID)
+	h.doEvictCache(resourceId)
 
 	resp := response.Success(nil)
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
-func (h *VersionHandler) clearAllChannelCache(resourceId string) {
-	var (
-		cg    = h.versionLogic.GetCacheGroup()
-		cache = cg.VersionLatestCache
-	)
-	for _, ch := range AllChannel {
-		key := cg.GetCacheKey(resourceId, ch)
-		cache.Delete(key)
+func (h *VersionHandler) doEvictCache(resourceId string) {
+	// The cache does not support iteration to temporarily clear all
+	cg := h.versionLogic.GetCacheGroup()
+	for _, system := range TotalOs {
+		for _, arch := range TotalArch {
+			for _, channel := range TotalChannel {
+				key := cg.GetCacheKey(resourceId, system, arch, channel)
+				cg.MultiVersionInfoCache.Delete(key)
+			}
+		}
 	}
 }

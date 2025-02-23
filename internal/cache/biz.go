@@ -13,17 +13,11 @@ import (
 
 type VersionCacheGroup struct {
 	// value store pointer don't modify it
-	// key: resourceId:channelName
-	VersionLatestCache *Cache[string, *ent.Version]
-	// key: resourceId:versionName
-	VersionNameCache *Cache[string, *ent.Version]
 
 	// key: resourceId:versionName -> versionId
 	VersionNameIdCache *Cache[string, int]
 	// key: versionId:os:arch
 	FullUpdateStorageCache *Cache[string, *ent.Storage]
-	// key: targetVersionId:currentVersionId:os:arch
-	IncrementalUpdateStorageCache *Cache[string, *ent.Storage]
 
 	// key: targetVersionId:currentVersionId:os:arch / cache empty
 	IncrementalUpdateInfoCache *Cache[string, *model.IncrementalUpdateInfo]
@@ -37,10 +31,7 @@ func (g *VersionCacheGroup) GetCacheKey(elems ...string) string {
 }
 
 func (g *VersionCacheGroup) EvictAll() {
-	g.VersionLatestCache.EvictAll()
-	g.VersionNameCache.EvictAll()
 	g.FullUpdateStorageCache.EvictAll()
-	g.IncrementalUpdateStorageCache.EvictAll()
 	g.VersionNameIdCache.EvictAll()
 	g.IncrementalUpdateInfoCache.EvictAll()
 	g.MultiVersionInfoCache.EvictAll()
@@ -48,13 +39,10 @@ func (g *VersionCacheGroup) EvictAll() {
 
 func NewVersionCacheGroup(rdb *redis.Client) *VersionCacheGroup {
 	group := &VersionCacheGroup{
-		VersionLatestCache:            NewCache[string, *ent.Version](6 * time.Hour),
-		VersionNameCache:              NewCache[string, *ent.Version](6 * time.Hour),
-		FullUpdateStorageCache:        NewCache[string, *ent.Storage](6 * time.Hour),
-		IncrementalUpdateStorageCache: NewCache[string, *ent.Storage](6 * time.Hour),
-		VersionNameIdCache:            NewCache[string, int](6 * time.Hour),
-		IncrementalUpdateInfoCache:    NewCache[string, *model.IncrementalUpdateInfo](6 * time.Hour),
-		MultiVersionInfoCache:         NewCache[string, *model.MultiVersionInfo](6 * time.Hour),
+		FullUpdateStorageCache:     NewCache[string, *ent.Storage](6 * time.Hour),
+		VersionNameIdCache:         NewCache[string, int](6 * time.Hour),
+		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](6 * time.Hour),
+		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](6 * time.Hour),
 	}
 	subscribeCacheEvict(rdb, group)
 	return group

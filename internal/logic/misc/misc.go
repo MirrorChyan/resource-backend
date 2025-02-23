@@ -108,7 +108,10 @@ var (
 		// alpha
 		"alpha": "alpha",
 	}
-	AllChannel = []string{"stable", "beta", "alpha"}
+
+	TotalChannel = []string{"stable", "beta", "alpha"}
+	TotalOs      = []string{"", "windows", "linux", "darwin", "android"}
+	TotalArch    = []string{"", "386", "arm64", "amd64", "arm"}
 )
 
 var LIT = &sync.Map{}

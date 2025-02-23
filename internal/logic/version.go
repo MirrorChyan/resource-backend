@@ -283,6 +283,8 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 		return nil, err
 	}
 
+	l.doPostCreateResources(resourceId)
+
 	go l.doWebhookNotify(resourceId, versionName, v.Channel.String(), system, arch, true)
 
 	return v, nil
@@ -355,9 +357,16 @@ func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arc
 	}
 }
 
-func (l *VersionLogic) doPostCreateResources(resID, channel string) {
-	cacheKey := l.cacheGroup.GetCacheKey(resID, channel)
-	l.cacheGroup.VersionLatestCache.Delete(cacheKey)
+func (l *VersionLogic) doPostCreateResources(resourceId string) {
+	cg := l.GetCacheGroup()
+	for _, system := range misc.TotalOs {
+		for _, arch := range misc.TotalArch {
+			for _, channel := range misc.TotalChannel {
+				key := cg.GetCacheKey(resourceId, system, arch, channel)
+				cg.MultiVersionInfoCache.Delete(key)
+			}
+		}
+	}
 }
 
 func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, target, current int, system, arch string) error {
@@ -480,7 +489,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 
 func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
 	var (
-		key = l.cacheGroup.GetCacheKey(resourceId, channel, os, arch)
+		key = l.cacheGroup.GetCacheKey(resourceId, os, arch, channel)
 	)
 	val, err := l.cacheGroup.MultiVersionInfoCache.ComputeIfAbsent(key, func() (*MultiVersionInfo, error) {
 		info, err := l.doGetLatestVersionInfo(resourceId, os, arch, channel)
@@ -661,22 +670,6 @@ func (l *VersionLogic) getFullUpdateStorageByCache(ctx context.Context, versionI
 	)
 	val, err := cg.FullUpdateStorageCache.ComputeIfAbsent(cacheKey, func() (*ent.Storage, error) {
 		return l.storageLogic.GetFullUpdateStorage(ctx, versionId, os, arch)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return *val, err
-}
-
-func (l *VersionLogic) getIncrementalUpdateStorageByCache(ctx context.Context, targetVerID, currentVerID int, os, arch string) (*ent.Storage, error) {
-	cacheKey := l.cacheGroup.GetCacheKey(
-		strconv.Itoa(targetVerID),
-		strconv.Itoa(currentVerID),
-		os,
-		arch,
-	)
-	val, err := l.cacheGroup.IncrementalUpdateStorageCache.ComputeIfAbsent(cacheKey, func() (*ent.Storage, error) {
-		return l.storageLogic.GetIncrementalUpdateStorage(ctx, targetVerID, currentVerID, os, arch)
 	})
 	if err != nil {
 		return nil, err
