@@ -11,7 +11,6 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/predicate"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
@@ -27,537 +26,27 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeLatestVersion = "LatestVersion"
-	TypeResource      = "Resource"
-	TypeStorage       = "Storage"
-	TypeVersion       = "Version"
+	TypeResource = "Resource"
+	TypeStorage  = "Storage"
+	TypeVersion  = "Version"
 )
-
-// LatestVersionMutation represents an operation that mutates the LatestVersion nodes in the graph.
-type LatestVersionMutation struct {
-	config
-	op              Op
-	typ             string
-	id              *int
-	channel         *latestversion.Channel
-	updated_at      *time.Time
-	clearedFields   map[string]struct{}
-	resource        *string
-	clearedresource bool
-	version         *int
-	clearedversion  bool
-	done            bool
-	oldValue        func(context.Context) (*LatestVersion, error)
-	predicates      []predicate.LatestVersion
-}
-
-var _ ent.Mutation = (*LatestVersionMutation)(nil)
-
-// latestversionOption allows management of the mutation configuration using functional options.
-type latestversionOption func(*LatestVersionMutation)
-
-// newLatestVersionMutation creates new mutation for the LatestVersion entity.
-func newLatestVersionMutation(c config, op Op, opts ...latestversionOption) *LatestVersionMutation {
-	m := &LatestVersionMutation{
-		config:        c,
-		op:            op,
-		typ:           TypeLatestVersion,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withLatestVersionID sets the ID field of the mutation.
-func withLatestVersionID(id int) latestversionOption {
-	return func(m *LatestVersionMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *LatestVersion
-		)
-		m.oldValue = func(ctx context.Context) (*LatestVersion, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().LatestVersion.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withLatestVersion sets the old LatestVersion of the mutation.
-func withLatestVersion(node *LatestVersion) latestversionOption {
-	return func(m *LatestVersionMutation) {
-		m.oldValue = func(context.Context) (*LatestVersion, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m LatestVersionMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m LatestVersionMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *LatestVersionMutation) ID() (id int, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *LatestVersionMutation) IDs(ctx context.Context) ([]int, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []int{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().LatestVersion.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetChannel sets the "channel" field.
-func (m *LatestVersionMutation) SetChannel(l latestversion.Channel) {
-	m.channel = &l
-}
-
-// Channel returns the value of the "channel" field in the mutation.
-func (m *LatestVersionMutation) Channel() (r latestversion.Channel, exists bool) {
-	v := m.channel
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldChannel returns the old "channel" field's value of the LatestVersion entity.
-// If the LatestVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *LatestVersionMutation) OldChannel(ctx context.Context) (v latestversion.Channel, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldChannel is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldChannel requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldChannel: %w", err)
-	}
-	return oldValue.Channel, nil
-}
-
-// ResetChannel resets all changes to the "channel" field.
-func (m *LatestVersionMutation) ResetChannel() {
-	m.channel = nil
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (m *LatestVersionMutation) SetUpdatedAt(t time.Time) {
-	m.updated_at = &t
-}
-
-// UpdatedAt returns the value of the "updated_at" field in the mutation.
-func (m *LatestVersionMutation) UpdatedAt() (r time.Time, exists bool) {
-	v := m.updated_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUpdatedAt returns the old "updated_at" field's value of the LatestVersion entity.
-// If the LatestVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *LatestVersionMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
-	}
-	return oldValue.UpdatedAt, nil
-}
-
-// ResetUpdatedAt resets all changes to the "updated_at" field.
-func (m *LatestVersionMutation) ResetUpdatedAt() {
-	m.updated_at = nil
-}
-
-// SetResourceID sets the "resource" edge to the Resource entity by id.
-func (m *LatestVersionMutation) SetResourceID(id string) {
-	m.resource = &id
-}
-
-// ClearResource clears the "resource" edge to the Resource entity.
-func (m *LatestVersionMutation) ClearResource() {
-	m.clearedresource = true
-}
-
-// ResourceCleared reports if the "resource" edge to the Resource entity was cleared.
-func (m *LatestVersionMutation) ResourceCleared() bool {
-	return m.clearedresource
-}
-
-// ResourceID returns the "resource" edge ID in the mutation.
-func (m *LatestVersionMutation) ResourceID() (id string, exists bool) {
-	if m.resource != nil {
-		return *m.resource, true
-	}
-	return
-}
-
-// ResourceIDs returns the "resource" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// ResourceID instead. It exists only for internal usage by the builders.
-func (m *LatestVersionMutation) ResourceIDs() (ids []string) {
-	if id := m.resource; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetResource resets all changes to the "resource" edge.
-func (m *LatestVersionMutation) ResetResource() {
-	m.resource = nil
-	m.clearedresource = false
-}
-
-// SetVersionID sets the "version" edge to the Version entity by id.
-func (m *LatestVersionMutation) SetVersionID(id int) {
-	m.version = &id
-}
-
-// ClearVersion clears the "version" edge to the Version entity.
-func (m *LatestVersionMutation) ClearVersion() {
-	m.clearedversion = true
-}
-
-// VersionCleared reports if the "version" edge to the Version entity was cleared.
-func (m *LatestVersionMutation) VersionCleared() bool {
-	return m.clearedversion
-}
-
-// VersionID returns the "version" edge ID in the mutation.
-func (m *LatestVersionMutation) VersionID() (id int, exists bool) {
-	if m.version != nil {
-		return *m.version, true
-	}
-	return
-}
-
-// VersionIDs returns the "version" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// VersionID instead. It exists only for internal usage by the builders.
-func (m *LatestVersionMutation) VersionIDs() (ids []int) {
-	if id := m.version; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetVersion resets all changes to the "version" edge.
-func (m *LatestVersionMutation) ResetVersion() {
-	m.version = nil
-	m.clearedversion = false
-}
-
-// Where appends a list predicates to the LatestVersionMutation builder.
-func (m *LatestVersionMutation) Where(ps ...predicate.LatestVersion) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// WhereP appends storage-level predicates to the LatestVersionMutation builder. Using this method,
-// users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *LatestVersionMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.LatestVersion, len(ps))
-	for i := range ps {
-		p[i] = ps[i]
-	}
-	m.Where(p...)
-}
-
-// Op returns the operation name.
-func (m *LatestVersionMutation) Op() Op {
-	return m.op
-}
-
-// SetOp allows setting the mutation operation.
-func (m *LatestVersionMutation) SetOp(op Op) {
-	m.op = op
-}
-
-// Type returns the node type of this mutation (LatestVersion).
-func (m *LatestVersionMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *LatestVersionMutation) Fields() []string {
-	fields := make([]string, 0, 2)
-	if m.channel != nil {
-		fields = append(fields, latestversion.FieldChannel)
-	}
-	if m.updated_at != nil {
-		fields = append(fields, latestversion.FieldUpdatedAt)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *LatestVersionMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case latestversion.FieldChannel:
-		return m.Channel()
-	case latestversion.FieldUpdatedAt:
-		return m.UpdatedAt()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *LatestVersionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case latestversion.FieldChannel:
-		return m.OldChannel(ctx)
-	case latestversion.FieldUpdatedAt:
-		return m.OldUpdatedAt(ctx)
-	}
-	return nil, fmt.Errorf("unknown LatestVersion field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *LatestVersionMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case latestversion.FieldChannel:
-		v, ok := value.(latestversion.Channel)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetChannel(v)
-		return nil
-	case latestversion.FieldUpdatedAt:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUpdatedAt(v)
-		return nil
-	}
-	return fmt.Errorf("unknown LatestVersion field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *LatestVersionMutation) AddedFields() []string {
-	return nil
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *LatestVersionMutation) AddedField(name string) (ent.Value, bool) {
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *LatestVersionMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	}
-	return fmt.Errorf("unknown LatestVersion numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *LatestVersionMutation) ClearedFields() []string {
-	return nil
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *LatestVersionMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *LatestVersionMutation) ClearField(name string) error {
-	return fmt.Errorf("unknown LatestVersion nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *LatestVersionMutation) ResetField(name string) error {
-	switch name {
-	case latestversion.FieldChannel:
-		m.ResetChannel()
-		return nil
-	case latestversion.FieldUpdatedAt:
-		m.ResetUpdatedAt()
-		return nil
-	}
-	return fmt.Errorf("unknown LatestVersion field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *LatestVersionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.resource != nil {
-		edges = append(edges, latestversion.EdgeResource)
-	}
-	if m.version != nil {
-		edges = append(edges, latestversion.EdgeVersion)
-	}
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *LatestVersionMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case latestversion.EdgeResource:
-		if id := m.resource; id != nil {
-			return []ent.Value{*id}
-		}
-	case latestversion.EdgeVersion:
-		if id := m.version; id != nil {
-			return []ent.Value{*id}
-		}
-	}
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *LatestVersionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *LatestVersionMutation) RemovedIDs(name string) []ent.Value {
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *LatestVersionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.clearedresource {
-		edges = append(edges, latestversion.EdgeResource)
-	}
-	if m.clearedversion {
-		edges = append(edges, latestversion.EdgeVersion)
-	}
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *LatestVersionMutation) EdgeCleared(name string) bool {
-	switch name {
-	case latestversion.EdgeResource:
-		return m.clearedresource
-	case latestversion.EdgeVersion:
-		return m.clearedversion
-	}
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *LatestVersionMutation) ClearEdge(name string) error {
-	switch name {
-	case latestversion.EdgeResource:
-		m.ClearResource()
-		return nil
-	case latestversion.EdgeVersion:
-		m.ClearVersion()
-		return nil
-	}
-	return fmt.Errorf("unknown LatestVersion unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *LatestVersionMutation) ResetEdge(name string) error {
-	switch name {
-	case latestversion.EdgeResource:
-		m.ResetResource()
-		return nil
-	case latestversion.EdgeVersion:
-		m.ResetVersion()
-		return nil
-	}
-	return fmt.Errorf("unknown LatestVersion edge %s", name)
-}
 
 // ResourceMutation represents an operation that mutates the Resource nodes in the graph.
 type ResourceMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *string
-	name                   *string
-	description            *string
-	created_at             *time.Time
-	clearedFields          map[string]struct{}
-	versions               map[int]struct{}
-	removedversions        map[int]struct{}
-	clearedversions        bool
-	latest_versions        map[int]struct{}
-	removedlatest_versions map[int]struct{}
-	clearedlatest_versions bool
-	done                   bool
-	oldValue               func(context.Context) (*Resource, error)
-	predicates             []predicate.Resource
+	op              Op
+	typ             string
+	id              *string
+	name            *string
+	description     *string
+	created_at      *time.Time
+	clearedFields   map[string]struct{}
+	versions        map[int]struct{}
+	removedversions map[int]struct{}
+	clearedversions bool
+	done            bool
+	oldValue        func(context.Context) (*Resource, error)
+	predicates      []predicate.Resource
 }
 
 var _ ent.Mutation = (*ResourceMutation)(nil)
@@ -826,60 +315,6 @@ func (m *ResourceMutation) ResetVersions() {
 	m.removedversions = nil
 }
 
-// AddLatestVersionIDs adds the "latest_versions" edge to the LatestVersion entity by ids.
-func (m *ResourceMutation) AddLatestVersionIDs(ids ...int) {
-	if m.latest_versions == nil {
-		m.latest_versions = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.latest_versions[ids[i]] = struct{}{}
-	}
-}
-
-// ClearLatestVersions clears the "latest_versions" edge to the LatestVersion entity.
-func (m *ResourceMutation) ClearLatestVersions() {
-	m.clearedlatest_versions = true
-}
-
-// LatestVersionsCleared reports if the "latest_versions" edge to the LatestVersion entity was cleared.
-func (m *ResourceMutation) LatestVersionsCleared() bool {
-	return m.clearedlatest_versions
-}
-
-// RemoveLatestVersionIDs removes the "latest_versions" edge to the LatestVersion entity by IDs.
-func (m *ResourceMutation) RemoveLatestVersionIDs(ids ...int) {
-	if m.removedlatest_versions == nil {
-		m.removedlatest_versions = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.latest_versions, ids[i])
-		m.removedlatest_versions[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedLatestVersions returns the removed IDs of the "latest_versions" edge to the LatestVersion entity.
-func (m *ResourceMutation) RemovedLatestVersionsIDs() (ids []int) {
-	for id := range m.removedlatest_versions {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// LatestVersionsIDs returns the "latest_versions" edge IDs in the mutation.
-func (m *ResourceMutation) LatestVersionsIDs() (ids []int) {
-	for id := range m.latest_versions {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetLatestVersions resets all changes to the "latest_versions" edge.
-func (m *ResourceMutation) ResetLatestVersions() {
-	m.latest_versions = nil
-	m.clearedlatest_versions = false
-	m.removedlatest_versions = nil
-}
-
 // Where appends a list predicates to the ResourceMutation builder.
 func (m *ResourceMutation) Where(ps ...predicate.Resource) {
 	m.predicates = append(m.predicates, ps...)
@@ -1047,12 +482,9 @@ func (m *ResourceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ResourceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.versions != nil {
 		edges = append(edges, resource.EdgeVersions)
-	}
-	if m.latest_versions != nil {
-		edges = append(edges, resource.EdgeLatestVersions)
 	}
 	return edges
 }
@@ -1067,24 +499,15 @@ func (m *ResourceMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case resource.EdgeLatestVersions:
-		ids := make([]ent.Value, 0, len(m.latest_versions))
-		for id := range m.latest_versions {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ResourceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.removedversions != nil {
 		edges = append(edges, resource.EdgeVersions)
-	}
-	if m.removedlatest_versions != nil {
-		edges = append(edges, resource.EdgeLatestVersions)
 	}
 	return edges
 }
@@ -1099,24 +522,15 @@ func (m *ResourceMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case resource.EdgeLatestVersions:
-		ids := make([]ent.Value, 0, len(m.removedlatest_versions))
-		for id := range m.removedlatest_versions {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ResourceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.clearedversions {
 		edges = append(edges, resource.EdgeVersions)
-	}
-	if m.clearedlatest_versions {
-		edges = append(edges, resource.EdgeLatestVersions)
 	}
 	return edges
 }
@@ -1127,8 +541,6 @@ func (m *ResourceMutation) EdgeCleared(name string) bool {
 	switch name {
 	case resource.EdgeVersions:
 		return m.clearedversions
-	case resource.EdgeLatestVersions:
-		return m.clearedlatest_versions
 	}
 	return false
 }
@@ -1147,9 +559,6 @@ func (m *ResourceMutation) ResetEdge(name string) error {
 	switch name {
 	case resource.EdgeVersions:
 		m.ResetVersions()
-		return nil
-	case resource.EdgeLatestVersions:
-		m.ResetLatestVersions()
 		return nil
 	}
 	return fmt.Errorf("unknown Resource edge %s", name)

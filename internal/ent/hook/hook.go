@@ -9,18 +9,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 )
 
-// The LatestVersionFunc type is an adapter to allow the use of ordinary
-// function as LatestVersion mutator.
-type LatestVersionFunc func(context.Context, *ent.LatestVersionMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f LatestVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.LatestVersionMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LatestVersionMutation", m)
-}
-
 // The ResourceFunc type is an adapter to allow the use of ordinary
 // function as Resource mutator.
 type ResourceFunc func(context.Context, *ent.ResourceMutation) (ent.Value, error)

@@ -5,17 +5,6 @@ import (
 	"time"
 )
 
-type VersionInfo struct {
-	VersionId         int       `db:"version_id"`
-	VersionName       string    `db:"version_name"`
-	CreatedAt         time.Time `db:"created_at"`
-	Channel           string    `db:"channel"`
-	OS                string    `db:"os"`
-	Arch              string    `db:"arch"`
-	PackageHashSha256 string    `db:"package_hash_sha256"`
-	PackagePath       string    `db:"package_path"`
-	ResourcePath      string    `db:"resource_path"`
-}
 type LatestVersionInfo struct {
 	VersionId     int            `db:"version_id"`
 	VersionName   string         `db:"version_name"`

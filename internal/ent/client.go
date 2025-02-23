@@ -15,7 +15,6 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/MirrorChyan/resource-backend/internal/ent/latestversion"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -26,8 +25,6 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
-	// LatestVersion is the client for interacting with the LatestVersion builders.
-	LatestVersion *LatestVersionClient
 	// Resource is the client for interacting with the Resource builders.
 	Resource *ResourceClient
 	// Storage is the client for interacting with the Storage builders.
@@ -45,7 +42,6 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
-	c.LatestVersion = NewLatestVersionClient(c.config)
 	c.Resource = NewResourceClient(c.config)
 	c.Storage = NewStorageClient(c.config)
 	c.Version = NewVersionClient(c.config)
@@ -139,12 +135,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		LatestVersion: NewLatestVersionClient(cfg),
-		Resource:      NewResourceClient(cfg),
-		Storage:       NewStorageClient(cfg),
-		Version:       NewVersionClient(cfg),
+		ctx:      ctx,
+		config:   cfg,
+		Resource: NewResourceClient(cfg),
+		Storage:  NewStorageClient(cfg),
+		Version:  NewVersionClient(cfg),
 	}, nil
 }
 
@@ -162,19 +157,18 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		LatestVersion: NewLatestVersionClient(cfg),
-		Resource:      NewResourceClient(cfg),
-		Storage:       NewStorageClient(cfg),
-		Version:       NewVersionClient(cfg),
+		ctx:      ctx,
+		config:   cfg,
+		Resource: NewResourceClient(cfg),
+		Storage:  NewStorageClient(cfg),
+		Version:  NewVersionClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		LatestVersion.
+//		Resource.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -196,7 +190,6 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.LatestVersion.Use(hooks...)
 	c.Resource.Use(hooks...)
 	c.Storage.Use(hooks...)
 	c.Version.Use(hooks...)
@@ -205,7 +198,6 @@ func (c *Client) Use(hooks ...Hook) {
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.LatestVersion.Intercept(interceptors...)
 	c.Resource.Intercept(interceptors...)
 	c.Storage.Intercept(interceptors...)
 	c.Version.Intercept(interceptors...)
@@ -214,8 +206,6 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
-	case *LatestVersionMutation:
-		return c.LatestVersion.mutate(ctx, m)
 	case *ResourceMutation:
 		return c.Resource.mutate(ctx, m)
 	case *StorageMutation:
@@ -224,171 +214,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Version.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
-	}
-}
-
-// LatestVersionClient is a client for the LatestVersion schema.
-type LatestVersionClient struct {
-	config
-}
-
-// NewLatestVersionClient returns a client for the LatestVersion from the given config.
-func NewLatestVersionClient(c config) *LatestVersionClient {
-	return &LatestVersionClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `latestversion.Hooks(f(g(h())))`.
-func (c *LatestVersionClient) Use(hooks ...Hook) {
-	c.hooks.LatestVersion = append(c.hooks.LatestVersion, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `latestversion.Intercept(f(g(h())))`.
-func (c *LatestVersionClient) Intercept(interceptors ...Interceptor) {
-	c.inters.LatestVersion = append(c.inters.LatestVersion, interceptors...)
-}
-
-// Create returns a builder for creating a LatestVersion entity.
-func (c *LatestVersionClient) Create() *LatestVersionCreate {
-	mutation := newLatestVersionMutation(c.config, OpCreate)
-	return &LatestVersionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of LatestVersion entities.
-func (c *LatestVersionClient) CreateBulk(builders ...*LatestVersionCreate) *LatestVersionCreateBulk {
-	return &LatestVersionCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *LatestVersionClient) MapCreateBulk(slice any, setFunc func(*LatestVersionCreate, int)) *LatestVersionCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &LatestVersionCreateBulk{err: fmt.Errorf("calling to LatestVersionClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*LatestVersionCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &LatestVersionCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for LatestVersion.
-func (c *LatestVersionClient) Update() *LatestVersionUpdate {
-	mutation := newLatestVersionMutation(c.config, OpUpdate)
-	return &LatestVersionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *LatestVersionClient) UpdateOne(lv *LatestVersion) *LatestVersionUpdateOne {
-	mutation := newLatestVersionMutation(c.config, OpUpdateOne, withLatestVersion(lv))
-	return &LatestVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *LatestVersionClient) UpdateOneID(id int) *LatestVersionUpdateOne {
-	mutation := newLatestVersionMutation(c.config, OpUpdateOne, withLatestVersionID(id))
-	return &LatestVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for LatestVersion.
-func (c *LatestVersionClient) Delete() *LatestVersionDelete {
-	mutation := newLatestVersionMutation(c.config, OpDelete)
-	return &LatestVersionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *LatestVersionClient) DeleteOne(lv *LatestVersion) *LatestVersionDeleteOne {
-	return c.DeleteOneID(lv.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *LatestVersionClient) DeleteOneID(id int) *LatestVersionDeleteOne {
-	builder := c.Delete().Where(latestversion.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &LatestVersionDeleteOne{builder}
-}
-
-// Query returns a query builder for LatestVersion.
-func (c *LatestVersionClient) Query() *LatestVersionQuery {
-	return &LatestVersionQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeLatestVersion},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a LatestVersion entity by its id.
-func (c *LatestVersionClient) Get(ctx context.Context, id int) (*LatestVersion, error) {
-	return c.Query().Where(latestversion.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *LatestVersionClient) GetX(ctx context.Context, id int) *LatestVersion {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryResource queries the resource edge of a LatestVersion.
-func (c *LatestVersionClient) QueryResource(lv *LatestVersion) *ResourceQuery {
-	query := (&ResourceClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := lv.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(latestversion.Table, latestversion.FieldID, id),
-			sqlgraph.To(resource.Table, resource.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, latestversion.ResourceTable, latestversion.ResourceColumn),
-		)
-		fromV = sqlgraph.Neighbors(lv.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryVersion queries the version edge of a LatestVersion.
-func (c *LatestVersionClient) QueryVersion(lv *LatestVersion) *VersionQuery {
-	query := (&VersionClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := lv.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(latestversion.Table, latestversion.FieldID, id),
-			sqlgraph.To(version.Table, version.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, latestversion.VersionTable, latestversion.VersionColumn),
-		)
-		fromV = sqlgraph.Neighbors(lv.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *LatestVersionClient) Hooks() []Hook {
-	return c.hooks.LatestVersion
-}
-
-// Interceptors returns the client interceptors.
-func (c *LatestVersionClient) Interceptors() []Interceptor {
-	return c.inters.LatestVersion
-}
-
-func (c *LatestVersionClient) mutate(ctx context.Context, m *LatestVersionMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&LatestVersionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&LatestVersionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&LatestVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&LatestVersionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown LatestVersion mutation op: %q", m.Op())
 	}
 }
 
@@ -509,22 +334,6 @@ func (c *ResourceClient) QueryVersions(r *Resource) *VersionQuery {
 			sqlgraph.From(resource.Table, resource.FieldID, id),
 			sqlgraph.To(version.Table, version.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, resource.VersionsTable, resource.VersionsColumn),
-		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryLatestVersions queries the latest_versions edge of a Resource.
-func (c *ResourceClient) QueryLatestVersions(r *Resource) *LatestVersionQuery {
-	query := (&LatestVersionClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(resource.Table, resource.FieldID, id),
-			sqlgraph.To(latestversion.Table, latestversion.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, resource.LatestVersionsTable, resource.LatestVersionsColumn),
 		)
 		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
 		return fromV, nil
@@ -890,9 +699,9 @@ func (c *VersionClient) mutate(ctx context.Context, m *VersionMutation) (Value, 
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		LatestVersion, Resource, Storage, Version []ent.Hook
+		Resource, Storage, Version []ent.Hook
 	}
 	inters struct {
-		LatestVersion, Resource, Storage, Version []ent.Interceptor
+		Resource, Storage, Version []ent.Interceptor
 	}
 )

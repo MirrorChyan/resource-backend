@@ -10,6 +10,5 @@ var RepoSet = wire.NewSet(
 	repo.NewRawQuery,
 	repo.NewResource,
 	repo.NewVersion,
-	repo.NewLatestVersion,
 	repo.NewStorage,
 )

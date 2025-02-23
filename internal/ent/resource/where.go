@@ -273,29 +273,6 @@ func HasVersionsWith(preds ...predicate.Version) predicate.Resource {
 	})
 }
 
-// HasLatestVersions applies the HasEdge predicate on the "latest_versions" edge.
-func HasLatestVersions() predicate.Resource {
-	return predicate.Resource(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, LatestVersionsTable, LatestVersionsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasLatestVersionsWith applies the HasEdge predicate on the "latest_versions" edge with a given conditions (other predicates).
-func HasLatestVersionsWith(preds ...predicate.LatestVersion) predicate.Resource {
-	return predicate.Resource(func(s *sql.Selector) {
-		step := newLatestVersionsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Resource) predicate.Resource {
 	return predicate.Resource(sql.AndPredicates(predicates...))

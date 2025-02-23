@@ -16,16 +16,12 @@ type GetLatestVersionRequest struct {
 	UserAgent      string `query:"user_agent"`
 }
 
-type UpdateReleaseNoteDetailRequest struct {
+type UpdateReleaseNoteRequest struct {
 	VersionName string `json:"version_name"`
 	Content     string `json:"content"`
 }
 
-type UpdateReleaseNoteSummaryRequest struct {
+type UpdateCustomDataRequest struct {
 	VersionName string `json:"version_name"`
 	Content     string `json:"content"`
-}
-
-type ClearOldStorageRequest struct {
-	Channel string `json:"channel"`
 }

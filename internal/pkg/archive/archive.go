@@ -44,13 +44,17 @@ func UnpackZip(src, dest string) error {
 		if err != nil {
 			return err
 		}
-		defer outFile.Close()
+		defer func(outFile *os.File) {
+			_ = outFile.Close()
+		}(outFile)
 
 		rc, err := f.Open()
 		if err != nil {
 			return err
 		}
-		defer rc.Close()
+		defer func(rc io.ReadCloser) {
+			_ = rc.Close()
+		}(rc)
 
 		if _, err = io.Copy(outFile, rc); err != nil {
 			return err
@@ -65,13 +69,17 @@ func UnpackTarGz(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
 	gzr, err := gzip.NewReader(file)
 	if err != nil {
 		return err
 	}
-	defer gzr.Close()
+	defer func(gzr *gzip.Reader) {
+		_ = gzr.Close()
+	}(gzr)
 
 	tarReader := tar.NewReader(gzr)
 
@@ -103,7 +111,9 @@ func UnpackTarGz(src, dest string) error {
 			if err != nil {
 				return err
 			}
-			defer outFile.Close()
+			defer func(outFile *os.File) {
+				_ = outFile.Close()
+			}(outFile)
 
 			if _, err := io.Copy(outFile, tarReader); err != nil {
 				return err
@@ -178,13 +188,19 @@ func CompressToTarGz(srcDir, destTarGz string) error {
 	if err != nil {
 		return err
 	}
-	defer tarGzFile.Close()
+	defer func(tarGzFile *os.File) {
+		_ = tarGzFile.Close()
+	}(tarGzFile)
 
 	gzipWriter := gzip.NewWriter(tarGzFile)
-	defer gzipWriter.Close()
+	defer func(gzipWriter *gzip.Writer) {
+		_ = gzipWriter.Close()
+	}(gzipWriter)
 
 	tarWriter := tar.NewWriter(gzipWriter)
-	defer tarWriter.Close()
+	defer func(tarWriter *tar.Writer) {
+		_ = tarWriter.Close()
+	}(tarWriter)
 
 	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -204,7 +220,9 @@ func CompressToTarGz(srcDir, destTarGz string) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func(file *os.File) {
+			_ = file.Close()
+		}(file)
 
 		header, err := tar.FileInfoHeader(info, relPath)
 		if err != nil {

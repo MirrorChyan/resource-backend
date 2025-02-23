@@ -112,7 +112,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 	}
 
 	task := asynq.NewTask(DiffTask, payload, asynq.MaxRetry(5))
-	enqueue, err := l.taskQueue.Enqueue(task)
+	submitted, err := l.taskQueue.Enqueue(task)
 	if err != nil {
 		rollback()
 		return nil, err
@@ -121,13 +121,13 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		zap.String("resource id", resourceId),
 		zap.String("target version", targetVersion),
 		zap.String("current version", currentVersion),
-		zap.String("task id", enqueue.ID),
+		zap.String("task id", submitted.ID),
 	)
 
 	return full, nil
 }
 
-func (l *VersionLogic) GetUpdateInfoV2(ctx context.Context, param UpdateRequestParam) (*UpdateInfo, error) {
+func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestParam) (*UpdateInfo, error) {
 	result, err := l.doProcessUpdateRequest(ctx, param)
 	if err != nil {
 		return nil, err

@@ -17,9 +17,8 @@ const (
 
 	ResourcePrefix = "res"
 
-	ZipSuffix         = ".zip"
-	TarGzSuffix       = ".tar.gz"
-	SpecificSeparator = "$#@"
+	ZipSuffix   = ".zip"
+	TarGzSuffix = ".tar.gz"
 
 	TmpDirPrefix = "ptmp"
 

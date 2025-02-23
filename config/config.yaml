@@ -7,7 +7,7 @@ registry:
   path: "/dev"
 
 log:
-  level: "info"
+  level: "debug"
 
 
 

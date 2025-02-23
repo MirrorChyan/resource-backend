@@ -18,13 +18,6 @@ func NewVersion(db *Repo) *Version {
 	}
 }
 
-func (r *Version) CheckVersionExistsByName(ctx context.Context, resID, name string) (bool, error) {
-	return r.db.Version.Query().
-		Where(version.HasResourceWith(resource.ID(resID))).
-		Where(version.Name(name)).
-		Exist(ctx)
-}
-
 func (r *Version) GetVersionByName(ctx context.Context, resID, name string) (*ent.Version, error) {
 	return r.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(resID))).

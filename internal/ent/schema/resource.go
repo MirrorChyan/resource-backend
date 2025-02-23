@@ -31,6 +31,5 @@ func (Resource) Fields() []ent.Field {
 func (Resource) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("versions", Version.Type),
-		edge.To("latest_versions", LatestVersion.Type),
 	}
 }

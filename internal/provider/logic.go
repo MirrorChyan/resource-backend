@@ -9,7 +9,6 @@ import (
 var LogicSet = wire.NewSet(
 	logic.NewResourceLogic,
 	logic.NewVersionLogic,
-	logic.NewLatestVersionLogic,
 	logic.NewStorageLogic,
 	dispense.NewDistributeLogic,
 )

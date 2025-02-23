@@ -29,14 +29,6 @@ type ExistVersionNameWithOSAndArchParam struct {
 	Arch        string
 }
 
-type ProcessUpdateParam struct {
-	ResourceId         string
-	CurrentVersionName string
-	TargetVersion      *ent.Version
-	OS                 string
-	Arch               string
-}
-
 type UpdateReleaseNoteDetailParam struct {
 	VersionID         int
 	ReleaseNoteDetail string

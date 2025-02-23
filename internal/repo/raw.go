@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"context"
 	"github.com/MirrorChyan/resource-backend/internal/model"
 )
 
@@ -60,18 +59,4 @@ func (r *RawQuery) GetSpecifiedLatestVersion(resourceId, os, arch string) ([]mod
 	var result []model.LatestVersionInfo
 	err := r.dx.Select(&result, sql1, resourceId, os, arch)
 	return result, err
-}
-
-func (r *RawQuery) CreateNewVersionTx(ctx context.Context, resourceId, name, channel string) error {
-	tx, err := r.dx.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch p := recover(); {
-		case p != nil:
-			_ = tx.Rollback()
-		}
-	}()
-	return nil
 }
