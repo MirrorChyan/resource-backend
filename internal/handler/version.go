@@ -15,7 +15,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/bytedance/sonic"
 
-	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	. "github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -73,6 +72,7 @@ func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
 	} else {
 		*os = o
 	}
+
 	if a, ok := ArchMap[*arch]; !ok {
 		return errors.New("invalid arch")
 	} else {
@@ -500,20 +500,15 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		req.Content = req.Content[:30000]
 	}
 
-	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
-		ResourceID:  resourceId,
-		VersionName: req.VersionName,
-	})
-	switch {
-	case ent.IsNotFound(err):
-		h.logger.Info("version not found",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-		)
-		resp := response.BusinessError("version not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	case err != nil:
-		h.logger.Error("failed to check if version exists",
+	if ch, ok := ChannelMap[req.Channel]; ok {
+		req.Channel = ch
+	} else {
+		return errors.New("invalid channel")
+	}
+
+	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
+	if err != nil {
+		h.logger.Error("failed to load store version",
 			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
@@ -521,7 +516,6 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-
 	err = h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteDetailParam{
 		VersionID:         ver.ID,
 		ReleaseNoteDetail: req.Content,
@@ -579,20 +573,15 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	ver, err := h.versionLogic.GetVersionByName(ctx, GetVersionByNameParam{
-		ResourceID:  resourceId,
-		VersionName: req.VersionName,
-	})
-	switch {
-	case ent.IsNotFound(err):
-		h.logger.Info("version not found",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-		)
-		resp := response.BusinessError("version not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	case err != nil:
-		h.logger.Error("failed to check if version exists",
+	if ch, ok := ChannelMap[req.Channel]; ok {
+		req.Channel = ch
+	} else {
+		return errors.New("invalid channel")
+	}
+
+	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
+	if err != nil {
+		h.logger.Error("failed to load store version",
 			zap.String("resource id", resourceId),
 			zap.String("version name", req.VersionName),
 			zap.Error(err),
