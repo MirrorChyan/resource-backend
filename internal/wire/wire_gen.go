@@ -13,27 +13,30 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/logic/dispense"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/MirrorChyan/resource-backend/internal/tasks"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/go-redsync/redsync/v4"
+	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // Injectors from wire.go:
 
-func NewHandlerSet(logger *zap.Logger, db *ent.Client, rdb *redis.Client, redsync2 *redsync.Redsync, cg *cache.VersionCacheGroup, verComparator *vercomp.VersionComparator) *HandlerSet {
-	resource := repo.NewResource(db)
+func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisClient *redis.Client, redsyncRedsync *redsync.Redsync, taskQueue *tasks.TaskQueue, versionCacheGroup *cache.VersionCacheGroup, versionComparator *vercomp.VersionComparator) *HandlerSet {
+	repoRepo := repo.NewRepo(client, db)
+	resource := repo.NewResource(repoRepo)
 	resourceLogic := logic.NewResourceLogic(logger, resource)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
-	repoRepo := repo.NewRepo(db)
-	version := repo.NewVersion(db)
-	storage := repo.NewStorage(db)
-	latestVersion := repo.NewLatestVersion(db)
-	latestVersionLogic := logic.NewLatestVersionLogic(logger, latestVersion, verComparator)
+	version := repo.NewVersion(repoRepo)
+	storage := repo.NewStorage(repoRepo)
+	rawQuery := repo.NewRawQuery(repoRepo)
+	latestVersion := repo.NewLatestVersion(repoRepo)
+	latestVersionLogic := logic.NewLatestVersionLogic(logger, latestVersion, versionComparator)
 	storageLogic := logic.NewStorageLogic(logger, storage)
-	distributeLogic := dispense.NewDistributeLogic(logger, rdb)
-	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, latestVersionLogic, storageLogic, rdb, redsync2, cg, distributeLogic)
-	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, verComparator)
+	distributeLogic := dispense.NewDistributeLogic(logger, redisClient)
+	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, storage, rawQuery, versionComparator, latestVersionLogic, storageLogic, redisClient, redsyncRedsync, taskQueue, versionCacheGroup, distributeLogic)
+	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, versionComparator)
 	storageHandler := handler.NewStorageHandler(logger, resourceLogic, versionLogic, storageLogic)
 	metricsHandler := handler.NewMetricsHandler()
 	heathCheckHandler := handler.NewHeathCheckHandlerHandler()

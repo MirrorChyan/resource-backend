@@ -10,12 +10,12 @@ import (
 )
 
 type Storage struct {
-	db *ent.Client
+	*Repo
 }
 
-func NewStorage(db *ent.Client) *Storage {
+func NewStorage(db *Repo) *Storage {
 	return &Storage{
-		db: db,
+		Repo: db,
 	}
 }
 

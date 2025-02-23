@@ -21,13 +21,28 @@ const (
 	TarGzSuffix       = ".tar.gz"
 	SpecificSeparator = "$#@"
 
+	TmpDirPrefix = "ptmp"
+
 	DispensePrefix = "dispense"
+)
+
+const (
+	TypeStable = "stable"
+	TypeBeta   = "beta"
+	TypeAlpha  = "alpha"
+)
+
+const (
+	GenerateTagKey         = "generate"
+	LoadStoreNewVersionKey = "LoadStoreNewVersionTx"
 )
 
 var (
 	StorageInfoNotFound = errors.New("storage info not found")
 
 	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
+
+	ResourceNotFound = errors.New("resource not found")
 )
 
 type RemoteError string

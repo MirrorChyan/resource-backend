@@ -7,6 +7,7 @@ import (
 
 var RepoSet = wire.NewSet(
 	repo.NewRepo,
+	repo.NewRawQuery,
 	repo.NewResource,
 	repo.NewVersion,
 	repo.NewLatestVersion,

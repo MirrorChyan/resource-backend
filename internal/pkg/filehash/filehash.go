@@ -51,7 +51,7 @@ func GetAll(targetDir string) (map[string]string, error) {
 		flag = atomic.Bool{}
 	)
 	flag.Store(false)
-	wg.SetLimit(runtime.NumCPU())
+	wg.SetLimit(runtime.NumCPU() * 10)
 	for i := range tmp {
 		if flag.Load() {
 			break

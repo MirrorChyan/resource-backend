@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"github.com/MirrorChyan/resource-backend/internal/model"
 	"strings"
 	"time"
 
@@ -16,10 +17,19 @@ type VersionCacheGroup struct {
 	VersionLatestCache *Cache[string, *ent.Version]
 	// key: resourceId:versionName
 	VersionNameCache *Cache[string, *ent.Version]
+
+	// key: resourceId:versionName -> versionId
+	VersionNameIdCache *Cache[string, int]
 	// key: versionId:os:arch
 	FullUpdateStorageCache *Cache[string, *ent.Storage]
 	// key: targetVersionId:currentVersionId:os:arch
 	IncrementalUpdateStorageCache *Cache[string, *ent.Storage]
+
+	// key: targetVersionId:currentVersionId:os:arch / cache empty
+	IncrementalUpdateInfoCache *Cache[string, *model.IncrementalUpdateInfo]
+
+	// resourceId:os:arch:channel / cache empty
+	MultiVersionInfoCache *Cache[string, *model.MultiVersionInfo]
 }
 
 func (g *VersionCacheGroup) GetCacheKey(elems ...string) string {
@@ -31,6 +41,9 @@ func (g *VersionCacheGroup) EvictAll() {
 	g.VersionNameCache.EvictAll()
 	g.FullUpdateStorageCache.EvictAll()
 	g.IncrementalUpdateStorageCache.EvictAll()
+	g.VersionNameIdCache.EvictAll()
+	g.IncrementalUpdateInfoCache.EvictAll()
+	g.MultiVersionInfoCache.EvictAll()
 }
 
 func NewVersionCacheGroup(rdb *redis.Client) *VersionCacheGroup {
@@ -39,6 +52,9 @@ func NewVersionCacheGroup(rdb *redis.Client) *VersionCacheGroup {
 		VersionNameCache:              NewCache[string, *ent.Version](6 * time.Hour),
 		FullUpdateStorageCache:        NewCache[string, *ent.Storage](6 * time.Hour),
 		IncrementalUpdateStorageCache: NewCache[string, *ent.Storage](6 * time.Hour),
+		VersionNameIdCache:            NewCache[string, int](6 * time.Hour),
+		IncrementalUpdateInfoCache:    NewCache[string, *model.IncrementalUpdateInfo](6 * time.Hour),
+		MultiVersionInfoCache:         NewCache[string, *model.MultiVersionInfo](6 * time.Hour),
 	}
 	subscribeCacheEvict(rdb, group)
 	return group

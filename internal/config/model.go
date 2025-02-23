@@ -42,6 +42,7 @@ type (
 		Password string `mapstructure:"password"`
 		Name     string `mapstructure:"name"`
 		DB       int    `mapstructure:"db"`
+		AsynqDB  int    `mapstructure:"asynq_db"`
 	}
 	ExtraConfig struct {
 		DownloadPrefixInfo      map[string][]RobinServer `mapstructure:"download_prefix_info"`

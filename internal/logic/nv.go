@@ -1,0 +1,141 @@
+package logic
+
+import (
+	"context"
+	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
+	. "github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/bytedance/sonic"
+	"github.com/hibiken/asynq"
+	"go.uber.org/zap"
+	"strconv"
+	"strings"
+)
+
+const DiffTask = "diff"
+
+func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateRequestParam) (*UpdateInfoTuple, error) {
+	var (
+		cg = l.GetCacheGroup()
+
+		resourceId         = param.ResourceId
+		currentVersionName = param.CurrentVersionName
+		currentVersionId   int
+		targetInfo         = param.TargetVersionInfo
+		isFull             = currentVersionName == ""
+		full               = &UpdateInfoTuple{
+			PackageHash: targetInfo.PackageHash.String,
+			PackagePath: targetInfo.PackagePath.String,
+			UpdateType:  misc.FullUpdateType,
+		}
+	)
+
+	if isFull {
+		return full, nil
+	}
+
+	ck := cg.GetCacheKey(resourceId, currentVersionName)
+	vid, err := cg.VersionNameIdCache.ComputeIfAbsent(ck, func() (int, error) {
+		v, err := l.versionRepo.GetVersionByName(ctx, resourceId, currentVersionName)
+		if err != nil {
+			return 0, err
+		}
+		return v.ID, nil
+	})
+	switch {
+	case err == nil:
+		currentVersionId = *vid
+	case !ent.IsNotFound(err):
+		return nil, err
+	default:
+		return full, nil
+	}
+
+	incremental, err := l.getIncrementalInfoOrEmpty(ctx,
+		targetInfo.VersionId,
+		currentVersionId,
+		targetInfo.OS,
+		targetInfo.Arch,
+	)
+	if err != nil {
+		l.logger.Error("failed to get incremental update info",
+			zap.String("resource id", resourceId),
+			zap.Int("target version id", targetInfo.VersionId),
+			zap.Int("current version id", currentVersionId),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	if incremental.Storage != nil {
+		s := incremental.Storage
+		return &UpdateInfoTuple{
+			PackageHash: s.PackageHashSha256,
+			PackagePath: s.PackagePath,
+			UpdateType:  misc.IncrementalUpdateType,
+		}, nil
+	}
+
+	var (
+		targetVersion  = strconv.Itoa(targetInfo.VersionId)
+		currentVersion = strconv.Itoa(currentVersionId)
+		key            = strings.Join([]string{misc.GenerateTagKey, resourceId, targetVersion, currentVersion}, ":")
+	)
+
+	l.logger.Info("incremental fallback to full update",
+		zap.String("resourceId", resourceId),
+		zap.Int("currentVersionId", currentVersionId),
+		zap.Int("targetVersionId", targetInfo.VersionId),
+	)
+
+	result := l.rdb.SetNX(ctx, key, 1, 0)
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+	if !result.Val() {
+		return full, nil
+	}
+
+	rollback := func() {
+		l.rdb.Del(ctx, key)
+	}
+
+	payload, err := sonic.Marshal(PatchTaskPayload{
+		CurrentVersionId: currentVersionId,
+		TargetVersionId:  targetInfo.VersionId,
+		OS:               targetInfo.OS,
+		Arch:             targetInfo.Arch,
+	})
+
+	if err != nil {
+		rollback()
+		return nil, err
+	}
+
+	task := asynq.NewTask(DiffTask, payload, asynq.MaxRetry(5))
+	enqueue, err := l.taskQueue.Enqueue(task)
+	if err != nil {
+		rollback()
+		return nil, err
+	}
+	l.logger.Info("submit generate incremental update package task success",
+		zap.String("resource id", resourceId),
+		zap.String("target version", targetVersion),
+		zap.String("current version", currentVersion),
+		zap.String("task id", enqueue.ID),
+	)
+
+	return full, nil
+}
+
+func (l *VersionLogic) GetUpdateInfoV2(ctx context.Context, param UpdateRequestParam) (*UpdateInfo, error) {
+	result, err := l.doProcessUpdateRequest(ctx, param)
+	if err != nil {
+		return nil, err
+	}
+	rel := l.cleanStoragePath(result.PackagePath)
+	return &UpdateInfo{
+		RelPath:    rel,
+		SHA256:     result.PackageHash,
+		UpdateType: result.UpdateType,
+	}, nil
+}

@@ -12,7 +12,6 @@ import (
 	"github.com/valyala/fasthttp"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
-	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/bytedance/sonic"
@@ -52,7 +51,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	// for daily active user
 	dau := middleware.NewDailyActiveUserRecorder(h.versionLogic.GetRedisClient())
 
-	r.Get("/resources/:rid/latest", dau, h.GetLatest)
+	r.Get("/resources/:rid/latest", dau, h.GetLatestV2)
 	r.Get("/resources/download/:key", h.RedirectToDownload)
 
 	// For Developer
@@ -69,46 +68,32 @@ func (h *VersionHandler) isValidExtension(filename string) bool {
 	return ext == ".zip" || strings.HasSuffix(filename, ".tar.gz")
 }
 
-func (h *VersionHandler) handleOSParam(os string) (string, bool) {
-	if standardOS, ok := OsMap[os]; ok {
-		return standardOS, true
+func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
+	if o, ok := OsMap[*os]; !ok {
+		return errors.New("invalid os")
+	} else {
+		*os = o
 	}
-	return "", false
-}
-
-func (h *VersionHandler) handleArchParam(arch string) (string, bool) {
-	if standardArch, ok := ArchMap[arch]; ok {
-		return standardArch, true
-	}
-	return "", false
-}
-
-func (h *VersionHandler) doProcessOsAndArch(inputOS string, inputArch string) (resOS string, resArch string, err error) {
-	resOS, ok := h.handleOSParam(inputOS)
-	if !ok {
-		return "", "", errors.New("invalid os")
+	if a, ok := ArchMap[*arch]; !ok {
+		return errors.New("invalid arch")
+	} else {
+		*arch = a
 	}
 
-	resArch, ok = h.handleArchParam(inputArch)
-	if !ok {
-		return "", "", errors.New("invalid arch")
+	if c, ok := ChannelMap[*channel]; !ok {
+		return errors.New("invalid channel")
+	} else {
+		*channel = c
 	}
-
-	return
-}
-
-func (h *VersionHandler) handleChannelParam(channel string) (string, bool) {
-	if standardChannel, ok := ChannelMap[channel]; ok {
-		return standardChannel, true
-	}
-	return "", false
+	return nil
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
-	var ctx = c.UserContext()
-
-	resID := c.Params(ResourceKey)
-	resExist, err := h.resourceLogic.Exists(ctx, resID)
+	var (
+		ctx        = c.UserContext()
+		resourceId = c.Params(ResourceKey)
+	)
+	resExist, err := h.resourceLogic.Exists(ctx, resourceId)
 	switch {
 	case err != nil:
 		h.logger.Error("Failed to check if resource exists",
@@ -119,11 +104,10 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	case !resExist:
 		h.logger.Info("Resource not found",
-			zap.String("resource id", resID),
+			zap.String("resource id", resourceId),
 		)
 		resp := response.BusinessError("resource not found")
 		return c.Status(fiber.StatusNotFound).JSON(resp)
-
 	}
 
 	verName := c.FormValue("name")
@@ -141,22 +125,18 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	resOS := c.FormValue("os")
-	resArch := c.FormValue("arch")
-	resOS, resArch, err = h.doProcessOsAndArch(resOS, resArch)
+	var (
+		system  = c.FormValue("os")
+		arch    = c.FormValue("arch")
+		channel = c.FormValue("channel")
+	)
+	err = h.BindRequiredParams(&system, &arch, &channel)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	ch := c.FormValue("channel")
-	channel, ok := h.handleChannelParam(ch)
-	if !ok {
-		resp := response.BusinessError("invalid channel")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if channel != version.ChannelStable.String() {
+	if channel != misc.TypeStable {
 		parsable := h.verComparator.IsVersionParsable(verName)
 		if !parsable {
 			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
@@ -165,46 +145,45 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	exists, err := h.versionLogic.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
-		ResourceID:  resID,
+		ResourceId:  resourceId,
 		VersionName: verName,
-		OS:          resOS,
-		Arch:        resArch,
+		OS:          system,
+		Arch:        arch,
 	})
 	switch {
 	case err != nil:
-		h.logger.Error("Failed to check if version name exists",
+		h.logger.Error("failed to check if version name exists",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	case exists:
-		h.logger.Warn("Version name already exists",
-			zap.String("resource id", resID),
+		h.logger.Warn("version name already exists",
+			zap.String("resource id", resourceId),
 			zap.String("version name", verName),
-			zap.String("resource os", resOS),
-			zap.String("resource arch", resArch),
+			zap.String("resource os", system),
+			zap.String("resource arch", arch),
 		)
 		resp := response.BusinessError("version name under the current platform architecture already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
 	}
 
-	// create temp root dir
-	root, err := os.MkdirTemp(os.TempDir(), "process-tmp")
+	tmp, err := os.MkdirTemp(os.TempDir(), misc.TmpDirPrefix)
 	if err != nil {
-		h.logger.Error("Failed to create temp root directory",
+		h.logger.Error("Failed to create temp tmp directory",
 			zap.Error(err),
 		)
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-	// remove temp root dir
+
 	defer func(path string) {
 		go func(p string) {
 			_ = os.RemoveAll(p)
 		}(path)
-	}(root)
+	}(tmp)
 
-	dest := strings.Join([]string{root, file.Filename}, string(os.PathSeparator))
+	dest := strings.Join([]string{tmp, file.Filename}, string(os.PathSeparator))
 	if err := c.SaveFile(file, dest); err != nil {
 		h.logger.Error("failed to save file",
 			zap.Error(err),
@@ -214,11 +193,11 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	ver, err := h.versionLogic.Create(ctx, CreateVersionParam{
-		ResourceID:        resID,
+		ResourceID:        resourceId,
 		Name:              verName,
 		UploadArchivePath: dest,
-		OS:                resOS,
-		Arch:              resArch,
+		OS:                system,
+		Arch:              arch,
 		Channel:           channel,
 	})
 	if err != nil {
@@ -232,18 +211,18 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	data := CreateVersionResponseData{
 		Name:   ver.Name,
 		Number: ver.Number,
-		OS:     resOS,
-		Arch:   resArch,
+		OS:     system,
+		Arch:   arch,
 	}
 	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
 }
 
-func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resId, ip string) error {
+func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) error {
 	h.logger.Info("Validating CDK")
 
 	body, err := sonic.Marshal(ValidateCDKRequest{
 		CDK:      info.CDK,
-		Resource: resId,
+		Resource: resourceId,
 		UA:       info.UserAgent,
 		IP:       ip,
 	})
@@ -312,11 +291,9 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resId, ip 
 	return nil
 }
 
-func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
+func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
 
-	var (
-		request GetLatestVersionRequest
-	)
+	var request GetLatestVersionRequest
 
 	if err := c.QueryParser(&request); err != nil {
 		h.logger.Error("Failed to parse query",
@@ -327,25 +304,15 @@ func (h *VersionHandler) handleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRe
 
 	request.ResourceID = c.Params(ResourceKey)
 
-	resOS, resArch, err := h.doProcessOsAndArch(request.OS, request.Arch)
+	err := h.BindRequiredParams(&request.OS, &request.Arch, &request.Channel)
 	if err != nil {
 		return nil, err
 	}
-
-	request.OS, request.Arch = resOS, resArch
-
-	channel, ok := h.handleChannelParam(request.Channel)
-	if !ok {
-		return nil, errors.New("invalid channel")
-	}
-
-	request.Channel = channel
-
 	return &request, nil
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
-	param, err := h.handleGetLatestParam(c)
+	param, err := h.doHandleGetLatestParam(c)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
@@ -441,7 +408,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	info, err := h.versionLogic.GetUpdateInfo(ctx, ProcessUpdateParam{
-		ResourceID:         resID,
+		ResourceId:         resID,
 		CurrentVersionName: param.CurrentVersion,
 		TargetVersion:      latest,
 		OS:                 param.OS,
@@ -483,6 +450,135 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.CustomData = latest.CustomData
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))
+}
+
+func (h *VersionHandler) GetLatestV2(c *fiber.Ctx) error {
+	param, err := h.doHandleGetLatestParam(c)
+	if err != nil {
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	var (
+		ctx            = c.UserContext()
+		resourceId     = param.ResourceID
+		system         = param.OS
+		arch           = param.Arch
+		channel        = param.Channel
+		currentVersion = param.CurrentVersion
+		cdk            = param.CDK
+	)
+
+	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
+	if err != nil {
+		if errors.Is(err, misc.ResourceNotFound) {
+			resp := response.BusinessError("resource not found under current platform architecture")
+			return c.Status(fiber.StatusNotFound).JSON(resp)
+		}
+		h.logger.Error("Failed to get latest version",
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
+	}
+
+	var (
+		data = QueryLatestResponseData{
+			VersionName:   latest.VersionName,
+			VersionNumber: latest.VersionNumber,
+			ReleaseNote:   latest.ReleaseNote,
+			Channel:       channel,
+			OS:            param.OS,
+			Arch:          param.Arch,
+		}
+	)
+
+	if cdk == "" {
+		if latest.VersionName == currentVersion {
+			data.ReleaseNote = "placeholder"
+		}
+		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
+		return c.Status(fiber.StatusOK).JSON(resp)
+	}
+
+	release, limited := h.doLimitByConfig(resourceId)
+	defer release()
+	if limited {
+		data.VersionName = param.CurrentVersion
+		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
+		return c.Status(fiber.StatusMultiStatus).JSON(resp)
+	}
+
+	//if err := h.doValidateCDK(param, resourceId, c.IP()); err != nil {
+	//	var e RemoteError
+	//	if errors.As(err, &e) {
+	//		resp := response.BusinessError(e.Error())
+	//		return c.Status(fiber.StatusForbidden).JSON(resp)
+	//	} else {
+	//		resp := response.UnexpectedError()
+	//		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	//	}
+	//}
+
+	if latest.VersionName == currentVersion {
+		data.ReleaseNote = "placeholder"
+		resp := response.Success(data, "current version is latest")
+		return c.Status(fiber.StatusOK).JSON(resp)
+	}
+
+	result, err := h.versionLogic.GetUpdateInfoV2(ctx, UpdateRequestParam{
+		ResourceId:         resourceId,
+		CurrentVersionName: currentVersion,
+		TargetVersionInfo:  latest,
+	})
+	if err != nil {
+		return err
+	}
+	data.SHA256 = result.SHA256
+	data.UpdateType = result.UpdateType
+
+	s, _ := sonic.MarshalString(result)
+
+	data.CustomData = s
+	data.ReleaseNote = ""
+
+	region := h.doPickRegionInfo(c)
+	url, err := h.versionLogic.GetDistributeURL(&DistributeInfo{
+		Region:   region,
+		CDK:      cdk,
+		RelPath:  result.RelPath,
+		Resource: resourceId,
+	})
+
+	data.Url = url
+	return c.Status(fiber.StatusOK).JSON(response.Success(data))
+
+}
+
+func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
+	var (
+		counter = CompareIfAbsent(LIT, resourceId)
+		con     = config.GConfig.Extra.Concurrency
+	)
+	counter.Add(1)
+
+	if con != 0 {
+		if cv := counter.Load(); cv > con {
+			h.logger.Warn("limit by", zap.Int32("concurrency", cv))
+			return nil, true
+		}
+	}
+
+	return func() {
+		counter.Add(-1)
+	}, false
+}
+
+func (h *VersionHandler) doPickRegionInfo(c *fiber.Ctx) string {
+	region := string(c.Request().Header.Peek(RegionHeaderKey))
+	if region == "" {
+		region = config.GConfig.Instance.RegionId
+	}
+	return region
 }
 
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {

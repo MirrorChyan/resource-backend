@@ -9,12 +9,12 @@ import (
 )
 
 type Version struct {
-	db *ent.Client
+	*Repo
 }
 
-func NewVersion(db *ent.Client) *Version {
+func NewVersion(db *Repo) *Version {
 	return &Version{
-		db: db,
+		Repo: db,
 	}
 }
 
@@ -39,8 +39,8 @@ func (r *Version) GetMaxNumberVersion(ctx context.Context, resID string) (*ent.V
 		First(ctx)
 }
 
-func (r *Version) CreateVersion(ctx context.Context, tx *ent.Tx, resID string, channel version.Channel, name string, number uint64) (*ent.Version, error) {
-	return tx.Version.Create().
+func (r *Version) CreateVersion(ctx context.Context, resID string, channel version.Channel, name string, number uint64) (*ent.Version, error) {
+	return r.db.Version.Create().
 		SetResourceID(resID).
 		SetChannel(channel).
 		SetName(name).

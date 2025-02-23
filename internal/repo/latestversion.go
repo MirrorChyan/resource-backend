@@ -9,12 +9,12 @@ import (
 )
 
 type LatestVersion struct {
-	db *ent.Client
+	*Repo
 }
 
-func NewLatestVersion(db *ent.Client) *LatestVersion {
+func NewLatestVersion(db *Repo) *LatestVersion {
 	return &LatestVersion{
-		db: db,
+		Repo: db,
 	}
 }
 

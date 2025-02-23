@@ -174,14 +174,13 @@ func TestVersionComparatorCompare(t *testing.T) {
 		{"v1.0.0", "v20250204114023"},
 	}
 
-	testCases := []struct {
+	var testCases []struct {
 		Name               string
 		Ver1               string
 		Ver2               string
 		ExpectedComparable bool
 		ExpectedResult     int
-	}{}
-
+	}
 	testCases = append(testCases, generateEqualTestCases(equalVersions)...)
 	testCases = append(testCases, generateLessTestCases(lessPairs)...)
 	testCases = append(testCases, generateGreaterTestCases(greaterPairs)...)

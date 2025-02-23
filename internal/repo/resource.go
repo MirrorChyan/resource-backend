@@ -8,12 +8,12 @@ import (
 )
 
 type Resource struct {
-	db *ent.Client
+	*Repo
 }
 
-func NewResource(db *ent.Client) *Resource {
+func NewResource(db *Repo) *Resource {
 	return &Resource{
-		db: db,
+		Repo: db,
 	}
 }
 

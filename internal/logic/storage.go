@@ -46,8 +46,8 @@ func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, 
 	return storage, nil
 }
 
-func (l *StorageLogic) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, target, current int, os, arch, incrementalUpdatePath, packageSHA256 string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.CreateIncrementalUpdateStorage(ctx, tx, target, current, os, arch, incrementalUpdatePath, packageSHA256)
+func (l *StorageLogic) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, target, current int, os, arch, path, hashes string) (*ent.Storage, error) {
+	storage, err := l.storageRepo.CreateIncrementalUpdateStorage(ctx, tx, target, current, os, arch, path, hashes)
 	if err != nil {
 		l.logger.Error("create incremental update storage failed",
 			zap.Error(err),
