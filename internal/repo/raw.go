@@ -1,7 +1,9 @@
 package repo
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/model"
+	"go.uber.org/zap"
 )
 
 type RawQuery struct {
@@ -57,6 +59,13 @@ where rn = 1
 
 func (r *RawQuery) GetSpecifiedLatestVersion(resourceId, os, arch string) ([]model.LatestVersionInfo, error) {
 	var result []model.LatestVersionInfo
+	if config.GConfig.Extra.SqlDebugMode {
+		zap.L().Info("GetSpecifiedLatestVersion",
+			zap.String("resource id", resourceId),
+			zap.String("os", os),
+			zap.String("arch", arch),
+		)
+	}
 	err := r.dx.Select(&result, sql1, resourceId, os, arch)
 	return result, err
 }
