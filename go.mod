@@ -14,6 +14,8 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/wire v0.6.0
 	github.com/hashicorp/consul/api v1.28.2
+	github.com/hibiken/asynq v0.25.1
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
@@ -55,8 +57,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
-	github.com/hibiken/asynq v0.25.1 // indirect
-	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
