@@ -375,7 +375,6 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, target, c
 		// only versions exist but no storage exist
 		if ent.IsNotFound(err) {
 			l.logger.Warn("versions exist but no storage exist please check storage",
-				zap.String("resource id", targetInfo.ResourcePath),
 				zap.Int("target version id", target),
 				zap.Int("current version id", current),
 				zap.String("os", system),
