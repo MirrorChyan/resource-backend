@@ -51,6 +51,7 @@ type UpdateInfoTuple struct {
 	UpdateType  string
 }
 type PatchTaskPayload struct {
+	ResourceId       string
 	CurrentVersionId int
 	TargetVersionId  int
 	OS               string

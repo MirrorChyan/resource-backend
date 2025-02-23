@@ -100,6 +100,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 	}
 
 	payload, err := sonic.Marshal(PatchTaskPayload{
+		ResourceId:       resourceId,
 		CurrentVersionId: currentVersionId,
 		TargetVersionId:  targetInfo.VersionId,
 		OS:               targetInfo.OS,

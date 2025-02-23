@@ -369,7 +369,7 @@ func (l *VersionLogic) doPostCreateResources(resourceId string) {
 	}
 }
 
-func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, target, current int, system, arch string) error {
+func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceId string, target, current int, system, arch string) error {
 	targetInfo, currentInfo, err := l.fetchStorageInfoTuple(ctx, target, current, system, arch)
 	if err != nil {
 		// only versions exist but no storage exist
@@ -389,7 +389,7 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, target, c
 	}
 
 	err = l.doCreateIncrementalUpdatePackage(ctx, PatchTaskExecuteParam{
-		ResourceId:           targetInfo.ResourcePath,
+		ResourceId:           resourceId,
 		TargetResourcePath:   targetInfo.ResourcePath,
 		TargetVersionId:      target,
 		CurrentVersionId:     current,
@@ -683,15 +683,15 @@ func (l *VersionLogic) getFullUpdateStorageByCache(ctx context.Context, versionI
 	return *val, err
 }
 
-func (l *VersionLogic) getIncrementalInfoOrEmpty(ctx context.Context, targetVerID, currentVerID int, os, arch string) (*IncrementalUpdateInfo, error) {
+func (l *VersionLogic) getIncrementalInfoOrEmpty(ctx context.Context, target, current int, os, arch string) (*IncrementalUpdateInfo, error) {
 	cacheKey := l.cacheGroup.GetCacheKey(
-		strconv.Itoa(targetVerID),
-		strconv.Itoa(currentVerID),
+		strconv.Itoa(target),
+		strconv.Itoa(current),
 		os,
 		arch,
 	)
 	val, err := l.cacheGroup.IncrementalUpdateInfoCache.ComputeIfAbsent(cacheKey, func() (*IncrementalUpdateInfo, error) {
-		s, err := l.storageLogic.GetIncrementalUpdateStorage(ctx, targetVerID, currentVerID, os, arch)
+		s, err := l.storageLogic.GetIncrementalUpdateStorage(ctx, target, current, os, arch)
 		switch {
 		case err != nil && ent.IsNotFound(err):
 			return &IncrementalUpdateInfo{}, nil

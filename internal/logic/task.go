@@ -51,16 +51,24 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 			return err
 		}
 		l.Sugar().Info("generate incremental update package task: ", string(task.Payload()))
-		err := v.GenerateIncrementalPackage(ctx, payload.TargetVersionId, payload.CurrentVersionId, payload.OS, payload.Arch)
+		var (
+			target     = payload.TargetVersionId
+			current    = payload.CurrentVersionId
+			system     = payload.OS
+			arch       = payload.Arch
+			resourceId = payload.ResourceId
+		)
+		err := v.GenerateIncrementalPackage(ctx, resourceId, target, current, system, arch)
 		if err != nil {
 			l.Sugar().Error("generate incremental update package task failed: ", string(task.Payload()))
 			return err
 		}
 		l.Info("generate incremental update package task success",
-			zap.Int("current", payload.CurrentVersionId),
-			zap.Int("target", payload.TargetVersionId),
-			zap.String("os", payload.OS),
-			zap.String("arch", payload.Arch),
+			zap.String("resource id", resourceId),
+			zap.Int("current", current),
+			zap.Int("target", target),
+			zap.String("os", system),
+			zap.String("arch", arch),
 		)
 		return nil
 	})
