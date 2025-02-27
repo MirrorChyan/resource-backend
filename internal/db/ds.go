@@ -1,8 +1,9 @@
 package db
 
 import (
-	"entgo.io/ent/dialect/sql"
 	"fmt"
+
+	"entgo.io/ent/dialect/sql"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	s "github.com/MirrorChyan/resource-backend/internal/db/sql"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -29,7 +30,7 @@ func NewDataSource() (*sql.Driver, error) {
 		conf = config.GConfig
 	)
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?parseTime=True",
+		"%s:%s@tcp(%s:%d)/%s?parseTime=True",
 		conf.Database.Username,
 		conf.Database.Password,
 		conf.Database.Host,
