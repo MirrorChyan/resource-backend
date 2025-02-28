@@ -12,9 +12,6 @@ const (
 )
 
 const (
-	FullUpdateType        = "full"
-	IncrementalUpdateType = "incremental"
-
 	ResourcePrefix = "res"
 
 	ZipSuffix   = ".zip"
@@ -23,12 +20,6 @@ const (
 	TmpDirPrefix = "ptmp"
 
 	DispensePrefix = "dispense"
-)
-
-const (
-	TypeStable = "stable"
-	TypeBeta   = "beta"
-	TypeAlpha  = "alpha"
 )
 
 const (

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/redis/go-redis/v9"
 	"github.com/valyala/fasthttp"
 
@@ -135,7 +136,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if channel != misc.TypeStable {
+	if channel != types.ChannelStable.String() {
 		parsable := h.verComparator.IsVersionParsable(name)
 		if !parsable {
 			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")

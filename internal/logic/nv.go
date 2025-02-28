@@ -2,14 +2,16 @@ package logic
 
 import (
 	"context"
+	"strconv"
+	"strings"
+
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
 )
 
 const DiffTask = "diff"
@@ -26,7 +28,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		full               = &UpdateInfoTuple{
 			PackageHash: targetInfo.PackageHash.String,
 			PackagePath: targetInfo.PackagePath.String,
-			UpdateType:  misc.FullUpdateType,
+			UpdateType:  types.UpdateFull.String(),
 		}
 	)
 
@@ -71,7 +73,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		return &UpdateInfoTuple{
 			PackageHash: s.PackageHashSha256,
 			PackagePath: s.PackagePath,
-			UpdateType:  misc.IncrementalUpdateType,
+			UpdateType:  types.UpdateIncremental.String(),
 		}, nil
 	}
 

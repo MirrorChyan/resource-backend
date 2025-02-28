@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 )
 
 // Storage holds the schema definition for the Storage entity.
@@ -17,7 +18,10 @@ type Storage struct {
 func (Storage) Fields() []ent.Field {
 	return []ent.Field{
 		field.Enum("update_type").
-			Values("full", "incremental"),
+			Values(
+				types.UpdateFull.String(),
+				types.UpdateIncremental.String(),
+			),
 		field.String("os").
 			Default(""),
 		field.String("arch").

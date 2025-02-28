@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 )
 
 // Version holds the schema definition for the Version entity.
@@ -18,8 +19,12 @@ type Version struct {
 func (Version) Fields() []ent.Field {
 	return []ent.Field{
 		field.Enum("channel").
-			Values("stable", "alpha", "beta").
-			Default("stable"),
+			Values(
+				types.ChannelStable.String(),
+				types.ChannelBeta.String(),
+				types.ChannelAlpha.String(),
+			).
+			Default(types.ChannelStable.String()),
 		field.String("name").
 			NotEmpty(),
 		field.Uint64("number"),

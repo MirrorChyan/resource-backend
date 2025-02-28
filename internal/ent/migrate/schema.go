@@ -58,7 +58,7 @@ var (
 	// VersionsColumns holds the columns for the "versions" table.
 	VersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "channel", Type: field.TypeEnum, Enums: []string{"stable", "alpha", "beta"}, Default: "stable"},
+		{Name: "channel", Type: field.TypeEnum, Enums: []string{"stable", "beta", "alpha"}, Default: "stable"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "number", Type: field.TypeUint64},
 		{Name: "release_note", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},

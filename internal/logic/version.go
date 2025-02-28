@@ -18,6 +18,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic/dispense"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
@@ -86,11 +87,11 @@ func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
 
 func (l *VersionLogic) GetVersionChannel(channel string) version.Channel {
 	switch channel {
-	case version.ChannelStable.String():
+	case types.ChannelStable.String():
 		return version.ChannelStable
-	case version.ChannelBeta.String():
+	case types.ChannelBeta.String():
 		return version.ChannelBeta
-	case version.ChannelAlpha.String():
+	case types.ChannelAlpha.String():
 		return version.ChannelAlpha
 	default:
 		return version.ChannelStable
@@ -531,21 +532,21 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 	for i := range info {
 		data := info[i]
 		switch data.Channel {
-		case misc.TypeStable:
+		case types.ChannelStable.String():
 			stable = &data
-		case misc.TypeBeta:
+		case types.ChannelBeta.String():
 			beta = &data
-		case misc.TypeAlpha:
+		case types.ChannelAlpha.String():
 			alpha = &data
 		}
 	}
 
 	switch channel {
-	case misc.TypeStable:
+	case types.ChannelAlpha.String():
 		if stable != nil {
 			return stable, nil
 		}
-	case misc.TypeBeta:
+	case types.ChannelBeta.String():
 		v, err := l.doCompare(stable, beta)
 		if err != nil {
 			return nil, err
@@ -553,7 +554,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		if v != nil {
 			return v, nil
 		}
-	case misc.TypeAlpha:
+	case types.ChannelAlpha.String():
 		v, err := l.doCompare(stable, beta, alpha)
 		if err != nil {
 			return nil, err

@@ -101,8 +101,8 @@ const DefaultChannel = ChannelStable
 // Channel values.
 const (
 	ChannelStable Channel = "stable"
-	ChannelAlpha  Channel = "alpha"
 	ChannelBeta   Channel = "beta"
+	ChannelAlpha  Channel = "alpha"
 )
 
 func (c Channel) String() string {
@@ -112,7 +112,7 @@ func (c Channel) String() string {
 // ChannelValidator is a validator for the "channel" field enum values. It is called by the builders before save.
 func ChannelValidator(c Channel) error {
 	switch c {
-	case ChannelStable, ChannelAlpha, ChannelBeta:
+	case ChannelStable, ChannelBeta, ChannelAlpha:
 		return nil
 	default:
 		return fmt.Errorf("version: invalid enum value for channel field: %q", c)
