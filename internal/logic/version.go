@@ -191,7 +191,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			archivePath string
 		)
 
-		_, err = os.Stat(key)
+		_, err = os.Stat(filepath.Join(l.storageLogic.RootDir, key))
 		if err != nil {
 			l.logger.Error("Failed to stat archive file pleas check the oss upload",
 				zap.String("archive path", key),
