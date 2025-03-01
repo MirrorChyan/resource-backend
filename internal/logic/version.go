@@ -646,11 +646,9 @@ func (l *VersionLogic) doCompare(args ...*LatestVersionInfo) (*LatestVersionInfo
 			result := l.comparator.Compare(r.VersionName, info.VersionName)
 			if !result.Comparable {
 				err := errors.New("failed to compare versions")
-				r1, _ := sonic.MarshalString(r)
-				r2, _ := sonic.MarshalString(info)
 				l.logger.Error("Failed to compare versions",
-					zap.String("previous version", r1),
-					zap.String("current version", r2),
+					zap.Any("previous version", r),
+					zap.Any("current version", info),
 					zap.Error(err),
 				)
 				return nil, err
