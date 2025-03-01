@@ -608,7 +608,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 	}
 
 	switch channel {
-	case types.ChannelAlpha.String():
+	case types.ChannelStable.String():
 		if stable != nil {
 			return stable, nil
 		}
