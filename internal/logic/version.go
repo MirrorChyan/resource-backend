@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/MirrorChyan/resource-backend/internal/tasks"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
@@ -160,7 +162,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	}
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
-	token, err := oss.AcquirePolicyToken(l.cleanStoragePath(dest), "resource.zip")
+	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), "resource.zip")
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +191,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			archivePath string
 		)
 
-		abs := filepath.Join(l.storageLogic.RootDir, key)
+		abs := filepath.Join(l.storageLogic.OSSDir, key)
 		_, err = os.Stat(abs)
 		if err != nil {
 			l.logger.Error("Failed to stat archive file pleas check the oss upload",
@@ -199,14 +201,14 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			return err
 		}
 
-		storage, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
+		exist, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
 		if err != nil {
 			l.logger.Error("Failed to check storage exist",
 				zap.Error(err),
 			)
 			return err
 		}
-		if storage {
+		if exist {
 			l.logger.Warn("version storage already exists",
 				zap.String("resource id", resourceId),
 				zap.String("version name", versionName),
@@ -216,29 +218,55 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			return nil
 		}
 
+		// make sure the storage dir exists
+		dest := filepath.Join(l.storageLogic.RootDir, key)
+		_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
+
+		l.logger.Debug("start CopyFile")
+
+		if err = fileops.CopyFile(abs, dest); err != nil {
+			l.logger.Error("failed to copy oss to local storage file",
+				zap.String("source", abs),
+				zap.String("destination", dest),
+				zap.Error(err),
+			)
+			return err
+		}
+
+		l.logger.Debug("end CopyFile")
+
 		saveDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
 
+		l.logger.Debug("start unpack resource",
+			zap.String("save dir", saveDir),
+		)
 		switch {
-		case strings.HasSuffix(abs, misc.ZipSuffix):
-			err = archive.UnpackZip(abs, saveDir)
-		case strings.HasSuffix(abs, misc.TarGzSuffix):
-			err = archive.UnpackTarGz(abs, saveDir)
+		case strings.HasSuffix(dest, misc.ZipSuffix):
+			err = archive.UnpackZip(dest, saveDir)
+		case strings.HasSuffix(dest, misc.TarGzSuffix):
+			err = archive.UnpackTarGz(dest, saveDir)
 		default:
 			l.logger.Error("Unknown archive extension",
-				zap.String("archive path", abs),
+				zap.String("archive path", dest),
 			)
 			return errors.New("unknown archive extension")
 		}
+
+		l.logger.Debug("end unpack resource",
+			zap.String("save dir", saveDir),
+		)
 
 		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
 			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 				// Code before the actual rollback.
 
-				if e := os.RemoveAll(saveDir); e != nil {
-					l.logger.Error("Failed to remove storage directory",
-						zap.Error(e),
-					)
-				}
+				go func() {
+					if e := os.RemoveAll(saveDir); e != nil {
+						l.logger.Error("Failed to remove storage directory",
+							zap.Error(e),
+						)
+					}
+				}()
 
 				err := next.Rollback(ctx, tx)
 				// Code after the transaction was rolled back.
@@ -257,6 +285,10 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 		archivePath = l.storageLogic.BuildVersionResourceStoragePath(resourceId, versionId, system, arch)
 
+		l.logger.Debug("start calculate package hash",
+			zap.String("package dir", archivePath),
+		)
+
 		packageHash, err := filehash.Calculate(archivePath)
 		if err != nil {
 			l.logger.Error("Failed to calculate full update package hash",
@@ -269,6 +301,14 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			return err
 		}
 
+		l.logger.Debug("end calculate package hash",
+			zap.String("package dir", archivePath),
+		)
+
+		l.logger.Debug("start calculate total file hash",
+			zap.String("dest dir", saveDir),
+		)
+
 		hashes, err := filehash.GetAll(saveDir)
 		if err != nil {
 			l.logger.Error("Failed to get file hashes",
@@ -277,6 +317,10 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			)
 			return err
 		}
+
+		l.logger.Debug("end calculate total file hash",
+			zap.String("dest dir", saveDir),
+		)
 
 		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, archivePath, packageHash, saveDir, hashes)
 		if err != nil {
@@ -454,14 +498,14 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	dest := filepath.Join(patchDir, patchName)
+	source := filepath.Join(patchDir, patchName)
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) (err error) {
 
 		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
 			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 				// Code before the actual rollback.
-				if err := os.RemoveAll(dest); err != nil {
+				if err := os.RemoveAll(source); err != nil {
 					l.logger.Error("Failed to remove patch package",
 						zap.Error(err),
 					)
@@ -472,7 +516,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			})
 		})
 
-		hashes, err := filehash.Calculate(dest)
+		hashes, err := filehash.Calculate(source)
 		if err != nil {
 			l.logger.Error("Failed to calculate incremental update package hash",
 				zap.String("resource id", resourceId),
@@ -484,7 +528,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			)
 			return err
 		}
-		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, resArch, dest, hashes)
+		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, resArch, source, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create incremental update storage",
 				zap.Error(err),
@@ -502,6 +546,17 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
+	dest := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(source))
+	_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
+	err = fileops.CopyFile(source, dest)
+	if err != nil {
+		l.logger.Error("failed to copy local storage to oss file",
+			zap.String("source", source),
+			zap.String("destination", dest),
+			zap.Error(err),
+		)
+		return err
+	}
 	return nil
 }
 
@@ -608,7 +663,7 @@ func (l *VersionLogic) doCompare(args ...*LatestVersionInfo) (*LatestVersionInfo
 	return r, nil
 }
 
-func (l *VersionLogic) cleanStoragePath(p string) string {
+func (l *VersionLogic) cleanRootStoragePath(p string) string {
 	rel := strings.TrimPrefix(p, l.storageLogic.RootDir)
 	rel = strings.TrimPrefix(rel, string(os.PathSeparator))
 	return strings.ReplaceAll(rel, string(os.PathSeparator), "/")

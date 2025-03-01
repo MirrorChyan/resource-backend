@@ -16,6 +16,7 @@ type StorageLogic struct {
 	logger      *zap.Logger
 	storageRepo *repo.Storage
 	RootDir     string
+	OSSDir      string
 }
 
 func NewStorageLogic(logger *zap.Logger, storageRepo *repo.Storage) *StorageLogic {
@@ -24,11 +25,11 @@ func NewStorageLogic(logger *zap.Logger, storageRepo *repo.Storage) *StorageLogi
 	if err != nil {
 		panic(err)
 	}
-	rootDir := filepath.Join(dir, "storage")
 	return &StorageLogic{
 		logger:      logger,
 		storageRepo: storageRepo,
-		RootDir:     rootDir,
+		RootDir:     filepath.Join(dir, "storage"),
+		OSSDir:      filepath.Join(dir, "oss"),
 	}
 }
 
