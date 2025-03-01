@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -57,6 +56,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	versions := r.Group("/resources/:rid/versions")
 	versions.Use("/", middleware.NewValidateUploader())
 	versions.Post("/", h.Create)
+	versions.Post("/callback", h.CreateVersionCallBack)
 
 	versions.Put("/release-note", h.UpdateReleaseNote)
 	versions.Put("/custom-data", h.UpdateCustomData)
@@ -89,135 +89,6 @@ func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
-	var (
-		ctx        = c.UserContext()
-		resourceId = c.Params(ResourceKey)
-	)
-	resExist, err := h.resourceLogic.Exists(ctx, resourceId)
-	switch {
-	case err != nil:
-		h.logger.Error("Failed to check if resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-
-	case !resExist:
-		h.logger.Info("Resource not found",
-			zap.String("resource id", resourceId),
-		)
-		resp := response.BusinessError("resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-	}
-
-	file, err := c.FormFile("file")
-	if err != nil {
-		h.logger.Error("Failed to get file from form",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid file")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if !h.isValidExtension(file.Filename) {
-		resp := response.BusinessError("invalid file extension")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	var (
-		name    = c.FormValue("name")
-		system  = c.FormValue("os")
-		arch    = c.FormValue("arch")
-		channel = c.FormValue("channel")
-	)
-	err = h.BindRequiredParams(&system, &arch, &channel)
-	if err != nil {
-		resp := response.BusinessError(err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if channel != types.ChannelStable.String() {
-		parsable := h.verComparator.IsVersionParsable(name)
-		if !parsable {
-			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
-			return c.Status(fiber.StatusBadRequest).JSON(resp)
-		}
-	}
-
-	exists, err := h.versionLogic.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
-		ResourceId:  resourceId,
-		VersionName: name,
-		OS:          system,
-		Arch:        arch,
-	})
-	switch {
-	case err != nil:
-		h.logger.Error("failed to check if version name exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	case exists:
-		h.logger.Warn("version name already exists",
-			zap.String("resource id", resourceId),
-			zap.String("version name", name),
-			zap.String("resource os", system),
-			zap.String("resource arch", arch),
-		)
-		resp := response.BusinessError("version name under the current platform architecture already exists")
-		return c.Status(fiber.StatusConflict).JSON(resp)
-	}
-
-	tmp, err := os.MkdirTemp(os.TempDir(), misc.TmpDirPrefix)
-	if err != nil {
-		h.logger.Error("Failed to create temp tmp directory",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	defer func(path string) {
-		go func(p string) {
-			_ = os.RemoveAll(p)
-		}(path)
-	}(tmp)
-
-	dest := strings.Join([]string{tmp, file.Filename}, string(os.PathSeparator))
-	if err := c.SaveFile(file, dest); err != nil {
-		h.logger.Error("failed to save file",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	ver, err := h.versionLogic.Create(ctx, CreateVersionParam{
-		ResourceID:        resourceId,
-		Name:              name,
-		UploadArchivePath: dest,
-		OS:                system,
-		Arch:              arch,
-		Channel:           channel,
-	})
-	if err != nil {
-		h.logger.Error("Failed to create version",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
-	data := CreateVersionResponseData{
-		Name:   ver.Name,
-		Number: ver.Number,
-		OS:     system,
-		Arch:   arch,
-	}
-	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
-}
-
-func (h *VersionHandler) CreateVersionV2(c *fiber.Ctx) error {
 	var (
 		ctx        = c.UserContext()
 		resourceId = c.Params(ResourceKey)
@@ -302,19 +173,21 @@ func (h *VersionHandler) CreateVersionV2(c *fiber.Ctx) error {
 
 func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 	var (
-		name       = c.FormValue("name")
-		system     = c.FormValue("os")
-		arch       = c.FormValue("arch")
-		channel    = c.FormValue("channel")
-		key        = c.FormValue("key")
+		name    = c.FormValue("name")
+		system  = c.FormValue("os")
+		arch    = c.FormValue("arch")
+		channel = c.FormValue("channel")
+		key     = c.FormValue("key")
+
 		resourceId = c.Params(ResourceKey)
+		ctx        = c.UserContext()
 	)
 	err := h.BindRequiredParams(&system, &arch, &channel)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
-	err = h.versionLogic.ProcessCreateVersionCallback(c.UserContext(), CreateVersionCallBackParam{
+	err = h.versionLogic.ProcessCreateVersionCallback(ctx, CreateVersionCallBackParam{
 		ResourceID: resourceId,
 		Name:       name,
 		OS:         system,
@@ -326,7 +199,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 		h.logger.Error("Failed to create version callback",
 			zap.Error(err),
 		)
-		resp := response.UnexpectedError()
+		resp := response.UnexpectedError(err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 	return c.Status(fiber.StatusOK).JSON(response.Success(nil))

@@ -9,12 +9,11 @@ type CreateResourceParam struct {
 }
 
 type CreateVersionParam struct {
-	ResourceID        string
-	Name              string
-	OS                string
-	Arch              string
-	Channel           string
-	UploadArchivePath string
+	ResourceID string
+	Name       string
+	OS         string
+	Arch       string
+	Channel    string
 }
 
 type CreateVersionCallBackParam struct {
