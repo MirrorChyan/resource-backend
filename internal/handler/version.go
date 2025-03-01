@@ -116,8 +116,12 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		arch    = c.FormValue("arch")
 		channel = c.FormValue("channel")
 	)
-	err = h.BindRequiredParams(&system, &arch, &channel)
-	if err != nil {
+	if name == "" {
+		resp := response.BusinessError("name is required")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if err = h.BindRequiredParams(&system, &arch, &channel); err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
