@@ -31,11 +31,9 @@ auth:
   cdk_validation_url: "https://cdk.validation.example"
 
 oss:
-  external_host: "https://oss-cn-hangzhou.aliyuncs.com"
-  region: "hangzhou"
+  endpoint: "https://oss-cn-hangzhou.aliyuncs.com"
 #  access_key: "access_key"
 #  secret_key: "secret_key"
-  bucket: "bucket"
 
 extra:
   create_new_version_webhook: "https://example.com/message"
