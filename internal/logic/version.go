@@ -143,9 +143,7 @@ func (l *VersionLogic) CreateVersion(ctx context.Context, resourceId, channel, n
 
 	verChannel := l.GetVersionChannel(channel)
 
-	ver, err := l.versionRepo.CreateVersion(ctx, resourceId, verChannel, name, number)
-
-	return ver, nil
+	return l.versionRepo.CreateVersion(ctx, resourceId, verChannel, name, number)
 }
 
 func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersionParam) (*oss.SignaturePolicyToken, error) {
@@ -306,7 +304,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, versionName, channel string) (*ent.Version, error) {
 	var (
-		ver      *ent.Version
 		mutexKey = strings.Join([]string{misc.LoadStoreNewVersionKey, resourceId, versionName, channel}, ":")
 	)
 	mutex := l.sync.NewMutex(mutexKey, redsync.WithExpiry(10*time.Second))
@@ -343,6 +340,7 @@ func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, ve
 			zap.String("version name", versionName),
 			zap.Error(err),
 		)
+		return nil, err
 	}
 	return ver, err
 }
