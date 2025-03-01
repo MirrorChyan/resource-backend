@@ -191,10 +191,11 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			archivePath string
 		)
 
-		_, err = os.Stat(filepath.Join(l.storageLogic.RootDir, key))
+		abs := filepath.Join(l.storageLogic.RootDir, key)
+		_, err = os.Stat(abs)
 		if err != nil {
 			l.logger.Error("Failed to stat archive file pleas check the oss upload",
-				zap.String("archive path", key),
+				zap.String("archive path", abs),
 				zap.Error(err),
 			)
 			return err
@@ -220,13 +221,13 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		saveDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
 
 		switch {
-		case strings.HasSuffix(key, misc.ZipSuffix):
-			err = archive.UnpackZip(key, saveDir)
-		case strings.HasSuffix(key, misc.TarGzSuffix):
-			err = archive.UnpackTarGz(key, saveDir)
+		case strings.HasSuffix(abs, misc.ZipSuffix):
+			err = archive.UnpackZip(abs, saveDir)
+		case strings.HasSuffix(abs, misc.TarGzSuffix):
+			err = archive.UnpackTarGz(abs, saveDir)
 		default:
 			l.logger.Error("Unknown archive extension",
-				zap.String("archive path", key),
+				zap.String("archive path", abs),
 			)
 			return errors.New("unknown archive extension")
 		}
