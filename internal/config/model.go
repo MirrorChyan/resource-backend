@@ -10,6 +10,7 @@ type (
 		Database DatabaseConfig `mapstructure:"database"`
 		Auth     AuthConfig     `mapstructure:"auth"`
 		Redis    RedisConfig    `mapstructure:"redis"`
+		OSS      OSSConfig      `mapstructure:"oss"`
 		Extra    ExtraConfig    `mapstructure:"extra"`
 	}
 	InstanceConfig struct {
@@ -67,5 +68,13 @@ type (
 		PrivateKey            string `mapstructure:"private_key"`
 		UploaderValidationURL string `mapstructure:"uploader_validation_url"`
 		CDKValidationURL      string `mapstructure:"cdk_validation_url"`
+	}
+	OSSConfig struct {
+		ExternalHost string `mapstructure:"external_host"`
+		Region       string `mapstructure:"region"`
+		Endpoint     string `mapstructure:"endpoint"`
+		AccessKey    string `mapstructure:"access_key"`
+		SecretKey    string `mapstructure:"secret_key"`
+		Bucket       string `mapstructure:"bucket"`
 	}
 )

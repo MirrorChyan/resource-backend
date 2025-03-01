@@ -30,6 +30,13 @@ auth:
   uploader_validation_url: "https://uploader.validation.example"
   cdk_validation_url: "https://cdk.validation.example"
 
+oss:
+  external_host: "https://oss-cn-hangzhou.aliyuncs.com"
+  region: "hangzhou"
+#  access_key: "access_key"
+#  secret_key: "secret_key"
+  bucket: "bucket"
+
 extra:
   create_new_version_webhook: "https://example.com/message"
   sql_debug_mode: true

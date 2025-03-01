@@ -217,6 +217,121 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(response.Success(data))
 }
 
+func (h *VersionHandler) CreateVersionV2(c *fiber.Ctx) error {
+	var (
+		ctx        = c.UserContext()
+		resourceId = c.Params(ResourceKey)
+	)
+	exist, err := h.resourceLogic.Exists(ctx, resourceId)
+	switch {
+	case err != nil:
+		h.logger.Error("Failed to check if resource exists",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+
+	case !exist:
+		h.logger.Info("Resource not found",
+			zap.String("resource id", resourceId),
+		)
+		resp := response.BusinessError("resource not found")
+		return c.Status(fiber.StatusNotFound).JSON(resp)
+	}
+
+	var (
+		name    = c.FormValue("name")
+		system  = c.FormValue("os")
+		arch    = c.FormValue("arch")
+		channel = c.FormValue("channel")
+	)
+	err = h.BindRequiredParams(&system, &arch, &channel)
+	if err != nil {
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	if channel != types.ChannelStable.String() {
+		parsable := h.verComparator.IsVersionParsable(name)
+		if !parsable {
+			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
+			return c.Status(fiber.StatusBadRequest).JSON(resp)
+		}
+	}
+
+	exists, err := h.versionLogic.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
+		ResourceId:  resourceId,
+		VersionName: name,
+		OS:          system,
+		Arch:        arch,
+	})
+	switch {
+	case err != nil:
+		h.logger.Error("failed to check if version name exists",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	case exists:
+		h.logger.Warn("version name already exists",
+			zap.String("resource id", resourceId),
+			zap.String("version name", name),
+			zap.String("resource os", system),
+			zap.String("resource arch", arch),
+		)
+		resp := response.BusinessError("version name under the current platform architecture already exists")
+		return c.Status(fiber.StatusConflict).JSON(resp)
+	}
+	token, err := h.versionLogic.CreatePreSignedUrl(ctx, CreateVersionParam{
+		ResourceID: resourceId,
+		Name:       name,
+		OS:         system,
+		Arch:       arch,
+		Channel:    channel,
+	})
+	if err != nil {
+		h.logger.Error("Failed to create pre signed url",
+			zap.Error(err),
+		)
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response.Success(token))
+
+}
+
+func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
+	var (
+		name       = c.FormValue("name")
+		system     = c.FormValue("os")
+		arch       = c.FormValue("arch")
+		channel    = c.FormValue("channel")
+		key        = c.FormValue("key")
+		resourceId = c.Params(ResourceKey)
+	)
+	err := h.BindRequiredParams(&system, &arch, &channel)
+	if err != nil {
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+	err = h.versionLogic.ProcessCreateVersionCallback(c.UserContext(), CreateVersionCallBackParam{
+		ResourceID: resourceId,
+		Name:       name,
+		OS:         system,
+		Arch:       arch,
+		Channel:    channel,
+		Key:        key,
+	})
+	if err != nil {
+		h.logger.Error("Failed to create version callback",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+	return c.Status(fiber.StatusOK).JSON(response.Success(nil))
+}
+
 func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) error {
 	h.logger.Info("Validating CDK")
 

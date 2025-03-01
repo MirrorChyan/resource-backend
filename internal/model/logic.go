@@ -17,6 +17,15 @@ type CreateVersionParam struct {
 	UploadArchivePath string
 }
 
+type CreateVersionCallBackParam struct {
+	ResourceID string `json:"resource_id"`
+	Name       string `json:"name"`
+	OS         string `json:"os"`
+	Arch       string `json:"arch"`
+	Channel    string `json:"channel"`
+	Key        string `json:"key"`
+}
+
 type GetVersionByNameParam struct {
 	ResourceID  string
 	VersionName string

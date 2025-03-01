@@ -19,6 +19,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/oss"
 	"github.com/MirrorChyan/resource-backend/internal/patcher"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
@@ -289,6 +290,142 @@ func (l *VersionLogic) Create(ctx context.Context, param CreateVersionParam) (*e
 	go l.doWebhookNotify(resourceId, versionName, v.Channel.String(), system, arch, true)
 
 	return v, nil
+}
+
+func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersionParam) (*oss.SignaturePolicyToken, error) {
+	var (
+		resourceId  = param.ResourceID
+		versionName = param.Name
+		system      = param.OS
+		arch        = param.Arch
+		channel     = param.Channel
+	)
+	ver, err := l.LoadStoreNewVersionTx(ctx, resourceId, versionName, channel)
+	if err != nil {
+		return nil, err
+	}
+	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
+
+	token, err := oss.AcquirePolicyToken(dest, "resource.zip")
+	if err != nil {
+		return nil, err
+	}
+	return token, err
+}
+
+func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param CreateVersionCallBackParam) error {
+	var (
+		resourceId = param.ResourceID
+		// version name is unique in all channels
+		versionName = param.Name
+		system      = param.OS
+		arch        = param.Arch
+		key         = param.Key
+	)
+	ver, err := l.versionRepo.GetVersionByName(ctx, resourceId, versionName)
+	if err != nil {
+		return err
+	}
+
+	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
+		var (
+			versionId   = ver.ID
+			err         error
+			saveDir     string
+			archivePath string
+		)
+
+		_, err = os.Stat(key)
+		if err != nil {
+			l.logger.Error("Failed to stat archive file pleas check the oss upload",
+				zap.String("archive path", key),
+				zap.Error(err),
+			)
+			return err
+		}
+
+		saveDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+
+		switch {
+		case strings.HasSuffix(key, misc.ZipSuffix):
+			err = archive.UnpackZip(key, saveDir)
+		case strings.HasSuffix(key, misc.TarGzSuffix):
+			err = archive.UnpackTarGz(key, saveDir)
+		default:
+			l.logger.Error("Unknown archive extension",
+				zap.String("archive path", key),
+			)
+			return errors.New("unknown archive extension")
+		}
+
+		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
+			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
+				// Code before the actual rollback.
+
+				if e := os.RemoveAll(saveDir); e != nil {
+					l.logger.Error("Failed to remove storage directory",
+						zap.Error(e),
+					)
+				}
+
+				err := next.Rollback(ctx, tx)
+				// Code after the transaction was rolled back.
+
+				return err
+			})
+		})
+
+		if err != nil {
+			l.logger.Error("Failed to unpack file",
+				zap.String("version name", versionName),
+				zap.Error(err),
+			)
+			return err
+		}
+
+		archivePath = l.storageLogic.BuildVersionResourceStoragePath(resourceId, versionId, system, arch)
+
+		packageHash, err := filehash.Calculate(archivePath)
+		if err != nil {
+			l.logger.Error("Failed to calculate full update package hash",
+				zap.String("resource id", resourceId),
+				zap.String("version name", versionName),
+				zap.String("os", system),
+				zap.String("arch", arch),
+				zap.Error(err),
+			)
+			return err
+		}
+
+		hashes, err := filehash.GetAll(saveDir)
+		if err != nil {
+			l.logger.Error("Failed to get file hashes",
+				zap.String("version name", versionName),
+				zap.Error(err),
+			)
+			return err
+		}
+
+		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, archivePath, packageHash, saveDir, hashes)
+		if err != nil {
+			l.logger.Error("Failed to create storage",
+				zap.Error(err),
+			)
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		l.logger.Error("Failed to commit transaction",
+			zap.Error(err),
+		)
+		return err
+	}
+
+	l.doPostCreateResources(resourceId)
+
+	return nil
 }
 
 func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, versionName, channel string) (*ent.Version, error) {
