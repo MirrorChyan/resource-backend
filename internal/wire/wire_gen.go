@@ -23,17 +23,17 @@ import (
 
 // Injectors from wire.go:
 
-func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisClient *redis.Client, redsyncRedsync *redsync.Redsync, taskQueue *tasks.TaskQueue, versionCacheGroup *cache.VersionCacheGroup, versionComparator *vercomp.VersionComparator) *HandlerSet {
+func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisClient *redis.Client, redsyncRedsync *redsync.Redsync, taskQueue *tasks.TaskQueue, multiCacheGroup *cache.MultiCacheGroup, versionComparator *vercomp.VersionComparator) *HandlerSet {
 	repoRepo := repo.NewRepo(client, db)
 	resource := repo.NewResource(repoRepo)
-	resourceLogic := logic.NewResourceLogic(logger, resource)
+	resourceLogic := logic.NewResourceLogic(logger, resource, multiCacheGroup)
 	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
 	version := repo.NewVersion(repoRepo)
 	rawQuery := repo.NewRawQuery(repoRepo)
+	distributeLogic := dispense.NewDistributeLogic(logger, redisClient)
 	storage := repo.NewStorage(repoRepo)
 	storageLogic := logic.NewStorageLogic(logger, storage)
-	distributeLogic := dispense.NewDistributeLogic(logger, redisClient)
-	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, rawQuery, versionComparator, storageLogic, redisClient, redsyncRedsync, taskQueue, versionCacheGroup, distributeLogic)
+	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, rawQuery, versionComparator, distributeLogic, resourceLogic, storageLogic, redisClient, redsyncRedsync, taskQueue, multiCacheGroup)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, versionComparator)
 	storageHandler := handler.NewStorageHandler(logger, resourceLogic, versionLogic, storageLogic)
 	metricsHandler := handler.NewMetricsHandler()

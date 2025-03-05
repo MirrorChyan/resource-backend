@@ -32,7 +32,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		}
 	)
 
-	if isFull {
+	if isFull || targetInfo.ResourceUpdateType == types.UpdateFull.String() {
 		return full, nil
 	}
 
@@ -90,8 +90,8 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 	)
 
 	result := l.rdb.SetNX(ctx, key, 1, 0)
-	if result.Err() != nil {
-		return nil, result.Err()
+	if err := result.Err(); err != nil {
+		return nil, err
 	}
 	if !result.Val() {
 		return full, nil

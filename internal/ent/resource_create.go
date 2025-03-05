@@ -47,6 +47,20 @@ func (rc *ResourceCreate) SetNillableCreatedAt(t *time.Time) *ResourceCreate {
 	return rc
 }
 
+// SetUpdateType sets the "update_type" field.
+func (rc *ResourceCreate) SetUpdateType(s string) *ResourceCreate {
+	rc.mutation.SetUpdateType(s)
+	return rc
+}
+
+// SetNillableUpdateType sets the "update_type" field if the given value is not nil.
+func (rc *ResourceCreate) SetNillableUpdateType(s *string) *ResourceCreate {
+	if s != nil {
+		rc.SetUpdateType(*s)
+	}
+	return rc
+}
+
 // SetID sets the "id" field.
 func (rc *ResourceCreate) SetID(s string) *ResourceCreate {
 	rc.mutation.SetID(s)
@@ -107,6 +121,10 @@ func (rc *ResourceCreate) defaults() {
 		v := resource.DefaultCreatedAt()
 		rc.mutation.SetCreatedAt(v)
 	}
+	if _, ok := rc.mutation.UpdateType(); !ok {
+		v := resource.DefaultUpdateType
+		rc.mutation.SetUpdateType(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -124,6 +142,9 @@ func (rc *ResourceCreate) check() error {
 	}
 	if _, ok := rc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Resource.created_at"`)}
+	}
+	if _, ok := rc.mutation.UpdateType(); !ok {
+		return &ValidationError{Name: "update_type", err: errors.New(`ent: missing required field "Resource.update_type"`)}
 	}
 	if v, ok := rc.mutation.ID(); ok {
 		if err := resource.IDValidator(v); err != nil {
@@ -176,6 +197,10 @@ func (rc *ResourceCreate) createSpec() (*Resource, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if value, ok := rc.mutation.UpdateType(); ok {
+		_spec.SetField(resource.FieldUpdateType, field.TypeString, value)
+		_node.UpdateType = value
 	}
 	if nodes := rc.mutation.VersionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

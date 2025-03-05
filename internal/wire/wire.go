@@ -29,7 +29,7 @@ func NewHandlerSet(
 	*zap.Logger,
 	*ent.Client, *sqlx.DB,
 	*redis.Client, *redsync.Redsync, *tasks.TaskQueue,
-	*cache.VersionCacheGroup,
+	*cache.MultiCacheGroup,
 	*vercomp.VersionComparator,
 ) *HandlerSet {
 	panic(wire.Build(

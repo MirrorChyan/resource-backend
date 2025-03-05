@@ -17,8 +17,6 @@ const (
 	ZipSuffix   = ".zip"
 	TarGzSuffix = ".tar.gz"
 
-	TmpDirPrefix = "ptmp"
-
 	DispensePrefix = "dispense"
 )
 
@@ -26,6 +24,8 @@ const (
 	GenerateTagKey         = "generate"
 	LoadStoreNewVersionKey = "LoadStoreNewVersionTx"
 )
+
+const SniffLen = 4
 
 var (
 	StorageInfoNotFound = errors.New("storage info not found")

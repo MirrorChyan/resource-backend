@@ -100,8 +100,8 @@ func (l *StorageLogic) BuildVersionResourceStorageDirPath(resID string, verID in
 	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), "resource")
 }
 
-func (l *StorageLogic) BuildVersionResourceStoragePath(resID string, verID int, os, arch string) string {
-	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), "resource.zip")
+func (l *StorageLogic) BuildVersionResourceStoragePath(resID string, verID int, os, arch, filename string) string {
+	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), filename)
 }
 
 func (l *StorageLogic) BuildVersionPatchStorageDirPath(resID string, verID int, os, arch string) string {

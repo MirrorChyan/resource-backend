@@ -23,6 +23,8 @@ type Resource struct {
 	Description string `json:"description,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdateType holds the value of the "update_type" field.
+	UpdateType string `json:"update_type,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ResourceQuery when eager-loading is set.
 	Edges        ResourceEdges `json:"edges"`
@@ -52,7 +54,7 @@ func (*Resource) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case resource.FieldID, resource.FieldName, resource.FieldDescription:
+		case resource.FieldID, resource.FieldName, resource.FieldDescription, resource.FieldUpdateType:
 			values[i] = new(sql.NullString)
 		case resource.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -94,6 +96,12 @@ func (r *Resource) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				r.CreatedAt = value.Time
+			}
+		case resource.FieldUpdateType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field update_type", values[i])
+			} else if value.Valid {
+				r.UpdateType = value.String
 			}
 		default:
 			r.selectValues.Set(columns[i], values[i])
@@ -144,6 +152,9 @@ func (r *Resource) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(r.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("update_type=")
+	builder.WriteString(r.UpdateType)
 	builder.WriteByte(')')
 	return builder.String()
 }

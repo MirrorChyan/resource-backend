@@ -80,6 +80,11 @@ func CreatedAt(v time.Time) predicate.Resource {
 	return predicate.Resource(sql.FieldEQ(FieldCreatedAt, v))
 }
 
+// UpdateType applies equality check predicate on the "update_type" field. It's identical to UpdateTypeEQ.
+func UpdateType(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldEQ(FieldUpdateType, v))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Resource {
 	return predicate.Resource(sql.FieldEQ(FieldName, v))
@@ -248,6 +253,71 @@ func CreatedAtLT(v time.Time) predicate.Resource {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Resource {
 	return predicate.Resource(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// UpdateTypeEQ applies the EQ predicate on the "update_type" field.
+func UpdateTypeEQ(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldEQ(FieldUpdateType, v))
+}
+
+// UpdateTypeNEQ applies the NEQ predicate on the "update_type" field.
+func UpdateTypeNEQ(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldNEQ(FieldUpdateType, v))
+}
+
+// UpdateTypeIn applies the In predicate on the "update_type" field.
+func UpdateTypeIn(vs ...string) predicate.Resource {
+	return predicate.Resource(sql.FieldIn(FieldUpdateType, vs...))
+}
+
+// UpdateTypeNotIn applies the NotIn predicate on the "update_type" field.
+func UpdateTypeNotIn(vs ...string) predicate.Resource {
+	return predicate.Resource(sql.FieldNotIn(FieldUpdateType, vs...))
+}
+
+// UpdateTypeGT applies the GT predicate on the "update_type" field.
+func UpdateTypeGT(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldGT(FieldUpdateType, v))
+}
+
+// UpdateTypeGTE applies the GTE predicate on the "update_type" field.
+func UpdateTypeGTE(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldGTE(FieldUpdateType, v))
+}
+
+// UpdateTypeLT applies the LT predicate on the "update_type" field.
+func UpdateTypeLT(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldLT(FieldUpdateType, v))
+}
+
+// UpdateTypeLTE applies the LTE predicate on the "update_type" field.
+func UpdateTypeLTE(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldLTE(FieldUpdateType, v))
+}
+
+// UpdateTypeContains applies the Contains predicate on the "update_type" field.
+func UpdateTypeContains(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldContains(FieldUpdateType, v))
+}
+
+// UpdateTypeHasPrefix applies the HasPrefix predicate on the "update_type" field.
+func UpdateTypeHasPrefix(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldHasPrefix(FieldUpdateType, v))
+}
+
+// UpdateTypeHasSuffix applies the HasSuffix predicate on the "update_type" field.
+func UpdateTypeHasSuffix(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldHasSuffix(FieldUpdateType, v))
+}
+
+// UpdateTypeEqualFold applies the EqualFold predicate on the "update_type" field.
+func UpdateTypeEqualFold(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldEqualFold(FieldUpdateType, v))
+}
+
+// UpdateTypeContainsFold applies the ContainsFold predicate on the "update_type" field.
+func UpdateTypeContainsFold(v string) predicate.Resource {
+	return predicate.Resource(sql.FieldContainsFold(FieldUpdateType, v))
 }
 
 // HasVersions applies the HasEdge predicate on the "versions" edge.

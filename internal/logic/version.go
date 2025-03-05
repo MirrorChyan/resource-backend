@@ -42,11 +42,12 @@ type VersionLogic struct {
 	versionRepo     *repo.Version
 	distributeLogic *dispense.DistributeLogic
 	storageLogic    *StorageLogic
+	resourceLogic   *ResourceLogic
 	comparator      *vercomp.VersionComparator
 	taskQueue       *tasks.TaskQueue
 	rdb             *redis.Client
 	sync            *redsync.Redsync
-	cacheGroup      *cache.VersionCacheGroup
+	cacheGroup      *cache.MultiCacheGroup
 }
 
 func NewVersionLogic(
@@ -55,22 +56,24 @@ func NewVersionLogic(
 	versionRepo *repo.Version,
 	rawQuery *repo.RawQuery,
 	verComparator *vercomp.VersionComparator,
+	distributeLogic *dispense.DistributeLogic,
+	resourceLogic *ResourceLogic,
 	storageLogic *StorageLogic,
 	rdb *redis.Client,
 	sync *redsync.Redsync,
 	taskQueue *tasks.TaskQueue,
-	cacheGroup *cache.VersionCacheGroup,
-	distributeLogic *dispense.DistributeLogic,
+	cacheGroup *cache.MultiCacheGroup,
 ) *VersionLogic {
 	l := &VersionLogic{
 		logger:          logger,
 		repo:            repo,
 		versionRepo:     versionRepo,
 		storageLogic:    storageLogic,
+		resourceLogic:   resourceLogic,
+		distributeLogic: distributeLogic,
 		comparator:      verComparator,
 		rawQuery:        rawQuery,
 		taskQueue:       taskQueue,
-		distributeLogic: distributeLogic,
 		rdb:             rdb,
 		sync:            sync,
 		cacheGroup:      cacheGroup,
@@ -83,7 +86,7 @@ func (l *VersionLogic) GetRedisClient() *redis.Client {
 	return l.rdb
 }
 
-func (l *VersionLogic) GetCacheGroup() *cache.VersionCacheGroup {
+func (l *VersionLogic) GetCacheGroup() *cache.MultiCacheGroup {
 	return l.cacheGroup
 }
 
@@ -155,6 +158,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		system      = param.OS
 		arch        = param.Arch
 		channel     = param.Channel
+		filename    = param.Filename
 	)
 	ver, err := l.LoadStoreNewVersionTx(ctx, resourceId, versionName, channel)
 	if err != nil {
@@ -162,11 +166,29 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	}
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
-	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), "resource.zip")
+	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
 	if err != nil {
 		return nil, err
 	}
 	return token, err
+}
+
+// doVerifyRequiredFileType The file must be in zip format
+func (l *VersionLogic) doVerifyRequiredFileType(dest string) bool {
+	f, err := os.Open(dest)
+	if err != nil {
+		l.logger.Error("Failed to open file please check file",
+			zap.String("file", dest),
+			zap.Error(err),
+		)
+		return false
+	}
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
+	sniff := make([]byte, misc.SniffLen)
+	_, _ = f.Read(sniff)
+	return strings.HasSuffix(dest, misc.ZipSuffix) && bytes.HasPrefix(sniff, []byte("PK\x03\x04"))
 }
 
 func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param CreateVersionCallBackParam) error {
@@ -177,6 +199,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		system      = param.OS
 		arch        = param.Arch
 		channel     = param.Channel
+		filename    = param.Filename
 		key         = param.Key
 	)
 	ver, err := l.versionRepo.GetVersionByName(ctx, resourceId, versionName)
@@ -186,16 +209,14 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
 		var (
-			versionId   = ver.ID
-			saveDir     string
-			archivePath string
+			versionId = ver.ID
 		)
 
-		abs := filepath.Join(l.storageLogic.OSSDir, key)
-		_, err = os.Stat(abs)
+		source := filepath.Join(l.storageLogic.OSSDir, key)
+		_, err = os.Stat(source)
 		if err != nil {
 			l.logger.Error("Failed to stat archive file pleas check the oss upload",
-				zap.String("archive path", abs),
+				zap.String("archive path", source),
 				zap.Error(err),
 			)
 			return err
@@ -224,9 +245,9 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 		l.logger.Debug("start CopyFile")
 
-		if err = fileops.CopyFile(abs, dest); err != nil {
+		if err = fileops.CopyFile(source, dest); err != nil {
 			l.logger.Error("failed to copy oss to local storage file",
-				zap.String("source", abs),
+				zap.String("source", source),
 				zap.String("destination", dest),
 				zap.Error(err),
 			)
@@ -235,56 +256,68 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 		l.logger.Debug("end CopyFile")
 
-		saveDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+		var (
+			isIncremental = l.doVerifyRequiredFileType(dest) &&
+				ver.Edges.Resource.UpdateType == types.UpdateIncremental.String()
 
-		l.logger.Debug("start unpack resource",
-			zap.String("save dir", saveDir),
-		)
-		switch {
-		case strings.HasSuffix(dest, misc.ZipSuffix):
-			err = archive.UnpackZip(dest, saveDir)
-		case strings.HasSuffix(dest, misc.TarGzSuffix):
-			err = archive.UnpackTarGz(dest, saveDir)
-		default:
-			l.logger.Error("Unknown archive extension",
-				zap.String("archive path", dest),
-			)
-			return errors.New("unknown archive extension")
-		}
-
-		l.logger.Debug("end unpack resource",
-			zap.String("save dir", saveDir),
+			hashes         = make(map[string]string)
+			flatPackageDir string
 		)
 
-		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
-			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
-				// Code before the actual rollback.
+		if isIncremental {
+			flatPackageDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+			tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
+				return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
+					// Code before the actual rollback.
 
-				go func() {
-					if e := os.RemoveAll(saveDir); e != nil {
-						l.logger.Error("Failed to remove storage directory",
-							zap.Error(e),
-						)
-					}
-				}()
+					go func() {
+						if e := os.RemoveAll(flatPackageDir); e != nil {
+							l.logger.Error("Failed to remove storage directory",
+								zap.Error(e),
+							)
+						}
+					}()
 
-				err := next.Rollback(ctx, tx)
-				// Code after the transaction was rolled back.
+					err := next.Rollback(ctx, tx)
+					// Code after the transaction was rolled back.
 
-				return err
+					return err
+				})
 			})
-		})
 
-		if err != nil {
-			l.logger.Error("Failed to unpack file",
-				zap.String("version name", versionName),
-				zap.Error(err),
+			l.logger.Debug("start unpack resource",
+				zap.String("save dir", flatPackageDir),
 			)
-			return err
+			if err = archive.UnpackZip(dest, flatPackageDir); err != nil {
+				l.logger.Error("Failed to unpack file",
+					zap.String("version name", versionName),
+					zap.Error(err),
+				)
+				return err
+			}
+			l.logger.Debug("end unpack resource",
+				zap.String("save dir", flatPackageDir),
+			)
+
+			l.logger.Debug("start calculate total file hash",
+				zap.String("dest dir", flatPackageDir),
+			)
+
+			hashes, err = filehash.GetAll(flatPackageDir)
+			if err != nil {
+				l.logger.Error("Failed to get file hashes",
+					zap.String("version name", versionName),
+					zap.Error(err),
+				)
+				return err
+			}
+
+			l.logger.Debug("end calculate total file hash",
+				zap.String("dest dir", flatPackageDir),
+			)
 		}
 
-		archivePath = l.storageLogic.BuildVersionResourceStoragePath(resourceId, versionId, system, arch)
-
+		archivePath := l.storageLogic.BuildVersionResourceStoragePath(resourceId, versionId, system, arch, filename)
 		l.logger.Debug("start calculate package hash",
 			zap.String("package dir", archivePath),
 		)
@@ -304,25 +337,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		l.logger.Debug("end calculate package hash",
 			zap.String("package dir", archivePath),
 		)
-
-		l.logger.Debug("start calculate total file hash",
-			zap.String("dest dir", saveDir),
-		)
-
-		hashes, err := filehash.GetAll(saveDir)
-		if err != nil {
-			l.logger.Error("Failed to get file hashes",
-				zap.String("version name", versionName),
-				zap.Error(err),
-			)
-			return err
-		}
-
-		l.logger.Debug("end calculate total file hash",
-			zap.String("dest dir", saveDir),
-		)
-
-		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, archivePath, packageHash, saveDir, hashes)
+		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, archivePath, packageHash, flatPackageDir, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
 				zap.Error(err),
@@ -579,12 +594,25 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 	}
 	info := (*val).LatestVersionInfo
 	if info != nil {
+		if !info.PackagePath.Valid {
+			l.logger.Error("latest resource version storage not found please check storage path",
+				zap.String("resource id", resourceId),
+				zap.String("os", os),
+				zap.String("arch", arch),
+				zap.String("channel", channel),
+			)
+			return nil, misc.StorageInfoNotFound
+		}
 		return info, nil
 	}
 	return nil, misc.ResourceNotFound
 }
 
 func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
+	r, err := l.resourceLogic.FindById(context.Background(), resourceId)
+	if err != nil {
+		return nil, err
+	}
 	info, err := l.rawQuery.GetSpecifiedLatestVersion(resourceId, os, arch)
 	if err != nil {
 		return nil, err
@@ -597,6 +625,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 
 	for i := range info {
 		data := info[i]
+		data.ResourceUpdateType = r.UpdateType
 		switch data.Channel {
 		case types.ChannelStable.String():
 			stable = &data

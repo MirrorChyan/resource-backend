@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"time"
 
 	"entgo.io/ent"
@@ -24,6 +25,8 @@ func (Resource) Fields() []ent.Field {
 		field.String("description"),
 		field.Time("created_at").
 			Default(time.Now),
+		field.String("update_type").
+			Default(types.UpdateIncremental.String()),
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type VersionCacheGroup struct {
+type MultiCacheGroup struct {
 	// value store pointer don't modify it
 
 	// key: resourceId:versionName -> versionId
@@ -24,31 +24,34 @@ type VersionCacheGroup struct {
 
 	// resourceId:os:arch:channel / cache empty
 	MultiVersionInfoCache *Cache[string, *model.MultiVersionInfo]
+
+	ResourceInfoCache *Cache[string, *ent.Resource]
 }
 
-func (g *VersionCacheGroup) GetCacheKey(elems ...string) string {
+func (g *MultiCacheGroup) GetCacheKey(elems ...string) string {
 	return strings.Join(elems, ":")
 }
 
-func (g *VersionCacheGroup) EvictAll() {
+func (g *MultiCacheGroup) EvictAll() {
 	g.FullUpdateStorageCache.EvictAll()
 	g.VersionNameIdCache.EvictAll()
 	g.IncrementalUpdateInfoCache.EvictAll()
 	g.MultiVersionInfoCache.EvictAll()
 }
 
-func NewVersionCacheGroup(rdb *redis.Client) *VersionCacheGroup {
-	group := &VersionCacheGroup{
-		FullUpdateStorageCache:     NewCache[string, *ent.Storage](6 * time.Hour),
-		VersionNameIdCache:         NewCache[string, int](6 * time.Hour),
-		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](6 * time.Hour),
-		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](6 * time.Hour),
+func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
+	group := &MultiCacheGroup{
+		FullUpdateStorageCache:     NewCache[string, *ent.Storage](12 * time.Hour),
+		VersionNameIdCache:         NewCache[string, int](-1),
+		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](12 * time.Hour),
+		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](12 * time.Hour),
+		ResourceInfoCache:          NewCache[string, *ent.Resource](-1),
 	}
 	subscribeCacheEvict(rdb, group)
 	return group
 }
 
-func subscribeCacheEvict(rdb *redis.Client, group *VersionCacheGroup) {
+func subscribeCacheEvict(rdb *redis.Client, group *MultiCacheGroup) {
 	var (
 		logger  = zap.L()
 		cxt     = context.Background()

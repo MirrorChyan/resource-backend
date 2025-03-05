@@ -2,9 +2,6 @@ package handler
 
 import (
 	"errors"
-	"path/filepath"
-	"strings"
-
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/redis/go-redis/v9"
@@ -62,11 +59,6 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	versions.Put("/custom-data", h.UpdateCustomData)
 }
 
-func (h *VersionHandler) isValidExtension(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".zip" || strings.HasSuffix(filename, ".tar.gz")
-}
-
 func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
 	if o, ok := OsMap[*os]; !ok {
 		return errors.New("invalid os")
@@ -111,13 +103,14 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	}
 
 	var (
-		name    = c.FormValue("name")
-		system  = c.FormValue("os")
-		arch    = c.FormValue("arch")
-		channel = c.FormValue("channel")
+		name     = c.FormValue("name")
+		system   = c.FormValue("os")
+		arch     = c.FormValue("arch")
+		channel  = c.FormValue("channel")
+		filename = c.FormValue("filename")
 	)
-	if name == "" {
-		resp := response.BusinessError("name is required")
+	if name == "" || filename == "" {
+		resp := response.BusinessError("name and filename is required")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
@@ -163,6 +156,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		OS:         system,
 		Arch:       arch,
 		Channel:    channel,
+		Filename:   filename,
 	})
 	if err != nil {
 		h.logger.Error("Failed to create pre signed url",
@@ -405,19 +399,20 @@ func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
 	var (
 		counter = CompareIfAbsent(LIT, resourceId)
 		con     = config.GConfig.Extra.Concurrency
+		rf      = func() {
+			counter.Add(-1)
+		}
+		cv = counter.Add(1)
 	)
-	counter.Add(1)
 
 	if con != 0 {
-		if cv := counter.Load(); cv > con {
+		if cv > con {
 			h.logger.Warn("limit by", zap.Int32("concurrency", cv))
-			return nil, true
+			return rf, true
 		}
 	}
 
-	return func() {
-		counter.Add(-1)
-	}, false
+	return rf, false
 }
 
 func (h *VersionHandler) doPickRegionInfo(c *fiber.Ctx) string {

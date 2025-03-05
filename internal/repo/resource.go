@@ -17,6 +17,12 @@ func NewResource(db *Repo) *Resource {
 	}
 }
 
+func (r *Resource) FindById(ctx context.Context, id string) (*ent.Resource, error) {
+	return r.db.Resource.Query().
+		Where(resource.ID(id)).
+		First(ctx)
+}
+
 func (r *Resource) CreateResource(ctx context.Context, resID, name, description string) (*ent.Resource, error) {
 	return r.db.Resource.Create().
 		SetID(resID).

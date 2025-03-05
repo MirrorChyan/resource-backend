@@ -43,13 +43,12 @@ func AcquirePolicyToken(prefix, file string) (*SignaturePolicyToken, error) {
 	h.Write([]byte(policy))
 	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
 
-	token := SignaturePolicyToken{
+	return &SignaturePolicyToken{
 		AccessKeyId: accessKey,
 		Host:        host,
 		Signature:   signature,
 		Policy:      policy,
 		Name:        file,
 		Key:         strings.Join([]string{prefix, file}, "/"),
-	}
-	return &token, nil
+	}, nil
 }

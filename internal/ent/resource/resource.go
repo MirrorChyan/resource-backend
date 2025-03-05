@@ -20,6 +20,8 @@ const (
 	FieldDescription = "description"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// FieldUpdateType holds the string denoting the update_type field in the database.
+	FieldUpdateType = "update_type"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
 	EdgeVersions = "versions"
 	// Table holds the table name of the resource in the database.
@@ -39,6 +41,7 @@ var Columns = []string{
 	FieldName,
 	FieldDescription,
 	FieldCreatedAt,
+	FieldUpdateType,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -56,6 +59,8 @@ var (
 	NameValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// DefaultUpdateType holds the default value on creation for the "update_type" field.
+	DefaultUpdateType string
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(string) error
 )
@@ -81,6 +86,11 @@ func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdateType orders the results by the update_type field.
+func ByUpdateType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdateType, opts...).ToFunc()
 }
 
 // ByVersionsCount orders the results by versions count.

@@ -71,6 +71,20 @@ func (ru *ResourceUpdate) SetNillableCreatedAt(t *time.Time) *ResourceUpdate {
 	return ru
 }
 
+// SetUpdateType sets the "update_type" field.
+func (ru *ResourceUpdate) SetUpdateType(s string) *ResourceUpdate {
+	ru.mutation.SetUpdateType(s)
+	return ru
+}
+
+// SetNillableUpdateType sets the "update_type" field if the given value is not nil.
+func (ru *ResourceUpdate) SetNillableUpdateType(s *string) *ResourceUpdate {
+	if s != nil {
+		ru.SetUpdateType(*s)
+	}
+	return ru
+}
+
 // AddVersionIDs adds the "versions" edge to the Version entity by IDs.
 func (ru *ResourceUpdate) AddVersionIDs(ids ...int) *ResourceUpdate {
 	ru.mutation.AddVersionIDs(ids...)
@@ -169,6 +183,9 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := ru.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)
+	}
+	if value, ok := ru.mutation.UpdateType(); ok {
+		_spec.SetField(resource.FieldUpdateType, field.TypeString, value)
 	}
 	if ru.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -273,6 +290,20 @@ func (ruo *ResourceUpdateOne) SetCreatedAt(t time.Time) *ResourceUpdateOne {
 func (ruo *ResourceUpdateOne) SetNillableCreatedAt(t *time.Time) *ResourceUpdateOne {
 	if t != nil {
 		ruo.SetCreatedAt(*t)
+	}
+	return ruo
+}
+
+// SetUpdateType sets the "update_type" field.
+func (ruo *ResourceUpdateOne) SetUpdateType(s string) *ResourceUpdateOne {
+	ruo.mutation.SetUpdateType(s)
+	return ruo
+}
+
+// SetNillableUpdateType sets the "update_type" field if the given value is not nil.
+func (ruo *ResourceUpdateOne) SetNillableUpdateType(s *string) *ResourceUpdateOne {
+	if s != nil {
+		ruo.SetUpdateType(*s)
 	}
 	return ruo
 }
@@ -405,6 +436,9 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 	}
 	if value, ok := ruo.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)
+	}
+	if value, ok := ruo.mutation.UpdateType(); ok {
+		_spec.SetField(resource.FieldUpdateType, field.TypeString, value)
 	}
 	if ruo.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

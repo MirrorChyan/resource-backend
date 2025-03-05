@@ -25,6 +25,10 @@ func init() {
 	resourceDescCreatedAt := resourceFields[3].Descriptor()
 	// resource.DefaultCreatedAt holds the default value on creation for the created_at field.
 	resource.DefaultCreatedAt = resourceDescCreatedAt.Default.(func() time.Time)
+	// resourceDescUpdateType is the schema descriptor for update_type field.
+	resourceDescUpdateType := resourceFields[4].Descriptor()
+	// resource.DefaultUpdateType holds the default value on creation for the update_type field.
+	resource.DefaultUpdateType = resourceDescUpdateType.Default.(string)
 	// resourceDescID is the schema descriptor for id field.
 	resourceDescID := resourceFields[0].Descriptor()
 	// resource.IDValidator is a validator for the "id" field. It is called by the builders before save.
