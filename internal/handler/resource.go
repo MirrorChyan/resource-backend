@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"regexp"
 	"sync"
 
@@ -44,14 +45,14 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	switch idLength := len(req.ID); {
-	case idLength == 0:
+	switch l := len(req.ID); {
+	case l == 0:
 		resp := response.BusinessError("id is required")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	case idLength < 3:
+	case l < 3:
 		resp := response.BusinessError("id must be at least 3 characters long")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	case idLength > 64:
+	case l > 64:
 		resp := response.BusinessError("id must be at most 64 characters long")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
@@ -84,10 +85,19 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
+	var t = req.UpdateType
+	if t == "" {
+		t = types.UpdateIncremental.String()
+	} else if t != types.UpdateIncremental.String() && t != types.UpdateFull.String() {
+		resp := response.BusinessError("update type is invalid")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
 	param := CreateResourceParam{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
+		UpdateType:  t,
 	}
 
 	res, err := h.resourceLogic.Create(ctx, param)
@@ -95,15 +105,14 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		h.logger.Error("failed to create resource",
 			zap.Error(err),
 		)
-		resp := response.UnexpectedError()
+		resp := response.UnexpectedError(err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	data := CreateResourceResponseData{
+	resp := response.Success(CreateResourceResponseData{
 		ID:          res.ID,
 		Name:        res.Name,
 		Description: res.Description,
-	}
-	resp := response.Success(data)
+	})
 	return c.Status(fiber.StatusOK).JSON(resp)
 }

@@ -32,7 +32,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		}
 	)
 
-	if isFull || targetInfo.ResourceUpdateType == types.UpdateFull.String() {
+	if isFull || targetInfo.ResourceUpdateType == types.UpdateFull {
 		return full, nil
 	}
 

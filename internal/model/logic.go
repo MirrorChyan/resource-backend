@@ -6,6 +6,7 @@ type CreateResourceParam struct {
 	ID          string
 	Name        string
 	Description string
+	UpdateType  string
 }
 
 type CreateVersionParam struct {

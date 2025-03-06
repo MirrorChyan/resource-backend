@@ -166,6 +166,19 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	}
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
+	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
+	if err != nil {
+		l.logger.Error("Failed to find resource",
+			zap.String("resource id", resourceId),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	if ut == types.UpdateIncremental {
+		filename = misc.DefaultResourceName
+	}
+
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
 	if err != nil {
 		return nil, err
@@ -256,15 +269,26 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 		l.logger.Debug("end CopyFile")
 
+		ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
+		if err != nil {
+			l.logger.Error("Failed to find resource",
+				zap.String("resource id", resourceId),
+				zap.Error(err),
+			)
+			return err
+		}
+
 		var (
-			isIncremental = l.doVerifyRequiredFileType(dest) &&
-				ver.Edges.Resource.UpdateType == types.UpdateIncremental.String()
+			isIncremental = ut == types.UpdateIncremental
 
 			hashes         = make(map[string]string)
 			flatPackageDir string
 		)
 
 		if isIncremental {
+			if !l.doVerifyRequiredFileType(dest) {
+				return misc.NotAllowedFileType
+			}
 			flatPackageDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
 			tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
 				return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
@@ -592,8 +616,8 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 	if err != nil {
 		return nil, err
 	}
-	info := (*val).LatestVersionInfo
-	if info != nil {
+
+	if info := (*val).LatestVersionInfo; info != nil {
 		if !info.PackagePath.Valid {
 			l.logger.Error("latest resource version storage not found please check storage path",
 				zap.String("resource id", resourceId),
@@ -603,16 +627,19 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 			)
 			return nil, misc.StorageInfoNotFound
 		}
+
+		ut, err := l.resourceLogic.FindUpdateTypeById(context.Background(), resourceId)
+		if err != nil {
+			return nil, err
+		}
+		info.ResourceUpdateType = ut
+
 		return info, nil
 	}
 	return nil, misc.ResourceNotFound
 }
 
 func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
-	r, err := l.resourceLogic.FindById(context.Background(), resourceId)
-	if err != nil {
-		return nil, err
-	}
 	info, err := l.rawQuery.GetSpecifiedLatestVersion(resourceId, os, arch)
 	if err != nil {
 		return nil, err
@@ -625,7 +652,6 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 
 	for i := range info {
 		data := info[i]
-		data.ResourceUpdateType = r.UpdateType
 		switch data.Channel {
 		case types.ChannelStable.String():
 			stable = &data

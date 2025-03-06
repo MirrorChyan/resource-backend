@@ -2,12 +2,13 @@ package model
 
 import (
 	"database/sql"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"time"
 )
 
 type LatestVersionInfo struct {
 	// by logic injection
-	ResourceUpdateType string
+	ResourceUpdateType types.Update
 	VersionId          int            `db:"version_id"`
 	VersionName        string         `db:"version_name"`
 	VersionNumber      uint64         `db:"version_number"`

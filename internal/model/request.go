@@ -4,6 +4,7 @@ type CreateResourceRequest struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	UpdateType  string `json:"update_type"`
 }
 
 type GetLatestVersionRequest struct {

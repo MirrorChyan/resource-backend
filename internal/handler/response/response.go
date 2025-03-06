@@ -1,5 +1,7 @@
 package response
 
+import "strings"
+
 const (
 	CodeSuccess    = 0
 	CodeBusiness   = 1
@@ -21,13 +23,11 @@ func New(code int, msg string, data any) *Response {
 }
 
 func Success(data any, msg ...string) *Response {
-	var msgStr string
+	var r = "success"
 	if len(msg) > 0 {
-		msgStr = msg[0]
-	} else {
-		msgStr = "success"
+		r = strings.Join(msg, ";")
 	}
-	return New(CodeSuccess, msgStr, data)
+	return New(CodeSuccess, r, data)
 }
 
 func BusinessError(msg string) *Response {
@@ -35,11 +35,9 @@ func BusinessError(msg string) *Response {
 }
 
 func UnexpectedError(msg ...string) *Response {
-	var msgStr string
+	var r = "internal server error"
 	if len(msg) > 0 {
-		msgStr = msg[0]
-	} else {
-		msgStr = "internal server error"
+		r = strings.Join(msg, ";")
 	}
-	return New(CodeUnexpected, msgStr, nil)
+	return New(CodeUnexpected, r, nil)
 }

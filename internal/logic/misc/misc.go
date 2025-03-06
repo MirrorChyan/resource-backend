@@ -14,8 +14,9 @@ const (
 const (
 	ResourcePrefix = "res"
 
-	ZipSuffix   = ".zip"
-	TarGzSuffix = ".tar.gz"
+	ZipSuffix = ".zip"
+
+	DefaultResourceName = "resource.zip"
 
 	DispensePrefix = "dispense"
 )
@@ -29,6 +30,8 @@ const SniffLen = 4
 
 var (
 	StorageInfoNotFound = errors.New("storage info not found")
+
+	NotAllowedFileType = errors.New("not allowed file type")
 
 	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
 
