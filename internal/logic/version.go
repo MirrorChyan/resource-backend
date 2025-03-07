@@ -175,8 +175,11 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		return nil, err
 	}
 
-	if ut == types.UpdateIncremental {
+	switch {
+	case ut == types.UpdateIncremental:
 		filename = misc.DefaultResourceName
+	case filename == "":
+		return nil, errors.New("filename is required")
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)

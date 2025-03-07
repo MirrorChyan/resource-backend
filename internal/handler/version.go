@@ -109,8 +109,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		channel  = c.FormValue("channel")
 		filename = c.FormValue("filename")
 	)
-	if name == "" || filename == "" {
-		resp := response.BusinessError("name and filename is required")
+	if name == "" {
+		resp := response.BusinessError("name is required")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
@@ -162,7 +162,8 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		h.logger.Error("Failed to create pre signed url",
 			zap.Error(err),
 		)
-		return err
+		resp := response.BusinessError(err.Error())
+		return c.Status(fiber.StatusConflict).JSON(resp)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(token))
