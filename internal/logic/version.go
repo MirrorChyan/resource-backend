@@ -215,7 +215,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		system      = param.OS
 		arch        = param.Arch
 		channel     = param.Channel
-		filename    = param.Filename
 		key         = param.Key
 	)
 	ver, err := l.versionRepo.GetVersionByName(ctx, resourceId, versionName)
@@ -298,6 +297,9 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 					// Code before the actual rollback.
 
 					go func() {
+						l.logger.Warn("clean storage directory",
+							zap.String("path", flatPackageDir),
+						)
 						if e := os.RemoveAll(flatPackageDir); e != nil {
 							l.logger.Error("Failed to remove storage directory",
 								zap.Error(e),
@@ -344,12 +346,11 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			)
 		}
 
-		archivePath := l.storageLogic.BuildVersionResourceStoragePath(resourceId, versionId, system, arch, filename)
 		l.logger.Debug("start calculate package hash",
-			zap.String("package dir", archivePath),
+			zap.String("package path", key),
 		)
 
-		packageHash, err := filehash.Calculate(archivePath)
+		packageHash, err := filehash.Calculate(key)
 		if err != nil {
 			l.logger.Error("Failed to calculate full update package hash",
 				zap.String("resource id", resourceId),
@@ -362,9 +363,12 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		}
 
 		l.logger.Debug("end calculate package hash",
-			zap.String("package dir", archivePath),
+			zap.String("package path", key),
 		)
-		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, archivePath, packageHash, flatPackageDir, hashes)
+
+		fp := filepath.Join(l.storageLogic.RootDir, key)
+
+		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, fp, packageHash, flatPackageDir, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
 				zap.Error(err),

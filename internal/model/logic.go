@@ -24,7 +24,6 @@ type CreateVersionCallBackParam struct {
 	OS         string `json:"os"`
 	Arch       string `json:"arch"`
 	Channel    string `json:"channel"`
-	Filename   string `json:"filename"`
 	Key        string `json:"key"`
 }
 
