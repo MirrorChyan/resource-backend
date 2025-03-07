@@ -30,7 +30,9 @@ func (c *Cache[K, V]) ComputeIfAbsent(key K, f func() (V, error)) (*V, error) {
 		if err != nil {
 			return nil, err
 		}
-		if c.ttl != -1 {
+		if c.ttl == -1 {
+			c.cache.Set(key, value, 1)
+		} else {
 			c.cache.SetWithTTL(key, value, 1, c.ttl)
 		}
 		c.cache.Wait()

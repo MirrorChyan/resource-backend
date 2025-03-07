@@ -36,7 +36,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		return full, nil
 	}
 
-	ck := cg.GetCacheKey(resourceId, currentVersionName)
+	var ck = cg.GetCacheKey(resourceId, currentVersionName)
 	vid, err := cg.VersionNameIdCache.ComputeIfAbsent(ck, func() (int, error) {
 		v, err := l.versionRepo.GetVersionByName(ctx, resourceId, currentVersionName)
 		if err != nil {
