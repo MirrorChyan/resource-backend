@@ -135,9 +135,8 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestPar
 	if err != nil {
 		return nil, err
 	}
-	rel := l.cleanRootStoragePath(result.PackagePath)
 	return &UpdateInfo{
-		RelPath:    rel,
+		RelPath:    l.cleanRootStoragePath(result.PackagePath),
 		SHA256:     result.PackageHash,
 		UpdateType: result.UpdateType,
 	}, nil

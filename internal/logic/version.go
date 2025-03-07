@@ -283,24 +283,24 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		var (
 			isIncremental = ut == types.UpdateIncremental
 
-			hashes         = make(map[string]string)
-			flatPackageDir string
+			hashes = make(map[string]string)
+			flat   string
 		)
 
 		if isIncremental {
 			if !l.doVerifyRequiredFileType(dest) {
 				return misc.NotAllowedFileType
 			}
-			flatPackageDir = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+			flat = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
 			tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
 				return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 					// Code before the actual rollback.
 
 					go func() {
 						l.logger.Warn("clean storage directory",
-							zap.String("path", flatPackageDir),
+							zap.String("path", flat),
 						)
-						if e := os.RemoveAll(flatPackageDir); e != nil {
+						if e := os.RemoveAll(flat); e != nil {
 							l.logger.Error("Failed to remove storage directory",
 								zap.Error(e),
 							)
@@ -315,9 +315,9 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			})
 
 			l.logger.Debug("start unpack resource",
-				zap.String("save dir", flatPackageDir),
+				zap.String("save dir", flat),
 			)
-			if err = archive.UnpackZip(dest, flatPackageDir); err != nil {
+			if err = archive.UnpackZip(dest, flat); err != nil {
 				l.logger.Error("Failed to unpack file",
 					zap.String("version name", versionName),
 					zap.Error(err),
@@ -325,14 +325,14 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 				return err
 			}
 			l.logger.Debug("end unpack resource",
-				zap.String("save dir", flatPackageDir),
+				zap.String("save dir", flat),
 			)
 
 			l.logger.Debug("start calculate total file hash",
-				zap.String("dest dir", flatPackageDir),
+				zap.String("flat dir", flat),
 			)
 
-			hashes, err = filehash.GetAll(flatPackageDir)
+			hashes, err = filehash.GetAll(flat)
 			if err != nil {
 				l.logger.Error("Failed to get file hashes",
 					zap.String("version name", versionName),
@@ -342,15 +342,15 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			}
 
 			l.logger.Debug("end calculate total file hash",
-				zap.String("dest dir", flatPackageDir),
+				zap.String("flat dir", flat),
 			)
 		}
 
 		l.logger.Debug("start calculate package hash",
-			zap.String("package path", key),
+			zap.String("package path", dest),
 		)
 
-		packageHash, err := filehash.Calculate(key)
+		h, err := filehash.Calculate(dest)
 		if err != nil {
 			l.logger.Error("Failed to calculate full update package hash",
 				zap.String("resource id", resourceId),
@@ -363,12 +363,10 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		}
 
 		l.logger.Debug("end calculate package hash",
-			zap.String("package path", key),
+			zap.String("package path", dest),
 		)
 
-		fp := filepath.Join(l.storageLogic.RootDir, key)
-
-		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, fp, packageHash, flatPackageDir, hashes)
+		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, dest, h, flat, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
 				zap.Error(err),
@@ -440,6 +438,9 @@ func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arc
 		cfg     = GConfig
 		webhook = cfg.Extra.CreateNewVersionWebhook
 	)
+	if webhook == "" {
+		return
+	}
 
 	buf, e := sonic.Marshal(map[string]string{
 		"resource_id":  resourceId,
