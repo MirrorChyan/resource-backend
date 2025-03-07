@@ -7,6 +7,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
+	"time"
 )
 
 type logger struct {
@@ -52,6 +53,8 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 		}
 		l.Sugar().Info("generate incremental update package task: ", string(task.Payload()))
 		var (
+			start = time.Now()
+
 			target     = payload.TargetVersionId
 			current    = payload.CurrentVersionId
 			system     = payload.OS
@@ -64,6 +67,7 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 			return err
 		}
 		l.Info("generate incremental update package task success",
+			zap.Int64("cost time", time.Since(start).Milliseconds()),
 			zap.String("resource id", resourceId),
 			zap.Int("current", current),
 			zap.Int("target", target),
