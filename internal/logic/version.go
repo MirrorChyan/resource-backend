@@ -180,6 +180,8 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		filename = misc.DefaultResourceName
 	case filename == "":
 		return nil, errors.New("filename is required")
+	case strings.Contains(filename, string(os.PathSeparator)):
+		return nil, errors.New("filename cannot contain path separator")
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)

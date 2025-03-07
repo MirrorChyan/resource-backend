@@ -1,15 +1,14 @@
 package handler
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/model/types"
-	"regexp"
-	"sync"
-
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
+	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
+	"regexp"
 )
 
 type ResourceHandler struct {
@@ -27,12 +26,6 @@ func NewResourceHandler(logger *zap.Logger, resourceLogic *logic.ResourceLogic) 
 func (h *ResourceHandler) Register(r fiber.Router) {
 	// For Developer
 	r.Post("/resources", h.Create)
-}
-
-var validID = sync.Pool{
-	New: func() interface{} {
-		return regexp.MustCompile("^[a-zA-Z0-9_-]+$")
-	},
 }
 
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
@@ -57,8 +50,8 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	var validator = validID.Get().(*regexp.Regexp)
-	defer validID.Put(validator)
+	var validator = misc.ValidID.Get().(*regexp.Regexp)
+	defer misc.ValidID.Put(validator)
 
 	if !validator.MatchString(req.ID) {
 		resp := response.BusinessError("id must be alphanumeric, underscore, or hyphen")
@@ -89,7 +82,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 	if t == "" {
 		t = types.UpdateIncremental.String()
 	} else if t != types.UpdateIncremental.String() && t != types.UpdateFull.String() {
-		resp := response.BusinessError("update type is invalid")
+		resp := response.BusinessError("update type only be incremental or full")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
