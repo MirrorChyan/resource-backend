@@ -495,7 +495,7 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 
 	err = l.doCreateIncrementalUpdatePackage(ctx, PatchTaskExecuteParam{
 		ResourceId:           resourceId,
-		TargetResourcePath:   targetInfo.ResourcePath,
+		TargetOriginPackage:  targetInfo.PackagePath,
 		TargetVersionId:      target,
 		CurrentVersionId:     current,
 		TargetStorageHashes:  targetInfo.FileHashes,
@@ -525,8 +525,8 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		target     = param.TargetVersionId
 		current    = param.CurrentVersionId
 		system     = param.OS
-		resArch    = param.Arch
-		origin     = param.TargetResourcePath
+		arch       = param.Arch
+		origin     = param.TargetOriginPackage
 	)
 
 	changes, err := patcher.CalculateDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
@@ -537,9 +537,10 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	patchDir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, resArch)
+	dir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch)
 
-	patchName, err := patcher.Generate(strconv.Itoa(current), origin, patchDir, changes)
+	generate, err := patcher.GenerateV2(strconv.Itoa(current), origin, dir, changes)
+
 	if err != nil {
 		l.logger.Error("Failed to generate patch package",
 			zap.Error(err),
@@ -547,7 +548,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	source := filepath.Join(patchDir, patchName)
+	source := filepath.Join(dir, generate)
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) (err error) {
 
@@ -572,12 +573,12 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 				zap.Int("target version id", target),
 				zap.Int("current version id", current),
 				zap.String("os", system),
-				zap.String("arch", resArch),
+				zap.String("arch", arch),
 				zap.Error(err),
 			)
 			return err
 		}
-		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, resArch, source, hashes)
+		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, arch, source, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create incremental update storage",
 				zap.Error(err),

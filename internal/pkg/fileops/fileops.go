@@ -9,15 +9,15 @@ import (
 )
 
 func CopyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
+	source, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer func(f *os.File) {
 		_ = f.Close()
-	}(sourceFile)
+	}(source)
 
-	destFile, err := os.Create(dst)
+	dest, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
@@ -29,11 +29,11 @@ func CopyFile(src, dst string) error {
 				zap.Error(err),
 			)
 		}
-	}(destFile)
+	}(dest)
 
 	buf := pkg.GetBuffer()
 	defer pkg.PutBuffer(buf)
-	_, err = io.CopyBuffer(destFile, sourceFile, buf)
+	_, err = io.CopyBuffer(dest, source, buf)
 	return err
 }
 

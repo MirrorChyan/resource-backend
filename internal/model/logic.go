@@ -77,7 +77,7 @@ type MultiVersionInfo struct {
 
 type PatchTaskExecuteParam struct {
 	ResourceId           string
-	TargetResourcePath   string
+	TargetOriginPackage  string
 	TargetVersionId      int
 	CurrentVersionId     int
 	TargetStorageHashes  map[string]string
