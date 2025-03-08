@@ -51,7 +51,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 
 	// For Developer
 	versions := r.Group("/resources/:rid/versions")
-	versions.Use("/", middleware.NewValidateUploader())
+	//versions.Use("/", middleware.NewValidateUploader())
 	versions.Post("/", h.Create)
 	versions.Post("/callback", h.CreateVersionCallBack)
 

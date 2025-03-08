@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -28,7 +29,11 @@ func NewStorageHandler(
 }
 
 func (h *StorageHandler) Register(r fiber.Router) {
-	r.Post("/resources/:rid/versions/latest/clear", func(ctx *fiber.Ctx) error {
-		return ctx.SendString("TODO")
+	r.Get("/storages/purge", func(ctx *fiber.Ctx) error {
+		err := h.storageLogic.ClearOldStorages(ctx.UserContext())
+		if err != nil {
+			return err
+		}
+		return ctx.Status(fiber.StatusOK).JSON(response.Success(nil))
 	})
 }

@@ -521,12 +521,12 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, param PatchTaskExecuteParam) error {
 
 	var (
-		resourceId  = param.ResourceId
-		target      = param.TargetVersionId
-		current     = param.CurrentVersionId
-		system      = param.OS
-		resArch     = param.Arch
-		resourceDir = param.TargetResourcePath
+		resourceId = param.ResourceId
+		target     = param.TargetVersionId
+		current    = param.CurrentVersionId
+		system     = param.OS
+		resArch    = param.Arch
+		origin     = param.TargetResourcePath
 	)
 
 	changes, err := patcher.CalculateDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
@@ -539,7 +539,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 
 	patchDir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, resArch)
 
-	patchName, err := patcher.Generate(strconv.Itoa(current), resourceDir, patchDir, changes)
+	patchName, err := patcher.Generate(strconv.Itoa(current), origin, patchDir, changes)
 	if err != nil {
 		l.logger.Error("Failed to generate patch package",
 			zap.Error(err),

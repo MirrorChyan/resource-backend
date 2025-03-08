@@ -75,3 +75,10 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 		).
 		Only(ctx)
 }
+
+func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
+	return r.db.Storage.UpdateOneID(storageId).
+		SetPackagePath("").
+		SetResourcePath("").
+		Exec(ctx)
+}

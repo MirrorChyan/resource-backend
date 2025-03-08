@@ -1,8 +1,13 @@
 package logic
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/bytedance/sonic"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,23 +18,32 @@ import (
 )
 
 type StorageLogic struct {
-	logger      *zap.Logger
-	storageRepo *repo.Storage
-	RootDir     string
-	OSSDir      string
+	logger       *zap.Logger
+	storageRepo  *repo.Storage
+	resourceRepo *repo.Resource
+	rawQuery     *repo.RawQuery
+	RootDir      string
+	OSSDir       string
 }
 
-func NewStorageLogic(logger *zap.Logger, storageRepo *repo.Storage) *StorageLogic {
+func NewStorageLogic(
+	logger *zap.Logger,
+	storageRepo *repo.Storage,
+	resourceRepo *repo.Resource,
+	rawQuery *repo.RawQuery,
+) *StorageLogic {
 	// change to configurable, this is only a temporary solution
 	dir, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 	return &StorageLogic{
-		logger:      logger,
-		storageRepo: storageRepo,
-		RootDir:     filepath.Join(dir, "storage"),
-		OSSDir:      filepath.Join(dir, "oss"),
+		logger:       logger,
+		resourceRepo: resourceRepo,
+		storageRepo:  storageRepo,
+		rawQuery:     rawQuery,
+		RootDir:      filepath.Join(dir, "storage"),
+		OSSDir:       filepath.Join(dir, "oss"),
 	}
 }
 
@@ -113,6 +127,91 @@ func (l *StorageLogic) BuildVersionPatchStoragePath(resID string, verID, oldVerI
 	return filepath.Join(l.BuildVersionPatchStorageDirPath(resID, verID, os, arch), patchName)
 }
 
-func (l *StorageLogic) ClearOldStorages() error {
-	panic("TODO")
+func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
+	resource, err := l.resourceRepo.GetFullResource(ctx)
+	if err != nil {
+		l.logger.Error("failed to get resource",
+			zap.Error(err),
+		)
+		return err
+	}
+	for _, val := range resource {
+		if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
+			je := errors.Join(err...)
+			l.logger.Error("failed to purge resource",
+				zap.String("resource id", val.ID),
+				zap.Error(je),
+			)
+			go doErrorNotify(l.logger, je.Error())
+		}
+	}
+	return nil
+}
+
+func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) []error {
+	info, err := l.rawQuery.GetReadyToPurgeInfo(resourceId)
+	var el []error
+	switch {
+	case err != nil:
+		return append(el, err)
+	case len(info) == 0:
+		return nil
+	}
+
+	for _, val := range info {
+		var (
+			key = filepath.Join(val.ResourceId, l.getPlatformDirName(val.OS, val.Arch))
+			od  = filepath.Join(l.OSSDir, key)
+			ld  = filepath.Join(l.RootDir, key)
+		)
+		l.logger.Info("clear old storage",
+			zap.String("oss dir", od),
+			zap.String("local dir", ld),
+		)
+		if err := os.RemoveAll(od); err != nil {
+			l.logger.Error("failed to remove old storage",
+				zap.String("oss dir", od),
+				zap.Error(err),
+			)
+			el = append(el, err)
+		}
+		if err := os.RemoveAll(ld); err != nil {
+			l.logger.Error("failed to remove local storage",
+				zap.String("local dir", ld),
+				zap.Error(err),
+			)
+			el = append(el, err)
+		}
+
+		err := l.storageRepo.PurgeStorageInfo(ctx, val.StorageId)
+		if err != nil {
+			l.logger.Error("failed to purge storage info",
+				zap.Int("storage id", val.StorageId),
+				zap.Error(err),
+			)
+			return append(el, err)
+		}
+	}
+	return el
+}
+
+func doErrorNotify(l *zap.Logger, msg string) {
+	var (
+		cfg = config.GConfig
+	)
+	webhook := cfg.Extra.PurgeErrorWebhook
+	if webhook == "" {
+		return
+	}
+	buf, e := sonic.Marshal(map[string]string{
+		"msg": msg,
+	})
+	if e != nil {
+		l.Warn("Failed to marshal CreateNewVersion callback")
+		return
+	}
+	_, err := http.Post(webhook, "application/json", bytes.NewBuffer(buf))
+	if err != nil {
+		l.Warn("Failed to send CreateNewVersion callback")
+	}
 }

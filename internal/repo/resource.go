@@ -38,3 +38,7 @@ func (r *Resource) CheckResourceExistsByID(ctx context.Context, id string) (bool
 		Where(resource.ID(id)).
 		Exist(ctx)
 }
+
+func (r *Resource) GetFullResource(ctx context.Context) ([]*ent.Resource, error) {
+	return r.db.Resource.Query().All(ctx)
+}

@@ -52,6 +52,7 @@ type (
 		DownloadRedirectPrefix  string                   `mapstructure:"download_redirect_prefix"`
 		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
 		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
+		PurgeErrorWebhook       string                   `mapstructure:"purge_error_webhook"`
 		CdnPrefix               string                   `mapstructure:"cdn_prefix"`
 		DistributeCdnRatio      int                      `mapstructure:"distribute_cdn_ratio"`
 		DistributeCdnRegion     []string                 `mapstructure:"distribute_cdn_region"`
