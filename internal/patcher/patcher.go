@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"fmt"
 	"github.com/MirrorChyan/resource-backend/internal/pkg"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/bytedance/sonic"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -71,111 +70,6 @@ func CalculateDiff(newVersionFileHashes, oldVersionFileHashes map[string]string)
 	}
 
 	return changes, nil
-}
-
-func Generate(patchName, resDir, targetDir string, changes []Change) (string, error) {
-	// create temp root dir
-	root, err := os.MkdirTemp(os.TempDir(), "process-temp")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp root directory: %w", err)
-	}
-	// remove temp root dir
-	defer func(p string) {
-		go func(p string) {
-			_ = os.RemoveAll(p)
-		}(p)
-	}(root)
-
-	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
-		return "", fmt.Errorf("failed to create target directory: %w", err)
-	}
-
-	var files [][2]string
-
-	for _, change := range changes {
-
-		switch change.ChangeType {
-		case Modified, Added:
-
-			resPath := filepath.Join(resDir, change.Filename)
-			tempPath := filepath.Join(root, change.Filename)
-
-			tempFileDir := filepath.Dir(tempPath)
-			_, err := os.Stat(tempFileDir)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					return "", fmt.Errorf("failed to stat temp file directory: %w", err)
-				}
-				if err := os.MkdirAll(tempFileDir, os.ModePerm); err != nil {
-					return "", fmt.Errorf("failed to create temp file directory: %w", err)
-				}
-			}
-			files = append(files, [2]string{resPath, tempPath})
-		case Deleted:
-			// do nothing
-		case Unchanged:
-			// do nothing
-		default:
-			return "", fmt.Errorf("unknown change type: %d", change.ChangeType)
-		}
-	}
-
-	var (
-		wg   = errgroup.Group{}
-		flag = atomic.Bool{}
-	)
-
-	flag.Store(false)
-	wg.SetLimit(runtime.NumCPU() * 10)
-	for i := range files {
-		if flag.Load() {
-			break
-		}
-		wg.Go(func() error {
-			if flag.Load() {
-				return nil
-			}
-			src, dst := files[i][0], files[i][1]
-			if err := fileops.CopyFile(src, dst); err != nil {
-				flag.Store(true)
-				return fmt.Errorf("failed to copy file: %w", err)
-			}
-			return nil
-		})
-	}
-
-	if err := wg.Wait(); err != nil {
-		return "", err
-	}
-
-	changesJSONPath := filepath.Join(root, "changes.json")
-	changesFile, err := os.Create(changesJSONPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create changes.json file: %w", err)
-	}
-	defer func(f *os.File) {
-		_ = changesFile.Close()
-
-	}(changesFile)
-
-	changesMap := groupChangesByType(changes)
-	jsonData, err := sonic.Marshal(changesMap)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal changes to JSON: %w", err)
-	}
-
-	if err := os.WriteFile(changesJSONPath, jsonData, 0644); err != nil {
-		return "", fmt.Errorf("failed to write JSON to file: %w", err)
-	}
-
-	archiveName := fmt.Sprintf("%s.zip", patchName)
-	archivePath := filepath.Join(targetDir, archiveName)
-	err = archive.CompressToZip(root, archivePath)
-	if err != nil {
-		return "", err
-	}
-
-	return archiveName, nil
 }
 
 type transferInfo struct {
@@ -292,7 +186,7 @@ func GenerateV2(patchName, origin, dest string, changes []Change) (string, error
 			}
 			if err = t.transfer(); err != nil {
 				flag.Store(true)
-				return fmt.Errorf("failed to copy file: %w", err)
+				return fmt.Errorf("failed to transfer file: %w", err)
 			}
 			return nil
 		})
@@ -302,30 +196,34 @@ func GenerateV2(patchName, origin, dest string, changes []Change) (string, error
 		return "", err
 	}
 
-	changesJSONPath := filepath.Join(root, "changes.json")
-	changesFile, err := os.Create(changesJSONPath)
+	var (
+		p    = filepath.Join(root, "changes.json")
+		data = groupChangesByType(changes)
+	)
+
+	f, err := os.Create(p)
 	if err != nil {
 		return "", fmt.Errorf("failed to create changes.json file: %w", err)
 	}
 	defer func(f *os.File) {
-		_ = changesFile.Close()
+		_ = f.Close()
+	}(f)
 
-	}(changesFile)
-
-	changesMap := groupChangesByType(changes)
-	jsonData, err := sonic.Marshal(changesMap)
+	buf, err := sonic.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal changes to JSON: %w", err)
 	}
 
-	if err := os.WriteFile(changesJSONPath, jsonData, 0644); err != nil {
+	if err := os.WriteFile(p, buf, 0644); err != nil {
 		return "", fmt.Errorf("failed to write JSON to file: %w", err)
 	}
 
-	archiveName := fmt.Sprintf("%s.zip", patchName)
-	archivePath := filepath.Join(dest, archiveName)
-	err = archive.CompressToZip(root, archivePath)
-	if err != nil {
+	var (
+		archiveName = fmt.Sprintf("%s.zip", patchName)
+		archivePath = filepath.Join(dest, archiveName)
+	)
+
+	if err = archive.CompressToZip(root, archivePath); err != nil {
 		return "", err
 	}
 

@@ -294,27 +294,20 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 				return misc.NotAllowedFileType
 			}
 			flat = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
-			tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
-				return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
-					// Code before the actual rollback.
 
-					go func() {
-						l.logger.Warn("clean storage directory",
-							zap.String("path", flat),
+			// clear storage directory
+			defer func() {
+				go func() {
+					l.logger.Warn("clean storage directory",
+						zap.String("path", flat),
+					)
+					if e := os.RemoveAll(flat); e != nil {
+						l.logger.Error("Failed to remove storage directory",
+							zap.Error(e),
 						)
-						if e := os.RemoveAll(flat); e != nil {
-							l.logger.Error("Failed to remove storage directory",
-								zap.Error(e),
-							)
-						}
-					}()
-
-					err := next.Rollback(ctx, tx)
-					// Code after the transaction was rolled back.
-
-					return err
-				})
-			})
+					}
+				}()
+			}()
 
 			l.logger.Debug("start unpack resource",
 				zap.String("save dir", flat),

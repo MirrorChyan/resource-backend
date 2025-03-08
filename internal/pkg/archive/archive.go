@@ -44,16 +44,16 @@ func UnpackZip(src, dest string) error {
 		if err != nil {
 			return err
 		}
-		defer func(outFile *os.File) {
-			_ = outFile.Close()
+		defer func(f *os.File) {
+			_ = f.Close()
 		}(outFile)
 
 		rc, err := f.Open()
 		if err != nil {
 			return err
 		}
-		defer func(rc io.ReadCloser) {
-			_ = rc.Close()
+		defer func(f io.ReadCloser) {
+			_ = f.Close()
 		}(rc)
 
 		if _, err = io.Copy(outFile, rc); err != nil {
