@@ -160,7 +160,7 @@ func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) [
 
 	for _, val := range info {
 		var (
-			key = filepath.Join(val.ResourceId, l.getPlatformDirName(val.OS, val.Arch))
+			key = filepath.Join(val.ResourceId, strconv.Itoa(val.VersionId), l.getPlatformDirName(val.OS, val.Arch))
 			od  = filepath.Join(l.OSSDir, key)
 			ld  = filepath.Join(l.RootDir, key)
 		)
