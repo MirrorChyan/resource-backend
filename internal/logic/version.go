@@ -628,7 +628,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 	}
 
 	if info := (*val).LatestVersionInfo; info != nil {
-		if !info.PackagePath.Valid {
+		if !info.PackagePath.Valid || info.PackagePath.String == "" {
 			l.logger.Error("latest resource version storage not found please check storage path",
 				zap.String("resource id", resourceId),
 				zap.String("os", os),

@@ -84,15 +84,15 @@ func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
 	}
 	vid := val.VersionStorages
 	err = r.db.Storage.Update().Where(storage.HasVersionWith(version.ID(vid))).
-		SetPackagePath("").
-		SetResourcePath("").
+		SetNillablePackagePath(nil).
+		SetNillableResourcePath(nil).
 		Exec(ctx)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Storage.UpdateOneID(storageId).
-		SetPackagePath("").
-		SetResourcePath("").
+		SetNillablePackagePath(nil).
+		SetNillableResourcePath(nil).
 		Exec(ctx)
 }
