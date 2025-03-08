@@ -349,7 +349,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	if limited {
 		data.VersionName = param.CurrentVersion
 		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
-		return c.Status(fiber.StatusMultiStatus).JSON(resp)
+		return c.Status(fiber.StatusOK).JSON(resp)
 	}
 
 	if err := h.doValidateCDK(param, resourceId, c.IP()); err != nil {
@@ -375,7 +375,11 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		TargetVersionInfo:  latest,
 	})
 	if err != nil {
-		return err
+		h.logger.Error("failed to GetUpdateInfo",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError(err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
 	data.SHA256 = result.SHA256
@@ -384,12 +388,20 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.CustomData = latest.CustomData
 
 	region := h.doPickRegionInfo(c)
+
 	url, err := h.versionLogic.GetDistributeURL(&DistributeInfo{
 		Region:   region,
 		CDK:      cdk,
 		RelPath:  result.RelPath,
 		Resource: resourceId,
 	})
+	if err != nil {
+		h.logger.Error("failed to GetDistributeURL",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError(err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
 
 	data.Url = url
 	return c.Status(fiber.StatusOK).JSON(response.Success(data))

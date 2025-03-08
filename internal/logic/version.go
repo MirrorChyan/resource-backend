@@ -599,7 +599,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
 	err = fileops.CopyFile(source, dest)
 	if err != nil {
-		l.logger.Error("failed to copy local storage to oss file",
+		l.logger.Error("failed to copy local to oss",
 			zap.String("source", source),
 			zap.String("destination", dest),
 			zap.Error(err),
