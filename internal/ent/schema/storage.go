@@ -38,6 +38,7 @@ func (Storage) Fields() []ent.Field {
 			Comment("only for full update"),
 		field.Time("created_at").
 			Default(time.Now),
+		field.Int("version_storages"),
 	}
 }
 
@@ -45,6 +46,7 @@ func (Storage) Fields() []ent.Field {
 func (Storage) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("version", Version.Type).
+			Field("version_storages").
 			Ref("storages").
 			Unique().
 			Required(),

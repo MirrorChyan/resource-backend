@@ -35,11 +35,12 @@ type Storage struct {
 	FileHashes map[string]string `json:"file_hashes,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// VersionStorages holds the value of the "version_storages" field.
+	VersionStorages int `json:"version_storages,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the StorageQuery when eager-loading is set.
 	Edges               StorageEdges `json:"edges"`
 	storage_old_version *int
-	version_storages    *int
 	selectValues        sql.SelectValues
 }
 
@@ -83,15 +84,13 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case storage.FieldFileHashes:
 			values[i] = new([]byte)
-		case storage.FieldID:
+		case storage.FieldID, storage.FieldVersionStorages:
 			values[i] = new(sql.NullInt64)
 		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHashSha256, storage.FieldResourcePath:
 			values[i] = new(sql.NullString)
 		case storage.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case storage.ForeignKeys[0]: // storage_old_version
-			values[i] = new(sql.NullInt64)
-		case storage.ForeignKeys[1]: // version_storages
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -164,19 +163,18 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				s.CreatedAt = value.Time
 			}
+		case storage.FieldVersionStorages:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field version_storages", values[i])
+			} else if value.Valid {
+				s.VersionStorages = int(value.Int64)
+			}
 		case storage.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field storage_old_version", value)
 			} else if value.Valid {
 				s.storage_old_version = new(int)
 				*s.storage_old_version = int(value.Int64)
-			}
-		case storage.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field version_storages", value)
-			} else if value.Valid {
-				s.version_storages = new(int)
-				*s.version_storages = int(value.Int64)
 			}
 		default:
 			s.selectValues.Set(columns[i], values[i])
@@ -247,6 +245,9 @@ func (s *Storage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(s.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("version_storages=")
+	builder.WriteString(fmt.Sprintf("%v", s.VersionStorages))
 	builder.WriteByte(')')
 	return builder.String()
 }

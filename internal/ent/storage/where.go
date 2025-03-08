@@ -85,6 +85,11 @@ func CreatedAt(v time.Time) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldCreatedAt, v))
 }
 
+// VersionStorages applies equality check predicate on the "version_storages" field. It's identical to VersionStoragesEQ.
+func VersionStorages(v int) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldVersionStorages, v))
+}
+
 // UpdateTypeEQ applies the EQ predicate on the "update_type" field.
 func UpdateTypeEQ(v UpdateType) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldUpdateType, v))
@@ -508,6 +513,26 @@ func CreatedAtLT(v time.Time) predicate.Storage {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Storage {
 	return predicate.Storage(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// VersionStoragesEQ applies the EQ predicate on the "version_storages" field.
+func VersionStoragesEQ(v int) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldVersionStorages, v))
+}
+
+// VersionStoragesNEQ applies the NEQ predicate on the "version_storages" field.
+func VersionStoragesNEQ(v int) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldVersionStorages, v))
+}
+
+// VersionStoragesIn applies the In predicate on the "version_storages" field.
+func VersionStoragesIn(vs ...int) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldVersionStorages, vs...))
+}
+
+// VersionStoragesNotIn applies the NotIn predicate on the "version_storages" field.
+func VersionStoragesNotIn(vs ...int) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldVersionStorages, vs...))
 }
 
 // HasVersion applies the HasEdge predicate on the "version" edge.

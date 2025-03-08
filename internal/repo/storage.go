@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -77,6 +76,21 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 }
 
 func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
+	val, err := r.db.Storage.Query().
+		Where(storage.IDEQ(storageId)).
+		First(ctx)
+	if err != nil {
+		return err
+	}
+	vid := val.VersionStorages
+	err = r.db.Storage.Update().Where(storage.HasOldVersionWith(version.ID(vid))).
+		SetPackagePath("").
+		SetResourcePath("").
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
 	return r.db.Storage.UpdateOneID(storageId).
 		SetPackagePath("").
 		SetResourcePath("").

@@ -1080,6 +1080,42 @@ func (m *StorageMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetVersionStorages sets the "version_storages" field.
+func (m *StorageMutation) SetVersionStorages(i int) {
+	m.version = &i
+}
+
+// VersionStorages returns the value of the "version_storages" field in the mutation.
+func (m *StorageMutation) VersionStorages() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersionStorages returns the old "version_storages" field's value of the Storage entity.
+// If the Storage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageMutation) OldVersionStorages(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersionStorages is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersionStorages requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersionStorages: %w", err)
+	}
+	return oldValue.VersionStorages, nil
+}
+
+// ResetVersionStorages resets all changes to the "version_storages" field.
+func (m *StorageMutation) ResetVersionStorages() {
+	m.version = nil
+}
+
 // SetVersionID sets the "version" edge to the Version entity by id.
 func (m *StorageMutation) SetVersionID(id int) {
 	m.version = &id
@@ -1088,6 +1124,7 @@ func (m *StorageMutation) SetVersionID(id int) {
 // ClearVersion clears the "version" edge to the Version entity.
 func (m *StorageMutation) ClearVersion() {
 	m.clearedversion = true
+	m.clearedFields[storage.FieldVersionStorages] = struct{}{}
 }
 
 // VersionCleared reports if the "version" edge to the Version entity was cleared.
@@ -1192,7 +1229,7 @@ func (m *StorageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StorageMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.update_type != nil {
 		fields = append(fields, storage.FieldUpdateType)
 	}
@@ -1216,6 +1253,9 @@ func (m *StorageMutation) Fields() []string {
 	}
 	if m.created_at != nil {
 		fields = append(fields, storage.FieldCreatedAt)
+	}
+	if m.version != nil {
+		fields = append(fields, storage.FieldVersionStorages)
 	}
 	return fields
 }
@@ -1241,6 +1281,8 @@ func (m *StorageMutation) Field(name string) (ent.Value, bool) {
 		return m.FileHashes()
 	case storage.FieldCreatedAt:
 		return m.CreatedAt()
+	case storage.FieldVersionStorages:
+		return m.VersionStorages()
 	}
 	return nil, false
 }
@@ -1266,6 +1308,8 @@ func (m *StorageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldFileHashes(ctx)
 	case storage.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case storage.FieldVersionStorages:
+		return m.OldVersionStorages(ctx)
 	}
 	return nil, fmt.Errorf("unknown Storage field %s", name)
 }
@@ -1331,6 +1375,13 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCreatedAt(v)
 		return nil
+	case storage.FieldVersionStorages:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersionStorages(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Storage field %s", name)
 }
@@ -1338,13 +1389,16 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *StorageMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *StorageMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -1430,6 +1484,9 @@ func (m *StorageMutation) ResetField(name string) error {
 		return nil
 	case storage.FieldCreatedAt:
 		m.ResetCreatedAt()
+		return nil
+	case storage.FieldVersionStorages:
+		m.ResetVersionStorages()
 		return nil
 	}
 	return fmt.Errorf("unknown Storage field %s", name)

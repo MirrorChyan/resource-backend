@@ -157,6 +157,20 @@ func (su *StorageUpdate) SetNillableCreatedAt(t *time.Time) *StorageUpdate {
 	return su
 }
 
+// SetVersionStorages sets the "version_storages" field.
+func (su *StorageUpdate) SetVersionStorages(i int) *StorageUpdate {
+	su.mutation.SetVersionStorages(i)
+	return su
+}
+
+// SetNillableVersionStorages sets the "version_storages" field if the given value is not nil.
+func (su *StorageUpdate) SetNillableVersionStorages(i *int) *StorageUpdate {
+	if i != nil {
+		su.SetVersionStorages(*i)
+	}
+	return su
+}
+
 // SetVersionID sets the "version" edge to the Version entity by ID.
 func (su *StorageUpdate) SetVersionID(id int) *StorageUpdate {
 	su.mutation.SetVersionID(id)
@@ -494,6 +508,20 @@ func (suo *StorageUpdateOne) SetCreatedAt(t time.Time) *StorageUpdateOne {
 func (suo *StorageUpdateOne) SetNillableCreatedAt(t *time.Time) *StorageUpdateOne {
 	if t != nil {
 		suo.SetCreatedAt(*t)
+	}
+	return suo
+}
+
+// SetVersionStorages sets the "version_storages" field.
+func (suo *StorageUpdateOne) SetVersionStorages(i int) *StorageUpdateOne {
+	suo.mutation.SetVersionStorages(i)
+	return suo
+}
+
+// SetNillableVersionStorages sets the "version_storages" field if the given value is not nil.
+func (suo *StorageUpdateOne) SetNillableVersionStorages(i *int) *StorageUpdateOne {
+	if i != nil {
+		suo.SetVersionStorages(*i)
 	}
 	return suo
 }

@@ -117,6 +117,12 @@ func (sc *StorageCreate) SetNillableCreatedAt(t *time.Time) *StorageCreate {
 	return sc
 }
 
+// SetVersionStorages sets the "version_storages" field.
+func (sc *StorageCreate) SetVersionStorages(i int) *StorageCreate {
+	sc.mutation.SetVersionStorages(i)
+	return sc
+}
+
 // SetVersionID sets the "version" edge to the Version entity by ID.
 func (sc *StorageCreate) SetVersionID(id int) *StorageCreate {
 	sc.mutation.SetVersionID(id)
@@ -215,6 +221,9 @@ func (sc *StorageCreate) check() error {
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Storage.created_at"`)}
 	}
+	if _, ok := sc.mutation.VersionStorages(); !ok {
+		return &ValidationError{Name: "version_storages", err: errors.New(`ent: missing required field "Storage.version_storages"`)}
+	}
 	if len(sc.mutation.VersionIDs()) == 0 {
 		return &ValidationError{Name: "version", err: errors.New(`ent: missing required edge "Storage.version"`)}
 	}
@@ -290,7 +299,7 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.version_storages = &nodes[0]
+		_node.VersionStorages = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := sc.mutation.OldVersionIDs(); len(nodes) > 0 {

@@ -412,7 +412,7 @@ func (sq *StorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stor
 			sq.withOldVersion != nil,
 		}
 	)
-	if sq.withVersion != nil || sq.withOldVersion != nil {
+	if sq.withOldVersion != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -455,10 +455,7 @@ func (sq *StorageQuery) loadVersion(ctx context.Context, query *VersionQuery, no
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Storage)
 	for i := range nodes {
-		if nodes[i].version_storages == nil {
-			continue
-		}
-		fk := *nodes[i].version_storages
+		fk := nodes[i].VersionStorages
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -540,6 +537,9 @@ func (sq *StorageQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != storage.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if sq.withVersion != nil {
+			_spec.Node.AddColumnOnce(storage.FieldVersionStorages)
 		}
 	}
 	if ps := sq.predicates; len(ps) > 0 {

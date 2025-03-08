@@ -31,6 +31,8 @@ const (
 	FieldFileHashes = "file_hashes"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// FieldVersionStorages holds the string denoting the version_storages field in the database.
+	FieldVersionStorages = "version_storages"
 	// EdgeVersion holds the string denoting the version edge name in mutations.
 	EdgeVersion = "version"
 	// EdgeOldVersion holds the string denoting the old_version edge name in mutations.
@@ -64,13 +66,13 @@ var Columns = []string{
 	FieldResourcePath,
 	FieldFileHashes,
 	FieldCreatedAt,
+	FieldVersionStorages,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "storages"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"storage_old_version",
-	"version_storages",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -161,6 +163,11 @@ func ByResourcePath(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByVersionStorages orders the results by the version_storages field.
+func ByVersionStorages(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersionStorages, opts...).ToFunc()
 }
 
 // ByVersionField orders the results by version field.

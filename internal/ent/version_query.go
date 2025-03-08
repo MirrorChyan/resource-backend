@@ -465,6 +465,9 @@ func (vq *VersionQuery) loadStorages(ctx context.Context, query *StorageQuery, n
 		}
 	}
 	query.withFKs = true
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(storage.FieldVersionStorages)
+	}
 	query.Where(predicate.Storage(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(version.StoragesColumn), fks...))
 	}))
@@ -473,13 +476,10 @@ func (vq *VersionQuery) loadStorages(ctx context.Context, query *StorageQuery, n
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.version_storages
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "version_storages" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		fk := n.VersionStorages
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "version_storages" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "version_storages" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
