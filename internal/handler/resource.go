@@ -30,7 +30,7 @@ func (h *ResourceHandler) Register(r fiber.Router) {
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 
 	var req CreateResourceRequest
-	if err := validator.ValidBody(c, &req); err != nil {
+	if err := validator.ValidateBody(c, &req); err != nil {
 		return err
 	}
 

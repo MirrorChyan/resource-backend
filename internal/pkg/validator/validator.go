@@ -70,7 +70,7 @@ func convertValidationErrors(ves validator.ValidationErrors) []*ValidationError 
 	return errors
 }
 
-func ValidBody(c *fiber.Ctx, dest any) error {
+func ValidateBody(c *fiber.Ctx, dest any) error {
 
 	if err := c.BodyParser(dest); err != nil {
 		return &errs.Error{
