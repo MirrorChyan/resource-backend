@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	_ "github.com/MirrorChyan/resource-backend/internal/banner"
+
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	. "github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
+	_ "github.com/MirrorChyan/resource-backend/internal/pkg/banner"
 	"github.com/MirrorChyan/resource-backend/internal/tasks"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
