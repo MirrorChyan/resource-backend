@@ -397,13 +397,23 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		l.logger.Error("failed to CreateFullUpdateStorage",
 			zap.Error(err),
 			zap.String("task id", submitted.ID),
-			zap.Any("val", payload),
+			zap.String("resource id", resourceId),
+			zap.Int("version id", versionId),
+			zap.String("version name", versionName),
+			zap.String("channel", channel),
+			zap.String("os", system),
+			zap.String("arch", arch),
 		)
 		return err
 	}
 	l.logger.Info("submit CreateFullUpdateStorage task success",
 		zap.String("task id", submitted.ID),
-		zap.Any("val", payload),
+		zap.String("resource id", resourceId),
+		zap.Int("version id", versionId),
+		zap.String("version name", versionName),
+		zap.String("channel", channel),
+		zap.String("os", system),
+		zap.String("arch", arch),
 	)
 
 	return nil

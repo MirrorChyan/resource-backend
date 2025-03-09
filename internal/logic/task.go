@@ -90,7 +90,12 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 		if err != nil {
 			l.Error("failed to CreateFullUpdateStorage",
 				zap.Error(err),
-				zap.Any("val", payload),
+				zap.String("resource id", resourceId),
+				zap.Int("version id", versionId),
+				zap.String("version name", versionName),
+				zap.String("channel", channel),
+				zap.String("os", system),
+				zap.String("arch", arch),
 			)
 			return err
 		}
