@@ -3,7 +3,7 @@ package model
 type CreateResourceRequest struct {
 	ID          string `json:"id" validate:"required,min=3,max=64,slug"`
 	Name        string `json:"name" validate:"required"`
-	Description string `json:"description" validate:"max=1000"`
+	Description string `json:"description" validate:"max=255"`
 	UpdateType  string `json:"update_type" validate:"omitempty,oneof=full incremental"`
 }
 
