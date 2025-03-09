@@ -256,23 +256,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			return nil
 		}
 
-		// make sure the storage dir exists
-		dest := filepath.Join(l.storageLogic.RootDir, key)
-		_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
-
-		l.logger.Debug("start CopyFile")
-
-		if err = fileops.CopyFile(source, dest); err != nil {
-			l.logger.Error("failed to copy oss to local storage file",
-				zap.String("source", source),
-				zap.String("destination", dest),
-				zap.Error(err),
-			)
-			return err
-		}
-
-		l.logger.Debug("end CopyFile")
-
 		ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
 		if err != nil {
 			l.logger.Error("Failed to find resource",
@@ -287,9 +270,27 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 			hashes = make(map[string]string)
 			flat   string
+			dest   string
 		)
 
 		if isIncremental {
+			// make sure the storage dir exists
+			dest = filepath.Join(l.storageLogic.RootDir, key)
+			_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
+
+			l.logger.Debug("start CopyFile")
+
+			if err = fileops.CopyFile(source, dest); err != nil {
+				l.logger.Error("failed to copy oss to local storage file",
+					zap.String("source", source),
+					zap.String("destination", dest),
+					zap.Error(err),
+				)
+				return err
+			}
+
+			l.logger.Debug("end CopyFile")
+
 			if !l.doVerifyRequiredFileType(dest) {
 				return misc.NotAllowedFileType
 			}
@@ -339,6 +340,8 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			l.logger.Debug("end calculate total file hash",
 				zap.String("flat dir", flat),
 			)
+		} else {
+			dest = source
 		}
 
 		l.logger.Debug("start calculate package hash",
