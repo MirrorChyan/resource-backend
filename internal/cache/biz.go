@@ -37,6 +37,7 @@ func (g *MultiCacheGroup) EvictAll() {
 	g.VersionNameIdCache.EvictAll()
 	g.IncrementalUpdateInfoCache.EvictAll()
 	g.MultiVersionInfoCache.EvictAll()
+	g.ResourceInfoCache.EvictAll()
 }
 
 func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
