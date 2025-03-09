@@ -2,7 +2,6 @@ package misc
 
 import (
 	"errors"
-	"regexp"
 	"sync"
 	"sync/atomic"
 )
@@ -44,12 +43,6 @@ var (
 
 	ResourceNotFound = errors.New("resource not found")
 )
-
-var ValidID = sync.Pool{
-	New: func() interface{} {
-		return regexp.MustCompile("^[a-zA-Z0-9_-]+$")
-	},
-}
 
 type RemoteError string
 

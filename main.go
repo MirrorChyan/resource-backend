@@ -8,6 +8,7 @@ import (
 	. "github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logger"
 	_ "github.com/MirrorChyan/resource-backend/internal/pkg/banner"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
@@ -54,8 +55,11 @@ func main() {
 		app        = fiber.New(fiber.Config{
 			BodyLimit:   BodyLimit,
 			ProxyHeader: fiber.HeaderXForwardedFor,
+
 			JSONEncoder: sonic.Marshal,
 			JSONDecoder: sonic.Unmarshal,
+
+			ErrorHandler: handler.Error,
 		})
 	)
 

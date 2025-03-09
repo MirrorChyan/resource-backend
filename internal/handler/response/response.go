@@ -30,7 +30,10 @@ func Success(data any, msg ...string) *Response {
 	return New(CodeSuccess, r, data)
 }
 
-func BusinessError(msg string) *Response {
+func BusinessError(msg string, data ...any) *Response {
+	if len(data) > 0 {
+		return New(CodeBusiness, msg, data[0])
+	}
 	return New(CodeBusiness, msg, nil)
 }
 

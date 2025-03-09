@@ -3,12 +3,11 @@ package handler
 import (
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
-	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
-	"regexp"
 )
 
 type ResourceHandler struct {
@@ -29,38 +28,10 @@ func (h *ResourceHandler) Register(r fiber.Router) {
 }
 
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
-	req := &CreateResourceRequest{}
-	if err := c.BodyParser(req); err != nil {
-		h.logger.Error("failed to parse request body",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid param")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
 
-	switch l := len(req.ID); {
-	case l == 0:
-		resp := response.BusinessError("id is required")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	case l < 3:
-		resp := response.BusinessError("id must be at least 3 characters long")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	case l > 64:
-		resp := response.BusinessError("id must be at most 64 characters long")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	var validator = misc.ValidID.Get().(*regexp.Regexp)
-	defer misc.ValidID.Put(validator)
-
-	if !validator.MatchString(req.ID) {
-		resp := response.BusinessError("id must be alphanumeric, underscore, or hyphen")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if req.Name == "" {
-		resp := response.BusinessError("name is required")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	var req CreateResourceRequest
+	if err := validator.ValidBody(c, &req); err != nil {
+		return err
 	}
 
 	ctx := c.UserContext()
@@ -81,9 +52,6 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 	var t = req.UpdateType
 	if t == "" {
 		t = types.UpdateIncremental.String()
-	} else if t != types.UpdateIncremental.String() && t != types.UpdateFull.String() {
-		resp := response.BusinessError("update type only be incremental or full")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
 	param := CreateResourceParam{

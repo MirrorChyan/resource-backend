@@ -1,10 +1,10 @@
 package model
 
 type CreateResourceRequest struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	UpdateType  string `json:"update_type"`
+	ID          string `json:"id" validate:"required,min=3,max=64,slug"`
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"max=1000"`
+	UpdateType  string `json:"update_type" validate:"omitempty,oneof=full incremental"`
 }
 
 type GetLatestVersionRequest struct {
