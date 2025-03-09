@@ -10,7 +10,7 @@ import (
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
-	"github.com/MirrorChyan/resource-backend/internal/vercomp"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
 	"github.com/bytedance/sonic"
 
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
