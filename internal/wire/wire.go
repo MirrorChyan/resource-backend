@@ -7,7 +7,8 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/handler"
-	"github.com/MirrorChyan/resource-backend/internal/provider"
+	"github.com/MirrorChyan/resource-backend/internal/logic"
+	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/MirrorChyan/resource-backend/internal/tasks"
 	"github.com/MirrorChyan/resource-backend/internal/vercomp"
 	"github.com/go-redsync/redsync/v4"
@@ -25,6 +26,11 @@ type HandlerSet struct {
 	HeathCheckHandler *handler.HeathCheckHandler
 }
 
+var GlobalSet = wire.NewSet(
+	repo.Provider,
+	logic.Provider,
+)
+
 func NewHandlerSet(
 	*zap.Logger,
 	*ent.Client, *sqlx.DB,
@@ -33,9 +39,8 @@ func NewHandlerSet(
 	*vercomp.VersionComparator,
 ) *HandlerSet {
 	panic(wire.Build(
-		provider.RepoSet,
-		provider.LogicSet,
-		provider.HandlerSet,
+		GlobalSet,
+		handler.Provider,
 		wire.Struct(new(HandlerSet), "*"),
 	))
 }

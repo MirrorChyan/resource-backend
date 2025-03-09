@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/redis/go-redis/v9"
@@ -13,7 +14,7 @@ import (
 	"github.com/bytedance/sonic"
 
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
-	. "github.com/MirrorChyan/resource-backend/internal/logic"
+	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/gofiber/fiber/v2"
@@ -22,15 +23,15 @@ import (
 
 type VersionHandler struct {
 	logger        *zap.Logger
-	resourceLogic *ResourceLogic
-	versionLogic  *VersionLogic
+	resourceLogic *logic.ResourceLogic
+	versionLogic  *logic.VersionLogic
 	verComparator *vercomp.VersionComparator
 }
 
 func NewVersionHandler(
 	logger *zap.Logger,
-	resourceLogic *ResourceLogic,
-	versionLogic *VersionLogic,
+	resourceLogic *logic.ResourceLogic,
+	versionLogic *logic.VersionLogic,
 	verComparator *vercomp.VersionComparator,
 ) *VersionHandler {
 	return &VersionHandler{
