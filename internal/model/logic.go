@@ -68,6 +68,14 @@ type PatchTaskPayload struct {
 	Arch             string
 }
 
+type CalculatePackageHashPayload struct {
+	ResourceId string
+	Dest       string
+	StorageId  int
+	OS         string
+	Arch       string
+}
+
 type IncrementalUpdateInfo struct {
 	Storage *ent.Storage
 }

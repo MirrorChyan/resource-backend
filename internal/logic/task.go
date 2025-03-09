@@ -2,8 +2,11 @@ package logic
 
 import (
 	"context"
+	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -46,7 +49,72 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 		Concurrency: 100,
 	})
 	mux := asynq.NewServeMux()
-	mux.HandleFunc(DiffTask, func(ctx context.Context, task *asynq.Task) error {
+	mux.HandleFunc(misc.DiffTask, doHandleGeneratePackage(l, v))
+	mux.HandleFunc(misc.CalculateTask, doHandleCalculatePackageHash(l, v))
+
+	if err := server.Start(mux); err != nil {
+		panic(err)
+	}
+	return server
+}
+
+func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx context.Context, task *asynq.Task) error {
+	return func(ctx context.Context, task *asynq.Task) error {
+		var payload model.CalculatePackageHashPayload
+		if err := sonic.Unmarshal(task.Payload(), &payload); err != nil {
+			return err
+		}
+		var (
+			dest       = payload.Dest
+			system     = payload.OS
+			arch       = payload.Arch
+			resourceId = payload.ResourceId
+			storageId  = payload.StorageId
+		)
+
+		l.Sugar().Info("calculate package hash task: ", string(task.Payload()))
+		l.Debug("start calculate package hash",
+			zap.String("package path", dest),
+		)
+
+		h, err := filehash.Calculate(dest)
+		if err != nil {
+			l.Error("Failed to calculate full update package hash",
+				zap.String("resource id", resourceId),
+				zap.String("os", system),
+				zap.String("arch", arch),
+				zap.Error(err),
+			)
+			return err
+		}
+
+		l.Debug("end calculate package hash",
+			zap.String("package path", dest),
+		)
+		err = v.storageLogic.UpdateStoragePackageHash(ctx, storageId, h)
+		if err != nil {
+			l.Error("Failed to update storage package hash",
+				zap.String("resource id", resourceId),
+				zap.String("os", system),
+				zap.String("arch", arch),
+				zap.Error(err),
+			)
+			return err
+		}
+		doClearUpCache(v.cacheGroup, resourceId, system, arch)
+		return nil
+	}
+}
+
+func doClearUpCache(cg *cache.MultiCacheGroup, resourceId, system, arch string) {
+	for _, channel := range misc.TotalChannel {
+		key := cg.GetCacheKey(resourceId, system, arch, channel)
+		cg.MultiVersionInfoCache.Delete(key)
+	}
+}
+
+func doHandleGeneratePackage(l *zap.Logger, v *VersionLogic) func(ctx context.Context, task *asynq.Task) error {
+	return func(ctx context.Context, task *asynq.Task) error {
 		var payload model.PatchTaskPayload
 		if err := sonic.Unmarshal(task.Payload(), &payload); err != nil {
 			return err
@@ -75,10 +143,5 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 			zap.String("arch", arch),
 		)
 		return nil
-	})
-
-	if err := server.Start(mux); err != nil {
-		panic(err)
 	}
-	return server
 }

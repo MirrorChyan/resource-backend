@@ -127,6 +127,10 @@ func (l *StorageLogic) BuildVersionPatchStoragePath(resID string, verID, oldVerI
 	return filepath.Join(l.BuildVersionPatchStorageDirPath(resID, verID, os, arch), patchName)
 }
 
+func (l *StorageLogic) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {
+	return l.storageRepo.UpdateStoragePackageHash(ctx, id, hash)
+}
+
 func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 	resource, err := l.resourceRepo.GetFullResource(ctx)
 	if err != nil {

@@ -63,6 +63,10 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 		Only(ctx)
 }
 
+func (r *Storage) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {
+	return r.db.Storage.UpdateOneID(id).SetPackageHashSha256(hash).Exec(ctx)
+}
+
 func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {
 	return r.db.Storage.Query().
 		Where(

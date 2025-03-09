@@ -14,8 +14,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const DiffTask = "diff"
-
 func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateRequestParam) (*UpdateInfoTuple, error) {
 	var (
 		cg = l.GetCacheGroup()
@@ -114,7 +112,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		return nil, err
 	}
 
-	task := asynq.NewTask(DiffTask, payload, asynq.MaxRetry(5))
+	task := asynq.NewTask(misc.DiffTask, payload, asynq.MaxRetry(5))
 	submitted, err := l.taskQueue.Enqueue(task)
 	if err != nil {
 		rollback()

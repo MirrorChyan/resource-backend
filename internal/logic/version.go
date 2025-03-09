@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/hibiken/asynq"
 
 	"net/http"
 	"os"
@@ -224,6 +225,11 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return err
 	}
 
+	var (
+		storageId int
+		dest      string
+	)
+
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
 		var (
 			versionId = ver.ID
@@ -270,7 +276,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 			hashes = make(map[string]string)
 			flat   string
-			dest   string
 		)
 
 		if isIncremental {
@@ -344,33 +349,16 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			dest = source
 		}
 
-		l.logger.Debug("start calculate package hash",
-			zap.String("package path", dest),
-		)
-
-		h, err := filehash.Calculate(dest)
-		if err != nil {
-			l.logger.Error("Failed to calculate full update package hash",
-				zap.String("resource id", resourceId),
-				zap.String("version name", versionName),
-				zap.String("os", system),
-				zap.String("arch", arch),
-				zap.Error(err),
-			)
-			return err
-		}
-
-		l.logger.Debug("end calculate package hash",
-			zap.String("package path", dest),
-		)
-
-		_, err = l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, dest, h, flat, hashes)
+		st, err := l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, dest, "", flat, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create storage",
 				zap.Error(err),
 			)
 			return err
 		}
+
+		storageId = st.ID
+
 		return nil
 	})
 
@@ -382,8 +370,78 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return err
 	}
 
+	if err = l.doCalculatePackageHash(ctx, resourceId, dest, storageId, system, arch); err != nil {
+		return err
+	}
+
 	go l.doWebhookNotify(resourceId, versionName, channel, system, arch, true)
 	l.doPostCreateResources(resourceId)
+
+	return nil
+}
+
+func (l *VersionLogic) doCalculatePackageHash(
+	ctx context.Context,
+	resourceId string, dest string,
+	storageId int, system string, arch string,
+) error {
+	stat, err := os.Stat(dest)
+	if err != nil {
+		return err
+	}
+
+	l.logger.Debug("start calculate package hash",
+		zap.String("package path", dest),
+		zap.Int64("size", stat.Size()),
+	)
+
+	if stat.Size() > misc.TriggerAsyncCalculateSize {
+		payload, err := sonic.Marshal(CalculatePackageHashPayload{
+			ResourceId: resourceId,
+			Dest:       dest,
+			StorageId:  storageId,
+			OS:         system,
+			Arch:       arch,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		task := asynq.NewTask(misc.CalculateTask, payload, asynq.MaxRetry(5))
+		submitted, err := l.taskQueue.Enqueue(task)
+		if err != nil {
+			return err
+		}
+		l.logger.Info("submit calculate package hash task success",
+			zap.String("resource id", resourceId),
+			zap.String("os", system),
+			zap.String("arch", arch),
+			zap.String("task id", submitted.ID),
+		)
+		return nil
+	}
+
+	l.logger.Debug("start calculate package hash",
+		zap.String("package path", dest),
+	)
+
+	hash, err := filehash.Calculate(dest)
+	if err != nil {
+		l.logger.Error("Failed to calculate full update package hash",
+			zap.String("resource id", resourceId),
+			zap.String("os", system),
+			zap.String("arch", arch),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	err = l.storageLogic.UpdateStoragePackageHash(ctx, storageId, hash)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -471,6 +529,7 @@ func (l *VersionLogic) doPostCreateResources(resourceId string) {
 }
 
 func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceId string, target, current int, system, arch string) error {
+	// only use package hash and file hash
 	targetInfo, currentInfo, err := l.fetchStorageInfoTuple(ctx, target, current, system, arch)
 	if err != nil {
 		// only versions exist but no storage exist

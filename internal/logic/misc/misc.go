@@ -27,6 +27,13 @@ const (
 	LoadStoreNewVersionKey = "LoadStoreNewVersionTx"
 )
 
+const (
+	CalculateTask = "calculate"
+	DiffTask      = "diff"
+)
+
+const TriggerAsyncCalculateSize = 1024 * 1024 * 1024 * 2
+
 const SniffLen = 4
 
 var (
