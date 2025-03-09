@@ -390,11 +390,6 @@ func (l *VersionLogic) doCalculatePackageHash(
 		return err
 	}
 
-	l.logger.Debug("start calculate package hash",
-		zap.String("package path", dest),
-		zap.Int64("size", stat.Size()),
-	)
-
 	if stat.Size() > misc.TriggerAsyncCalculateSize {
 		payload, err := sonic.Marshal(CalculatePackageHashPayload{
 			ResourceId: resourceId,
@@ -424,6 +419,7 @@ func (l *VersionLogic) doCalculatePackageHash(
 
 	l.logger.Debug("start calculate package hash",
 		zap.String("package path", dest),
+		zap.Int64("size", stat.Size()),
 	)
 
 	hash, err := filehash.Calculate(dest)
@@ -436,6 +432,10 @@ func (l *VersionLogic) doCalculatePackageHash(
 		)
 		return err
 	}
+
+	l.logger.Debug("end calculate package hash",
+		zap.String("package path", dest),
+	)
 
 	err = l.storageLogic.UpdateStoragePackageHash(ctx, storageId, hash)
 
