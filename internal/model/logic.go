@@ -68,12 +68,16 @@ type PatchTaskPayload struct {
 	Arch             string
 }
 
-type CalculatePackageHashPayload struct {
-	ResourceId string
-	Dest       string
-	StorageId  int
+type StorageInfoCreatePayload struct {
+	ResourceId  string
+	Dest        string
+	VersionId   int
+	VersionName string
+
 	OS         string
 	Arch       string
+	Channel    string
+	FileHashes map[string]string
 }
 
 type IncrementalUpdateInfo struct {

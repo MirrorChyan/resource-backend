@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"github.com/hibiken/asynq"
-
 	"net/http"
 	"os"
 	"path/filepath"
@@ -165,6 +164,18 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	if err != nil {
 		return nil, err
 	}
+
+	mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+		resourceId, strconv.Itoa(ver.ID), channel, system, arch,
+	}, ":")
+
+	val, err := l.rdb.Get(ctx, mk).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return nil, err
+	} else if err == nil || val == "1" {
+		return nil, errors.New("current version storage in process")
+	}
+
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
 	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
@@ -226,59 +237,68 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}
 
 	var (
-		storageId int
-		dest      string
+		versionId = ver.ID
 	)
 
-	err = l.repo.WithTx(ctx, func(tx *ent.Tx) error {
-		var (
-			versionId = ver.ID
+	source := filepath.Join(l.storageLogic.OSSDir, key)
+	_, err = os.Stat(source)
+	if err != nil {
+		l.logger.Error("Failed to stat archive file pleas check the oss upload",
+			zap.String("archive path", source),
+			zap.Error(err),
 		)
+		return err
+	}
 
-		source := filepath.Join(l.storageLogic.OSSDir, key)
-		_, err = os.Stat(source)
-		if err != nil {
-			l.logger.Error("Failed to stat archive file pleas check the oss upload",
-				zap.String("archive path", source),
-				zap.Error(err),
-			)
-			return err
-		}
-
-		exist, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
-		if err != nil {
-			l.logger.Error("Failed to check storage exist",
-				zap.Error(err),
-			)
-			return err
-		}
-		if exist {
-			l.logger.Warn("version storage already exists",
-				zap.String("resource id", resourceId),
-				zap.String("version name", versionName),
-				zap.String("resource os", system),
-				zap.String("resource arch", arch),
-			)
-			return nil
-		}
-
-		ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
-		if err != nil {
-			l.logger.Error("Failed to find resource",
-				zap.String("resource id", resourceId),
-				zap.Error(err),
-			)
-			return err
-		}
-
-		var (
-			isIncremental = ut == types.UpdateIncremental
-
-			hashes = make(map[string]string)
-			flat   string
+	exist, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
+	if err != nil {
+		l.logger.Error("Failed to check storage exist",
+			zap.Error(err),
 		)
+		return err
+	}
+	if exist {
+		l.logger.Warn("version storage already exists",
+			zap.String("resource id", resourceId),
+			zap.String("version name", versionName),
+			zap.String("resource os", system),
+			zap.String("resource arch", arch),
+		)
+		return nil
+	}
 
-		if isIncremental {
+	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
+	if err != nil {
+		l.logger.Error("Failed to find resource",
+			zap.String("resource id", resourceId),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+		resourceId, strconv.Itoa(versionId), channel, system, arch,
+	}, ":")
+	result := l.rdb.SetNX(ctx, mk, "1", time.Hour*5)
+	if err := result.Err(); err != nil {
+		return err
+	}
+	if !result.Val() {
+		return nil
+	}
+
+	rollback := func() {
+		l.rdb.Del(ctx, mk)
+	}
+
+	var (
+		isIncremental = ut == types.UpdateIncremental
+		dest          = source
+		hashes        = make(map[string]string)
+	)
+
+	if isIncremental {
+		var aspect = func() error {
 			// make sure the storage dir exists
 			dest = filepath.Join(l.storageLogic.RootDir, key)
 			_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
@@ -299,7 +319,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			if !l.doVerifyRequiredFileType(dest) {
 				return misc.NotAllowedFileType
 			}
-			flat = l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+			flat := l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
 
 			// clear storage directory
 			defer func() {
@@ -345,76 +365,82 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			l.logger.Debug("end calculate total file hash",
 				zap.String("flat dir", flat),
 			)
-		} else {
-			dest = source
+			return nil
 		}
 
-		st, err := l.storageLogic.CreateFullUpdateStorage(ctx, tx, versionId, system, arch, dest, "", flat, hashes)
-		if err != nil {
-			l.logger.Error("Failed to create storage",
-				zap.Error(err),
-			)
+		if err = aspect(); err != nil {
+			rollback()
 			return err
 		}
+	}
 
-		storageId = st.ID
+	var payload = StorageInfoCreatePayload{
+		ResourceId: resourceId,
+		Dest:       dest,
+		VersionId:  versionId,
+		OS:         system,
+		Arch:       arch,
+		Channel:    channel,
+		FileHashes: hashes,
+	}
 
-		return nil
-	})
-
+	buf, err := sonic.Marshal(payload)
 	if err != nil {
-		l.logger.Error("Failed to commit transaction",
+		rollback()
+		return err
+	}
+
+	task := asynq.NewTask(misc.ProcessStorageTask, buf, asynq.MaxRetry(5))
+	submitted, err := l.taskQueue.Enqueue(task)
+	if err != nil {
+		rollback()
+		l.logger.Error("failed to CreateFullUpdateStorage",
+			zap.Error(err),
+			zap.String("task id", submitted.ID),
+			zap.Any("val", payload),
+		)
+		return err
+	}
+	l.logger.Info("submit CreateFullUpdateStorage task success",
+		zap.String("task id", submitted.ID),
+		zap.Any("val", payload),
+	)
+
+	return nil
+}
+
+func (l *VersionLogic) DoProcessStorage(ctx context.Context,
+	resourceId string, versionId int, versionName string,
+	channel, system, arch, dest string,
+	hashes map[string]string,
+) error {
+
+	ph, err := l.doCalculatePackageHash(dest, resourceId, system, arch)
+	if err != nil {
+		return err
+	}
+
+	_, err = l.storageLogic.CreateFullUpdateStorage(ctx, versionId, system, arch, dest, ph, hashes)
+	if err != nil {
+		l.logger.Error("Failed to create storage",
 			zap.Error(err),
 		)
-		go l.doWebhookNotify(resourceId, versionName, channel, system, arch, false)
 		return err
 	}
-
-	if err = l.doCalculatePackageHash(ctx, resourceId, dest, storageId, system, arch); err != nil {
-		return err
-	}
-
-	go l.doWebhookNotify(resourceId, versionName, channel, system, arch, true)
 	l.doPostCreateResources(resourceId)
+
+	go l.doWebhookNotify(resourceId, versionName, channel, system, arch)
 
 	return nil
 }
 
 func (l *VersionLogic) doCalculatePackageHash(
-	ctx context.Context,
-	resourceId string, dest string,
-	storageId int, system string, arch string,
-) error {
+	dest, resourceId string,
+	system, arch string,
+) (string, error) {
 	stat, err := os.Stat(dest)
 	if err != nil {
-		return err
-	}
-
-	if stat.Size() > misc.TriggerAsyncCalculateSize {
-		payload, err := sonic.Marshal(CalculatePackageHashPayload{
-			ResourceId: resourceId,
-			Dest:       dest,
-			StorageId:  storageId,
-			OS:         system,
-			Arch:       arch,
-		})
-
-		if err != nil {
-			return err
-		}
-
-		task := asynq.NewTask(misc.CalculateTask, payload, asynq.MaxRetry(5))
-		submitted, err := l.taskQueue.Enqueue(task)
-		if err != nil {
-			return err
-		}
-		l.logger.Info("submit calculate package hash task success",
-			zap.String("resource id", resourceId),
-			zap.String("os", system),
-			zap.String("arch", arch),
-			zap.String("task id", submitted.ID),
-		)
-		return nil
+		return "", err
 	}
 
 	l.logger.Debug("start calculate package hash",
@@ -430,20 +456,14 @@ func (l *VersionLogic) doCalculatePackageHash(
 			zap.String("arch", arch),
 			zap.Error(err),
 		)
-		return err
+		return "", err
 	}
 
 	l.logger.Debug("end calculate package hash",
 		zap.String("package path", dest),
 	)
 
-	err = l.storageLogic.UpdateStoragePackageHash(ctx, storageId, hash)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return hash, nil
 }
 
 func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, versionName, channel string) (*ent.Version, error) {
@@ -489,7 +509,7 @@ func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, ve
 	return ver, err
 }
 
-func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arch string, ok bool) {
+func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arch string) {
 	var (
 		cfg     = GConfig
 		webhook = cfg.Extra.CreateNewVersionWebhook
@@ -504,7 +524,7 @@ func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arc
 		"channel":      channel,
 		"os":           os,
 		"arch":         arch,
-		"ok":           strconv.FormatBool(ok),
+		"ok":           strconv.FormatBool(true),
 	})
 	if e != nil {
 		l.logger.Warn("Failed to marshal CreateNewVersion callback")

@@ -150,6 +150,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		resp := response.BusinessError("version name under the current platform architecture already exists")
 		return c.Status(fiber.StatusConflict).JSON(resp)
 	}
+
 	token, err := h.versionLogic.CreatePreSignedUrl(ctx, CreateVersionParam{
 		ResourceID: resourceId,
 		Name:       name,

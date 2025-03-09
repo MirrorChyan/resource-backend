@@ -17,14 +17,13 @@ func NewStorage(db *Repo) *Storage {
 	}
 }
 
-func (r *Storage) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, verID int, os, arch, fullUpdatePath, packageSHA256, resourcePath string, fileHashes map[string]string) (*ent.Storage, error) {
-	return tx.Storage.Create().
+func (r *Storage) CreateFullUpdateStorage(ctx context.Context, verID int, os, arch, fullUpdatePath, packageSHA256 string, fileHashes map[string]string) (*ent.Storage, error) {
+	return r.db.Storage.Create().
 		SetUpdateType(storage.UpdateTypeFull).
 		SetOs(os).
 		SetArch(arch).
 		SetPackagePath(fullUpdatePath).
 		SetPackageHashSha256(packageSHA256).
-		SetResourcePath(resourcePath).
 		SetFileHashes(fileHashes).
 		SetVersionID(verID).
 		Save(ctx)

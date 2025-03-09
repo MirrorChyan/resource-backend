@@ -23,16 +23,15 @@ const (
 )
 
 const (
-	GenerateTagKey         = "generate"
-	LoadStoreNewVersionKey = "LoadStoreNewVersionTx"
+	GenerateTagKey           = "generate"
+	LoadStoreNewVersionKey   = "LoadStoreNewVersionTx"
+	ProcessStoragePendingKey = "ProcessStoragePending"
 )
 
 const (
-	CalculateTask = "calculate"
-	DiffTask      = "diff"
+	ProcessStorageTask = "storage"
+	DiffTask           = "diff"
 )
-
-const TriggerAsyncCalculateSize = 1024 * 1024 * 1024 * 2
 
 const SniffLen = 4
 

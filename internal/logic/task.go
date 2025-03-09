@@ -2,14 +2,14 @@ package logic
 
 import (
 	"context"
-	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,7 +50,7 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 	})
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(misc.DiffTask, doHandleGeneratePackage(l, v))
-	mux.HandleFunc(misc.CalculateTask, doHandleCalculatePackageHash(l, v))
+	mux.HandleFunc(misc.ProcessStorageTask, doHandleCalculatePackageHash(l, v))
 
 	if err := server.Start(mux); err != nil {
 		panic(err)
@@ -60,56 +60,48 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 
 func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx context.Context, task *asynq.Task) error {
 	return func(ctx context.Context, task *asynq.Task) error {
-		var payload model.CalculatePackageHashPayload
+		c, ok := asynq.GetRetryCount(ctx)
+		if ok {
+			l.Info("retry count", zap.Int("count", c))
+		}
+
+		var payload model.StorageInfoCreatePayload
 		if err := sonic.Unmarshal(task.Payload(), &payload); err != nil {
 			return err
 		}
+
 		var (
-			dest       = payload.Dest
-			system     = payload.OS
-			arch       = payload.Arch
-			resourceId = payload.ResourceId
-			storageId  = payload.StorageId
+			dest        = payload.Dest
+			system      = payload.OS
+			arch        = payload.Arch
+			resourceId  = payload.ResourceId
+			versionId   = payload.VersionId
+			channel     = payload.Channel
+			hashes      = payload.FileHashes
+			versionName = payload.VersionName
 		)
 
-		l.Sugar().Info("calculate package hash task: ", string(task.Payload()))
-		l.Debug("start calculate package hash",
-			zap.String("package path", dest),
+		err := v.DoProcessStorage(ctx,
+			resourceId,
+			versionId, versionName,
+			channel, system, arch, dest,
+			hashes,
 		)
-
-		h, err := filehash.Calculate(dest)
 		if err != nil {
-			l.Error("Failed to calculate full update package hash",
-				zap.String("resource id", resourceId),
-				zap.String("os", system),
-				zap.String("arch", arch),
+			l.Error("failed to CreateFullUpdateStorage",
 				zap.Error(err),
+				zap.Any("val", payload),
 			)
 			return err
 		}
 
-		l.Debug("end calculate package hash",
-			zap.String("package path", dest),
-		)
-		err = v.storageLogic.UpdateStoragePackageHash(ctx, storageId, h)
-		if err != nil {
-			l.Error("Failed to update storage package hash",
-				zap.String("resource id", resourceId),
-				zap.String("os", system),
-				zap.String("arch", arch),
-				zap.Error(err),
-			)
-			return err
-		}
-		doClearUpCache(v.cacheGroup, resourceId, system, arch)
+		// delete pending key
+		mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+			resourceId, strconv.Itoa(versionId), channel, system, arch,
+		}, ":")
+		v.rdb.Del(ctx, mk)
+
 		return nil
-	}
-}
-
-func doClearUpCache(cg *cache.MultiCacheGroup, resourceId, system, arch string) {
-	for _, channel := range misc.TotalChannel {
-		key := cg.GetCacheKey(resourceId, system, arch, channel)
-		cg.MultiVersionInfoCache.Delete(key)
 	}
 }
 

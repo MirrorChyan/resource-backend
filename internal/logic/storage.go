@@ -47,8 +47,8 @@ func NewStorageLogic(
 	}
 }
 
-func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, tx *ent.Tx, verID int, os, arch, fullUpdatePath, packageSHA256, resourcePath string, fileHashes map[string]string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.CreateFullUpdateStorage(ctx, tx, verID, os, arch, fullUpdatePath, packageSHA256, resourcePath, fileHashes)
+func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, verID int, os, arch, fullUpdatePath, packageSHA256 string, fileHashes map[string]string) (*ent.Storage, error) {
+	storage, err := l.storageRepo.CreateFullUpdateStorage(ctx, verID, os, arch, fullUpdatePath, packageSHA256, fileHashes)
 	if err != nil {
 		l.logger.Error("create full update storage failed",
 			zap.Error(err),
