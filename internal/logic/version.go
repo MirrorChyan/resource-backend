@@ -820,8 +820,13 @@ func (l *VersionLogic) cleanRootStoragePath(p string) string {
 }
 
 func (l *VersionLogic) cleanTwiceStoragePath(p string) string {
-	rel := strings.TrimPrefix(p, l.storageLogic.RootDir)
-	rel = strings.TrimPrefix(rel, l.storageLogic.OSSDir)
+	var rel string
+	switch {
+	case strings.HasPrefix(p, l.storageLogic.RootDir):
+		rel = strings.TrimPrefix(p, l.storageLogic.RootDir)
+	case strings.HasPrefix(p, l.storageLogic.OSSDir):
+		rel = strings.TrimPrefix(p, l.storageLogic.OSSDir)
+	}
 	rel = strings.TrimPrefix(rel, string(os.PathSeparator))
 	return strings.ReplaceAll(rel, string(os.PathSeparator), "/")
 }
