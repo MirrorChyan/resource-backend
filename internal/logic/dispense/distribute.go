@@ -5,7 +5,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"math/rand"
 	"slices"
 )
 
@@ -43,11 +42,10 @@ func (l *DistributeLogic) Distribute(info *model.DistributeInfo) (string, error)
 		ds      = l.distributors
 		cfg     = config.GConfig
 		wrr     = ds[0]
-		ratio   = cfg.Extra.DistributeCdnRatio
 		regions = cfg.Extra.DistributeCdnRegion
 	)
 
-	if rand.Intn(totalWeight) < ratio && slices.Contains(regions, info.Region) {
+	if slices.Contains(regions, info.Region) {
 		return ds[1].Distribute(info)
 	}
 
