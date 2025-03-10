@@ -8,32 +8,36 @@ import (
 )
 
 type StorageHandler struct {
-	logger        *zap.Logger
-	resourceLogic *logic.ResourceLogic
-	versionLogic  *logic.VersionLogic
-	storageLogic  *logic.StorageLogic
+	logger       *zap.Logger
+	storageLogic *logic.StorageLogic
 }
 
 func NewStorageHandler(
 	logger *zap.Logger,
-	resourceLogic *logic.ResourceLogic,
-	versionLogic *logic.VersionLogic,
 	storageLogic *logic.StorageLogic,
 ) *StorageHandler {
 	return &StorageHandler{
-		logger:        logger,
-		resourceLogic: resourceLogic,
-		versionLogic:  versionLogic,
-		storageLogic:  storageLogic,
+		logger:       logger,
+		storageLogic: storageLogic,
 	}
 }
 
 func (h *StorageHandler) Register(r fiber.Router) {
-	r.Get("/storages/purge", func(ctx *fiber.Ctx) error {
-		err := h.storageLogic.ClearOldStorages(ctx.UserContext())
-		if err != nil {
-			return err
-		}
-		return ctx.Status(fiber.StatusOK).JSON(response.Success(nil))
-	})
+	r.Get("/storages/purge", h.Purge)
+}
+
+func (h *StorageHandler) Purge(ctx *fiber.Ctx) error {
+
+	err := h.storageLogic.ClearOldStorages(ctx.UserContext())
+
+	if err != nil {
+		h.logger.Error("failed to clear old storages",
+			zap.Error(err),
+		)
+		resp := response.UnexpectedError()
+		return ctx.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+
+	resp := response.Success(nil)
+	return ctx.Status(fiber.StatusOK).JSON(resp)
 }

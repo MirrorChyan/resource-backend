@@ -36,7 +36,7 @@ func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisCli
 	storageLogic := logic.NewStorageLogic(logger, storage, resource, rawQuery)
 	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, rawQuery, versionComparator, distributeLogic, resourceLogic, storageLogic, redisClient, redsyncRedsync, taskQueue, multiCacheGroup)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, versionComparator)
-	storageHandler := handler.NewStorageHandler(logger, resourceLogic, versionLogic, storageLogic)
+	storageHandler := handler.NewStorageHandler(logger, storageLogic)
 	metricsHandler := handler.NewMetricsHandler()
 	heathCheckHandler := handler.NewHeathCheckHandlerHandler()
 	handlerSet := &HandlerSet{
