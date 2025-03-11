@@ -376,13 +376,14 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}
 
 	var payload = StorageInfoCreatePayload{
-		ResourceId: resourceId,
-		Dest:       dest,
-		VersionId:  versionId,
-		OS:         system,
-		Arch:       arch,
-		Channel:    channel,
-		FileHashes: hashes,
+		ResourceId:  resourceId,
+		Dest:        dest,
+		VersionId:   versionId,
+		VersionName: versionName,
+		OS:          system,
+		Arch:        arch,
+		Channel:     channel,
+		FileHashes:  hashes,
 	}
 
 	buf, err := sonic.Marshal(payload)
