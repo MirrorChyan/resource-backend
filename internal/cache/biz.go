@@ -42,10 +42,10 @@ func (g *MultiCacheGroup) EvictAll() {
 
 func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
 	group := &MultiCacheGroup{
-		FullUpdateStorageCache:     NewCache[string, *ent.Storage](12 * time.Hour),
+		FullUpdateStorageCache:     NewCache[string, *ent.Storage](-1),
 		VersionNameIdCache:         NewCache[string, int](-1),
-		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](12 * time.Hour),
-		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](12 * time.Hour),
+		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](-1),
+		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](24 * time.Hour),
 		ResourceInfoCache:          NewCache[string, *ent.Resource](-1),
 	}
 	subscribeCacheEvict(rdb, group)

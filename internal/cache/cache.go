@@ -57,7 +57,7 @@ func NewCache[K string, V any](ttl time.Duration) *Cache[K, V] {
 	cache, _ := ristretto.NewCache(&ristretto.Config[K, V]{
 		NumCounters: 500,
 		MaxCost:     500,
-		BufferItems: 64,
+		BufferItems: 128,
 	})
 	return &Cache[K, V]{
 		cache: cache,
