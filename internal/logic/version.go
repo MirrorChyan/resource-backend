@@ -318,7 +318,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			l.logger.Debug("end CopyFile")
 
 			if !l.doVerifyRequiredFileType(dest) {
-				return misc.NotAllowedFileType
+				return misc.NotAllowedFileTypeError
 			}
 			flat := l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
 
@@ -706,7 +706,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 		switch {
 		case err == nil:
 			return &MultiVersionInfo{LatestVersionInfo: info}, nil
-		case errors.Is(err, misc.ResourceNotFound):
+		case errors.Is(err, misc.ResourceNotFoundError):
 			return &MultiVersionInfo{}, nil
 		}
 		return nil, err
@@ -723,7 +723,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 				zap.String("arch", arch),
 				zap.String("channel", channel),
 			)
-			return nil, misc.StorageInfoNotFound
+			return nil, misc.StorageInfoNotFoundError
 		}
 
 		ut, err := l.resourceLogic.FindUpdateTypeById(context.Background(), resourceId)
@@ -734,7 +734,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 
 		return info, nil
 	}
-	return nil, misc.ResourceNotFound
+	return nil, misc.ResourceNotFoundError
 }
 
 func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
@@ -743,7 +743,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		return nil, err
 	}
 	if len(info) == 0 {
-		return nil, misc.ResourceNotFound
+		return nil, misc.ResourceNotFoundError
 	}
 
 	var stable, beta, alpha *LatestVersionInfo
@@ -783,7 +783,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		}
 	}
 
-	return nil, misc.ResourceNotFound
+	return nil, misc.ResourceNotFoundError
 }
 
 func (l *VersionLogic) doCompare(args ...*LatestVersionInfo) (*LatestVersionInfo, error) {

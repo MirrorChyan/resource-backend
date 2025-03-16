@@ -62,19 +62,19 @@ func (h *VersionHandler) Register(r fiber.Router) {
 
 func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
 	if o, ok := OsMap[*os]; !ok {
-		return errors.New("invalid os")
+		return misc.InvalidOsError
 	} else {
 		*os = o
 	}
 
 	if a, ok := ArchMap[*arch]; !ok {
-		return errors.New("invalid arch")
+		return misc.InvalidArchError
 	} else {
 		*arch = a
 	}
 
 	if c, ok := ChannelMap[*channel]; !ok {
-		return errors.New("invalid channel")
+		return misc.InvalidChannelError
 	} else {
 		*channel = c
 	}
@@ -262,16 +262,17 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		return err
 	}
 
-	switch result.Code {
-	case 1:
+	var code = result.Code
+	switch {
+	case code > 0:
 		h.logger.Info("cdk validation failed",
-			zap.Int("code", result.Code),
+			zap.Int("code", code),
 			zap.String("msg", result.Msg),
 		)
-		return RemoteError(result.Msg)
-	case -1:
+		return &RemoteError{Code: code, Msg: result.Msg}
+	case code < 0:
 		h.logger.Error("CDK validation failed",
-			zap.Int("code", result.Code),
+			zap.Int("code", code),
 			zap.String("msg", result.Msg),
 		)
 		return errors.New("unknown error")
@@ -303,8 +304,17 @@ func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersion
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	param, err := h.doHandleGetLatestParam(c)
 	if err != nil {
-		resp := response.BusinessError(err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
+		switch {
+		case errors.Is(err, misc.InvalidOsError):
+			return c.Status(fiber.StatusBadRequest).JSON(InvalidOs.Ret())
+		case errors.Is(err, misc.InvalidArchError):
+			return c.Status(fiber.StatusBadRequest).JSON(InvalidArch.Ret())
+		case errors.Is(err, misc.InvalidChannelError):
+			return c.Status(fiber.StatusBadRequest).JSON(InvalidChannel.Ret())
+		default:
+			resp := response.BusinessError(err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(resp)
+		}
 	}
 
 	var (
@@ -319,9 +329,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
 	if err != nil {
-		if errors.Is(err, misc.ResourceNotFound) {
-			resp := response.BusinessError("resource not found under current platform architecture")
-			return c.Status(fiber.StatusNotFound).JSON(resp)
+		if errors.Is(err, misc.ResourceNotFoundError) {
+			return c.Status(fiber.StatusNotFound).JSON(ResourceNotFound.Ret())
 		}
 		h.logger.Error("Failed to get latest version",
 			zap.Error(err),
@@ -357,7 +366,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	if err := h.doValidateCDK(param, resourceId, c.IP()); err != nil {
 		var e RemoteError
 		if errors.As(err, &e) {
-			resp := response.BusinessError(e.Error())
+			resp := response.BusinessError(e.Error()).With(e.Code)
 			return c.Status(fiber.StatusForbidden).JSON(resp)
 		} else {
 			resp := response.UnexpectedError()

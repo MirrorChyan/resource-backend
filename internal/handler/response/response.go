@@ -1,6 +1,8 @@
 package response
 
-import "strings"
+import (
+	"strings"
+)
 
 const (
 	CodeSuccess    = 0
@@ -12,6 +14,11 @@ type Response struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
 	Data any    `json:"data,omitempty"`
+}
+
+func (r *Response) With(code int) *Response {
+	r.Code = code
+	return r
 }
 
 func New(code int, msg string, data any) *Response {

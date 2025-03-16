@@ -35,19 +35,26 @@ const (
 const SniffLen = 4
 
 var (
-	StorageInfoNotFound = errors.New("storage info not found")
+	StorageInfoNotFoundError = errors.New("storage info not found")
 
-	NotAllowedFileType = errors.New("not allowed file type")
+	NotAllowedFileTypeError = errors.New("not allowed file type")
 
 	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
 
-	ResourceNotFound = errors.New("resource not found")
+	ResourceNotFoundError = errors.New("resource not found")
+
+	InvalidOsError      = errors.New("invalid os")
+	InvalidArchError    = errors.New("invalid arch")
+	InvalidChannelError = errors.New("invalid channel")
 )
 
-type RemoteError string
+type RemoteError struct {
+	Code int
+	Msg  string
+}
 
 func (r RemoteError) Error() string {
-	return string(r)
+	return r.Msg
 }
 
 var (
