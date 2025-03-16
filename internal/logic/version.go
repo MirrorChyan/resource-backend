@@ -937,7 +937,7 @@ func (l *VersionLogic) getIncrementalInfoOrEmpty(ctx context.Context, target, cu
 }
 
 func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for {
