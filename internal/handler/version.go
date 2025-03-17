@@ -269,7 +269,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 			zap.Int("code", code),
 			zap.String("msg", result.Msg),
 		)
-		return &RemoteError{Code: code, Msg: result.Msg}
+		return RemoteError{Code: code, Msg: result.Msg}
 	case code < 0:
 		h.logger.Error("CDK validation failed",
 			zap.Int("code", code),
