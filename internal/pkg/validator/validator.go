@@ -73,10 +73,7 @@ func convertValidationErrors(ves validator.ValidationErrors) []*ValidationError 
 func ValidateBody(c *fiber.Ctx, dest any) error {
 
 	if err := c.BodyParser(dest); err != nil {
-		return &errs.Error{
-			StatusCode: fiber.StatusBadRequest,
-			Message:    "invalid params",
-		}
+		return errs.ErrInvalidParams
 	}
 
 	if err := Validate.Struct(dest); err != nil {
@@ -88,13 +85,9 @@ func ValidateBody(c *fiber.Ctx, dest any) error {
 
 		validationErrors := convertValidationErrors(ves)
 
-		return &errs.Error{
-			StatusCode: fiber.StatusBadRequest,
-			Message:    "invalid params",
-			Data: fiber.Map{
-				"violations": validationErrors,
-			},
-		}
+		return errs.ErrInvalidParams.WithDetails(fiber.Map{
+			"violations": validationErrors,
+		})
 	}
 
 	return nil
