@@ -10,9 +10,10 @@ import (
 func Error(c *fiber.Ctx, err error) error {
 
 	var (
-		statusCode int
-		msg        string
-		data       any
+		bizCode  int
+		httpCode int
+		msg      string
+		data     any
 	)
 
 	switch e := err.(type) {
@@ -23,9 +24,10 @@ func Error(c *fiber.Ctx, err error) error {
 
 	case *errs.Error:
 
-		statusCode = e.StatusCode
-		msg = e.Message
-		data = e.Data
+		bizCode = e.BizCode()
+		httpCode = e.HTTPCode()
+		msg = e.Message()
+		data = e.Details()
 
 	default:
 
@@ -36,6 +38,6 @@ func Error(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
 
-	resp := response.BusinessError(msg, data)
-	return c.Status(statusCode).JSON(resp)
+	resp := response.BusinessError(msg, data).With(bizCode)
+	return c.Status(httpCode).JSON(resp)
 }
