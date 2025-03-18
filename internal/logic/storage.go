@@ -87,14 +87,8 @@ func (l *StorageLogic) GetFullUpdateStorage(ctx context.Context, versionId int, 
 	return l.storageRepo.GetFullUpdateStorage(ctx, versionId, os, arch)
 }
 
-func (l *StorageLogic) GetIncrementalUpdateStorage(ctx context.Context, targerVerID, currentVerID int, os, arch string) (*ent.Storage, error) {
-	return l.storageRepo.GetIncrementalUpdateStorage(ctx, targerVerID, currentVerID, os, arch)
-}
-
-func (l *StorageLogic) BuildVersionStorageDirPath(resID string, verID int, os, arch string) string {
-	platformDir := l.getPlatformDirName(os, arch)
-	verIDStr := strconv.Itoa(verID)
-	return filepath.Join(l.RootDir, resID, verIDStr, platformDir)
+func (l *StorageLogic) GetIncrementalUpdateStorage(ctx context.Context, targetVerID, currentVerID int, os, arch string) (*ent.Storage, error) {
+	return l.storageRepo.GetIncrementalUpdateStorage(ctx, targetVerID, currentVerID, os, arch)
 }
 
 func (l *StorageLogic) getPlatformDirName(os, arch string) string {
@@ -110,21 +104,16 @@ func (l *StorageLogic) getPlatformDirName(os, arch string) string {
 	return fmt.Sprintf("%s-%s", os, arch)
 }
 
-func (l *StorageLogic) BuildVersionResourceStorageDirPath(resID string, verID int, os, arch string) string {
-	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), "resource")
+func (l *StorageLogic) GetRootStorageRelPath(resourceId string, versionId int, os, arch string) string {
+	var (
+		platform = l.getPlatformDirName(os, arch)
+		vid      = strconv.Itoa(versionId)
+	)
+	return filepath.Join(resourceId, vid, platform)
 }
 
-func (l *StorageLogic) BuildVersionResourceStoragePath(resID string, verID int, os, arch, filename string) string {
-	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), filename)
-}
-
-func (l *StorageLogic) BuildVersionPatchStorageDirPath(resID string, verID int, os, arch string) string {
-	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), "patch")
-}
-
-func (l *StorageLogic) BuildVersionPatchStoragePath(resID string, verID, oldVerID int, os, arch string) string {
-	patchName := fmt.Sprintf("%d.zip", oldVerID)
-	return filepath.Join(l.BuildVersionPatchStorageDirPath(resID, verID, os, arch), patchName)
+func (l *StorageLogic) GetPatchStorageRelPath(resourceId string, versionId int, os, arch string) string {
+	return filepath.Join(l.GetRootStorageRelPath(resourceId, versionId, os, arch), "patch")
 }
 
 func (l *StorageLogic) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {

@@ -49,16 +49,16 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	var t = req.UpdateType
-	if t == "" {
-		t = types.UpdateIncremental.String()
+	var uType = req.UpdateType
+	if uType == "" {
+		uType = types.UpdateIncremental.String()
 	}
 
 	param := CreateResourceParam{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
-		UpdateType:  t,
+		UpdateType:  uType,
 	}
 
 	res, err := h.resourceLogic.Create(ctx, param)

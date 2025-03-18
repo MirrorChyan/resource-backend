@@ -177,7 +177,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		return nil, errors.New("current version storage in process")
 	}
 
-	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
+	dest := l.storageLogic.GetRootStorageRelPath(resourceId, ver.ID, system, arch)
 
 	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
 	if err != nil {
@@ -197,7 +197,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		return nil, errors.New("filename cannot contain path separator")
 	}
 
-	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
+	token, err := oss.AcquirePolicyToken(dest, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -636,9 +636,13 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	dir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch)
+	var (
+		relpath = l.storageLogic.GetPatchStorageRelPath(resourceId, target, system, arch)
 
-	generate, err := patcher.GenerateV2(strconv.Itoa(current), origin, dir, changes)
+		patch = filepath.Join(l.storageLogic.RootDir, relpath)
+	)
+
+	generate, err := patcher.GenerateV2(strconv.Itoa(current), origin, patch, changes)
 
 	if err != nil {
 		l.logger.Error("Failed to generate patch package",
@@ -647,14 +651,19 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	source := filepath.Join(dir, generate)
+	var (
+		rel = filepath.Join(relpath, generate)
+
+		local  = filepath.Join(l.storageLogic.RootDir, rel)
+		remote = filepath.Join(l.storageLogic.OSSDir, rel)
+	)
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) (err error) {
 
 		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
 			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 				// Code before the actual rollback.
-				if err := os.RemoveAll(source); err != nil {
+				if err := os.RemoveAll(local); err != nil {
 					l.logger.Error("Failed to remove patch package",
 						zap.Error(err),
 					)
@@ -665,7 +674,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			})
 		})
 
-		hashes, err := filehash.Calculate(source)
+		hashes, err := filehash.Calculate(local)
 		if err != nil {
 			l.logger.Error("Failed to calculate incremental update package hash",
 				zap.String("resource id", resourceId),
@@ -677,7 +686,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			)
 			return err
 		}
-		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, arch, source, hashes)
+		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, arch, rel, hashes)
 		if err != nil {
 			l.logger.Error("Failed to create incremental update storage",
 				zap.Error(err),
@@ -695,13 +704,11 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	dest := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(source))
-	_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
-	err = fileops.CopyFile(source, dest)
-	if err != nil {
+	_ = os.MkdirAll(filepath.Dir(remote), os.ModePerm)
+	if err = fileops.CopyFile(local, remote); err != nil {
 		l.logger.Error("failed to copy local to oss",
-			zap.String("source", source),
-			zap.String("destination", dest),
+			zap.String("local", local),
+			zap.String("remote", remote),
 			zap.Error(err),
 		)
 		return err
