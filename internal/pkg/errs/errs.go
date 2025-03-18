@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	ErrInvalidParams = New(BizCodeInvalidParams, http.StatusBadRequest, "invalid params", nil)
+	ErrInvalidParams           = New(BizCodeInvalidParams, http.StatusBadRequest, "invalid params", nil)
+	ErrResourceIDAlreadyExists = New(BizCodeResourceIDAlreadyExists, http.StatusBadRequest, "resource id already exists", nil)
 )
 
 type Error struct {
