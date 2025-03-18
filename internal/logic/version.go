@@ -299,6 +299,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	)
 
 	if isIncremental {
+
 		var aspect = func() error {
 			// make sure the storage dir exists
 			dest = filepath.Join(l.storageLogic.RootDir, key)
@@ -320,7 +321,17 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			if !l.doVerifyRequiredFileType(dest) {
 				return misc.NotAllowedFileTypeError
 			}
-			flat := l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+
+			var flat = filepath.Join(os.TempDir(), strings.Join([]string{
+				resourceId, strconv.Itoa(versionId), system, arch,
+			}, "-"))
+
+			if err = os.MkdirAll(flat, os.ModePerm); err != nil {
+				l.logger.Error("failed to create tmp storage directory",
+					zap.Error(err),
+				)
+				return err
+			}
 
 			// clear storage directory
 			defer func() {
@@ -346,6 +357,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 				)
 				return err
 			}
+
 			l.logger.Debug("end unpack resource",
 				zap.String("save dir", flat),
 			)
