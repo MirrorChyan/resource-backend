@@ -25,5 +25,5 @@ type QueryLatestResponseData struct {
 	UpdateType  string `json:"update_type,omitempty"`
 	CustomData  string `json:"custom_data,omitempty"`
 	ReleaseNote string `json:"release_note"`
-	FileSize    int64  `json:"file_size"`
+	FileSize    int64  `json:"file_size,omitempty"`
 }
