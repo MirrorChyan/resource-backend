@@ -394,6 +394,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	data.SHA256 = result.SHA256
+	data.FileSize = result.FileSize
 	data.UpdateType = result.UpdateType
 
 	data.CustomData = latest.CustomData

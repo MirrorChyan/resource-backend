@@ -21,6 +21,7 @@ type UpdateInfo struct {
 	RelPath    string
 	SHA256     string
 	UpdateType string
+	FileSize   int64
 }
 
 type DistributeInfo struct {

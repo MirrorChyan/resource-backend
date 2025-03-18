@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"strings"
 
@@ -133,9 +134,33 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestPar
 	if err != nil {
 		return nil, err
 	}
+
+	var (
+		rel   = l.cleanTwiceStoragePath(result.PackagePath)
+		group = l.GetCacheGroup()
+		key   = group.GetCacheKey(rel)
+	)
+	fileSize, err := group.FileStatSizeCache.ComputeIfAbsent(key, func() (int64, error) {
+		stat, err := os.Stat(result.PackagePath)
+		if err != nil {
+			return 0, err
+		}
+		return stat.Size(), nil
+	})
+
+	if err != nil {
+		l.logger.Error("failed to get file size",
+			zap.String("resource id", param.ResourceId),
+			zap.String("path", result.PackagePath),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
 	return &UpdateInfo{
-		RelPath:    l.cleanTwiceStoragePath(result.PackagePath),
+		RelPath:    rel,
 		SHA256:     result.PackageHash,
 		UpdateType: result.UpdateType,
+		FileSize:   *fileSize,
 	}, nil
 }

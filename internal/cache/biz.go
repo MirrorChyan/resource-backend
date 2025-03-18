@@ -26,6 +26,8 @@ type MultiCacheGroup struct {
 	MultiVersionInfoCache *Cache[string, *model.MultiVersionInfo]
 
 	ResourceInfoCache *Cache[string, *ent.Resource]
+
+	FileStatSizeCache *Cache[string, int64]
 }
 
 func (g *MultiCacheGroup) GetCacheKey(elems ...string) string {
@@ -38,6 +40,7 @@ func (g *MultiCacheGroup) EvictAll() {
 	g.IncrementalUpdateInfoCache.EvictAll()
 	g.MultiVersionInfoCache.EvictAll()
 	g.ResourceInfoCache.EvictAll()
+	g.FileStatSizeCache.EvictAll()
 }
 
 func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
@@ -47,6 +50,7 @@ func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
 		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](-1),
 		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](24 * time.Hour),
 		ResourceInfoCache:          NewCache[string, *ent.Resource](-1),
+		FileStatSizeCache:          NewCache[string, int64](-1),
 	}
 	subscribeCacheEvict(rdb, group)
 	return group
