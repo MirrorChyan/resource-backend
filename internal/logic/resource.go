@@ -2,8 +2,10 @@ package logic
 
 import (
 	"context"
+
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
@@ -43,6 +45,15 @@ func (l *ResourceLogic) FindUpdateTypeById(ctx context.Context, id string) (type
 }
 
 func (l *ResourceLogic) Create(ctx context.Context, param CreateResourceParam) (*ent.Resource, error) {
+
+	exists, err := l.Exists(ctx, param.ID)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, errs.ErrResourceIDAlreadyExists
+	}
+
 	return l.resourceRepo.CreateResource(ctx,
 		param.ID,
 		param.Name, param.Description,

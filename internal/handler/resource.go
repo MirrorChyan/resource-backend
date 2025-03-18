@@ -34,40 +34,20 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return err
 	}
 
-	ctx := c.UserContext()
-
-	exists, err := h.resourceLogic.Exists(ctx, req.ID)
-	if err != nil {
-		h.logger.Error("failed to check resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	if exists {
-		resp := response.BusinessError("resource id already exists")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
 	var t = req.UpdateType
 	if t == "" {
 		t = types.UpdateIncremental.String()
 	}
 
-	param := CreateResourceParam{
+	res, err := h.resourceLogic.Create(c.UserContext(), CreateResourceParam{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
 		UpdateType:  t,
-	}
+	})
 
-	res, err := h.resourceLogic.Create(ctx, param)
 	if err != nil {
-		h.logger.Error("failed to create resource",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError(err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
 
 	resp := response.Success(CreateResourceResponseData{
