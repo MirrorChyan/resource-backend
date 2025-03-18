@@ -55,5 +55,5 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		Name:        res.Name,
 		Description: res.Description,
 	})
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.JSON(resp)
 }
