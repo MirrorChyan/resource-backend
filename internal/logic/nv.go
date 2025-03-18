@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -142,10 +143,25 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestPar
 	)
 	fileSize, err := group.FileStatSizeCache.ComputeIfAbsent(key, func() (int64, error) {
 		stat, err := os.Stat(result.PackagePath)
-		if err != nil {
-			return 0, err
+		if err == nil {
+			return stat.Size(), nil
 		}
-		return stat.Size(), nil
+		l.logger.Warn("failed to get local file size",
+			zap.String("path", result.PackagePath),
+			zap.Error(err),
+		)
+
+		var p = filepath.Join(l.storageLogic.OSSDir, rel)
+		info, err := os.Stat(p)
+		if err == nil {
+			return info.Size(), nil
+		}
+		l.logger.Warn("failed to get oss file size",
+			zap.String("path", p),
+			zap.Error(err),
+		)
+		return 0, err
+
 	})
 
 	if err != nil {
