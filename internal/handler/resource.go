@@ -7,17 +7,14 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
 	"github.com/gofiber/fiber/v2"
-	"go.uber.org/zap"
 )
 
 type ResourceHandler struct {
-	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 }
 
-func NewResourceHandler(logger *zap.Logger, resourceLogic *logic.ResourceLogic) *ResourceHandler {
+func NewResourceHandler(resourceLogic *logic.ResourceLogic) *ResourceHandler {
 	return &ResourceHandler{
-		logger:        logger,
 		resourceLogic: resourceLogic,
 	}
 }
