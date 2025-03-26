@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -706,7 +707,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 		switch {
 		case err == nil:
 			return &MultiVersionInfo{LatestVersionInfo: info}, nil
-		case errors.Is(err, misc.ResourceNotFoundError):
+		case errors.Is(err, errs.ErrResourceNotFound):
 			return &MultiVersionInfo{}, nil
 		}
 		return nil, err
@@ -734,7 +735,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 
 		return info, nil
 	}
-	return nil, misc.ResourceNotFoundError
+	return nil, errs.ErrResourceNotFound
 }
 
 func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
@@ -743,7 +744,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		return nil, err
 	}
 	if len(info) == 0 {
-		return nil, misc.ResourceNotFoundError
+		return nil, errs.ErrResourceNotFound
 	}
 
 	var stable, beta, alpha *LatestVersionInfo
@@ -783,7 +784,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		}
 	}
 
-	return nil, misc.ResourceNotFoundError
+	return nil, errs.ErrResourceNotFound
 }
 
 func (l *VersionLogic) doCompare(args ...*LatestVersionInfo) (*LatestVersionInfo, error) {

@@ -2,9 +2,9 @@ package handler
 
 import (
 	"errors"
-
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/redis/go-redis/v9"
 	"github.com/valyala/fasthttp"
 
@@ -62,19 +62,19 @@ func (h *VersionHandler) Register(r fiber.Router) {
 
 func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
 	if o, ok := OsMap[*os]; !ok {
-		return misc.InvalidOsError
+		return errs.ErrResourceInvalidOS
 	} else {
 		*os = o
 	}
 
 	if a, ok := ArchMap[*arch]; !ok {
-		return misc.InvalidArchError
+		return errs.ErrResourceInvalidArch
 	} else {
 		*arch = a
 	}
 
 	if c, ok := ChannelMap[*channel]; !ok {
-		return misc.InvalidChannelError
+		return errs.ErrResourceInvalidChannel
 	} else {
 		*channel = c
 	}
@@ -289,7 +289,7 @@ func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersion
 		h.logger.Error("Failed to parse query",
 			zap.Error(err),
 		)
-		return nil, errors.New("invalid param")
+		return nil, errs.ErrInvalidParams
 	}
 
 	request.ResourceID = c.Params(ResourceKey)
@@ -304,17 +304,7 @@ func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersion
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	param, err := h.doHandleGetLatestParam(c)
 	if err != nil {
-		switch {
-		case errors.Is(err, misc.InvalidOsError):
-			return c.Status(fiber.StatusBadRequest).JSON(InvalidOs.Ret())
-		case errors.Is(err, misc.InvalidArchError):
-			return c.Status(fiber.StatusBadRequest).JSON(InvalidArch.Ret())
-		case errors.Is(err, misc.InvalidChannelError):
-			return c.Status(fiber.StatusBadRequest).JSON(InvalidChannel.Ret())
-		default:
-			resp := response.BusinessError(err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(resp)
-		}
+		return err
 	}
 
 	var (
@@ -329,13 +319,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
 	if err != nil {
-		if errors.Is(err, misc.ResourceNotFoundError) {
-			return c.Status(fiber.StatusNotFound).JSON(ResourceNotFound.Ret())
-		}
-		h.logger.Error("Failed to get latest version",
-			zap.Error(err),
-		)
-		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
+		return err
 	}
 
 	var data = QueryLatestResponseData{
