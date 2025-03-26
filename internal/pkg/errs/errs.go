@@ -8,6 +8,10 @@ import (
 
 var (
 	ErrInvalidParams           = New(BizCodeInvalidParams, http.StatusBadRequest, "invalid params", nil)
+	ErrResourceNotFound        = New(BizCodeResourceNotFound, http.StatusNotFound, "resource not found", nil)
+	ErrResourceInvalidOS       = New(BizCodeResourceInvalidOS, http.StatusInternalServerError, "invalid os", nil)
+	ErrResourceInvalidArch     = New(BizCodeResourceInvalidArch, http.StatusInternalServerError, "invalid arch", nil)
+	ErrResourceInvalidChannel  = New(BizCodeResourceInvalidChannel, http.StatusInternalServerError, "invalid channel", nil)
 	ErrResourceIDAlreadyExists = New(BizCodeResourceIDAlreadyExists, http.StatusBadRequest, "resource id already exists", nil)
 )
 
