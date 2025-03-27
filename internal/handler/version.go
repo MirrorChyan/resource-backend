@@ -5,8 +5,11 @@ import (
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
 	"github.com/redis/go-redis/v9"
 	"github.com/valyala/fasthttp"
+	"os"
+	"strings"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
@@ -82,94 +85,44 @@ func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
 }
 
 func (h *VersionHandler) Create(c *fiber.Ctx) error {
-	var (
-		ctx        = c.UserContext()
-		resourceId = c.Params(ResourceKey)
-	)
-	exist, err := h.resourceLogic.Exists(ctx, resourceId)
-	switch {
-	case err != nil:
-		h.logger.Error("Failed to check if resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 
-	case !exist:
-		h.logger.Info("Resource not found",
-			zap.String("resource id", resourceId),
-		)
-		resp := response.BusinessError("resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
+	resourceId := c.Params(ResourceKey)
+
+	var req CreateVersionRequest
+	if err := validator.ValidateBody(c, &req); err != nil {
+		return err
 	}
 
-	var (
-		name     = c.FormValue("name")
-		system   = c.FormValue("os")
-		arch     = c.FormValue("arch")
-		channel  = c.FormValue("channel")
-		filename = c.FormValue("filename")
-	)
-	if name == "" {
-		resp := response.BusinessError("name is required")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	if err := h.BindRequiredParams(&req.OS, &req.Arch, &req.Channel); err != nil {
+		return err
 	}
 
-	if err = h.BindRequiredParams(&system, &arch, &channel); err != nil {
-		resp := response.BusinessError(err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if channel != types.ChannelStable.String() {
-		parsable := h.verComparator.IsVersionParsable(name)
+	if req.Channel != types.ChannelStable.String() {
+		parsable := h.verComparator.IsVersionParsable(req.Name)
 		if !parsable {
 			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
 			return c.Status(fiber.StatusBadRequest).JSON(resp)
 		}
 	}
 
-	exists, err := h.versionLogic.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
-		ResourceId:  resourceId,
-		VersionName: name,
-		OS:          system,
-		Arch:        arch,
-	})
-	switch {
-	case err != nil:
-		h.logger.Error("failed to check if version name exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	case exists:
-		h.logger.Warn("version name already exists",
-			zap.String("resource id", resourceId),
-			zap.String("version name", name),
-			zap.String("resource os", system),
-			zap.String("resource arch", arch),
-		)
-		resp := response.BusinessError("version name under the current platform architecture already exists")
-		return c.Status(fiber.StatusConflict).JSON(resp)
+	if strings.Contains(req.Filename, string(os.PathSeparator)) {
+		resp := response.BusinessError("filename cannot contain path separator")
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	token, err := h.versionLogic.CreatePreSignedUrl(ctx, CreateVersionParam{
+	token, err := h.versionLogic.CreatePreSignedUrl(c.UserContext(), CreateVersionParam{
 		ResourceID: resourceId,
-		Name:       name,
-		OS:         system,
-		Arch:       arch,
-		Channel:    channel,
-		Filename:   filename,
+		Name:       req.Name,
+		OS:         req.OS,
+		Arch:       req.Arch,
+		Channel:    req.Channel,
+		Filename:   req.Filename,
 	})
 	if err != nil {
-		h.logger.Error("Failed to create pre signed url",
-			zap.Error(err),
-		)
-		resp := response.BusinessError(err.Error())
-		return c.Status(fiber.StatusConflict).JSON(resp)
+		return err
 	}
 
-	return c.Status(fiber.StatusOK).JSON(response.Success(token))
-
+	return c.JSON(response.Success(token))
 }
 
 func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
