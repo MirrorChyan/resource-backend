@@ -29,6 +29,9 @@ func Error(c *fiber.Ctx, err error) error {
 		msg = e.Message()
 		data = e.Details()
 
+		resp := response.BusinessError(msg, data).With(bizCode)
+		return c.Status(httpCode).JSON(resp)
+
 	default:
 
 		zap.L().Error("Unexpected error",
@@ -37,7 +40,4 @@ func Error(c *fiber.Ctx, err error) error {
 		resp := response.UnexpectedError()
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-
-	resp := response.BusinessError(msg, data).With(bizCode)
-	return c.Status(httpCode).JSON(resp)
 }
