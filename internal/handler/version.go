@@ -2,19 +2,16 @@ package handler
 
 import (
 	"errors"
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
+	"github.com/MirrorChyan/resource-backend/internal/middleware"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
-	"github.com/redis/go-redis/v9"
-	"github.com/valyala/fasthttp"
-	"os"
-	"strings"
-
-	"github.com/MirrorChyan/resource-backend/internal/config"
-	"github.com/MirrorChyan/resource-backend/internal/middleware"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
 	"github.com/bytedance/sonic"
+	"github.com/redis/go-redis/v9"
+	"github.com/valyala/fasthttp"
 
 	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
@@ -103,11 +100,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
 			return c.Status(fiber.StatusBadRequest).JSON(resp)
 		}
-	}
-
-	if strings.Contains(req.Filename, string(os.PathSeparator)) {
-		resp := response.BusinessError("filename cannot contain path separator")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
 	token, err := h.versionLogic.CreatePreSignedUrl(c.UserContext(), CreateVersionParam{
