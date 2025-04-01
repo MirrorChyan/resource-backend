@@ -15,6 +15,14 @@ type CreateVersionRequest struct {
 	Filename string `json:"filename" form:"filename" validate:"required,nopath"`
 }
 
+type CreateVersionCallBackRequest struct {
+	Name    string `json:"name" form:"name" validate:"required"`
+	OS      string `json:"os" form:"os"`
+	Arch    string `json:"arch" form:"arch"`
+	Channel string `json:"channel" form:"channel"`
+	Key     string `json:"key" form:"key" validate:"required"`
+}
+
 type GetLatestVersionRequest struct {
 	ResourceID     string
 	CurrentVersion string `query:"current_version"`

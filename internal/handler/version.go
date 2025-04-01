@@ -117,37 +117,31 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 }
 
 func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
-	var (
-		name    = c.FormValue("name")
-		system  = c.FormValue("os")
-		arch    = c.FormValue("arch")
-		channel = c.FormValue("channel")
-		key     = c.FormValue("key")
 
-		resourceId = c.Params(ResourceKey)
-		ctx        = c.UserContext()
-	)
-	err := h.bindRequiredParams(&system, &arch, &channel)
-	if err != nil {
-		resp := response.BusinessError(err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	resourceId := c.Params(ResourceKey)
+
+	var req CreateVersionCallBackRequest
+	if err := validator.ValidateBody(c, &req); err != nil {
+		return err
 	}
-	err = h.versionLogic.ProcessCreateVersionCallback(ctx, CreateVersionCallBackParam{
+
+	if err := h.bindRequiredParams(&req.OS, &req.Arch, &req.Channel); err != nil {
+		return err
+	}
+
+	err := h.versionLogic.ProcessCreateVersionCallback(c.UserContext(), CreateVersionCallBackParam{
 		ResourceID: resourceId,
-		Name:       name,
-		OS:         system,
-		Arch:       arch,
-		Channel:    channel,
-		Key:        key,
+		Name:       req.Name,
+		OS:         req.OS,
+		Arch:       req.Arch,
+		Channel:    req.Channel,
+		Key:        req.Key,
 	})
 	if err != nil {
-		h.logger.Error("Failed to create version callback",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError(err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
-	return c.Status(fiber.StatusOK).JSON(response.Success(nil))
+
+	return c.JSON(response.Success(nil))
 }
 
 func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) error {
