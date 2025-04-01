@@ -60,7 +60,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	versions.Put("/custom-data", h.UpdateCustomData)
 }
 
-func (h *VersionHandler) BindRequiredParams(os, arch, channel *string) error {
+func (h *VersionHandler) bindRequiredParams(os, arch, channel *string) error {
 	if o, ok := OsMap[*os]; !ok {
 		return errs.ErrResourceInvalidOS
 	} else {
@@ -90,7 +90,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.BindRequiredParams(&req.OS, &req.Arch, &req.Channel); err != nil {
+	if err := h.bindRequiredParams(&req.OS, &req.Arch, &req.Channel); err != nil {
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 		resourceId = c.Params(ResourceKey)
 		ctx        = c.UserContext()
 	)
-	err := h.BindRequiredParams(&system, &arch, &channel)
+	err := h.bindRequiredParams(&system, &arch, &channel)
 	if err != nil {
 		resp := response.BusinessError(err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
@@ -239,7 +239,7 @@ func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersion
 
 	request.ResourceID = c.Params(ResourceKey)
 
-	err := h.BindRequiredParams(&request.OS, &request.Arch, &request.Channel)
+	err := h.bindRequiredParams(&request.OS, &request.Arch, &request.Channel)
 	if err != nil {
 		return nil, err
 	}
