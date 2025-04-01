@@ -279,7 +279,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 			data.ReleaseNote = "placeholder"
 		}
 		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
-		return c.Status(fiber.StatusOK).JSON(resp)
+		return c.JSON(resp)
 	}
 
 	release, limited := h.doLimitByConfig(resourceId)
@@ -287,7 +287,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	if limited {
 		data.VersionName = param.CurrentVersion
 		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
-		return c.Status(fiber.StatusOK).JSON(resp)
+		return c.JSON(resp)
 	}
 
 	if err := h.doValidateCDK(param, resourceId, c.IP()); err != nil {
@@ -297,7 +297,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	if latest.VersionName == currentVersion {
 		data.ReleaseNote = "placeholder"
 		resp := response.Success(data, "current version is latest")
-		return c.Status(fiber.StatusOK).JSON(resp)
+		return c.JSON(resp)
 	}
 
 	result, err := h.versionLogic.GetUpdateInfo(ctx, UpdateRequestParam{
@@ -306,17 +306,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		TargetVersionInfo:  latest,
 	})
 	if err != nil {
-		h.logger.Error("failed to GetUpdateInfo",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError(err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
 
 	data.SHA256 = result.SHA256
 	data.FileSize = result.FileSize
 	data.UpdateType = result.UpdateType
-
 	data.CustomData = latest.CustomData
 
 	region := h.doPickRegionInfo(c)
@@ -328,16 +323,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Resource: resourceId,
 	})
 	if err != nil {
-		h.logger.Error("failed to GetDistributeURL",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError(err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
 
 	data.Url = url
-	return c.Status(fiber.StatusOK).JSON(response.Success(data))
 
+	return c.JSON(response.Success(data))
 }
 
 func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
