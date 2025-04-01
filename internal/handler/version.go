@@ -146,6 +146,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 }
 
 func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) error {
+
 	h.logger.Info("Validating CDK")
 
 	body, err := sonic.Marshal(ValidateCDKRequest{
@@ -201,22 +202,27 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		return err
 	}
 
-	var code = result.Code
+	var (
+		code = result.Code
+		msg  = result.Msg
+	)
 	switch {
 	case code > 0:
 		h.logger.Info("cdk validation failed",
 			zap.Int("code", code),
-			zap.String("msg", result.Msg),
+			zap.String("msg", msg),
 		)
-		return RemoteError{Code: code, Msg: result.Msg}
+		return errs.New(code, fiber.StatusForbidden, msg, nil)
 	case code < 0:
 		h.logger.Error("CDK validation failed",
 			zap.Int("code", code),
-			zap.String("msg", result.Msg),
+			zap.String("msg", msg),
 		)
 		return errors.New("unknown error")
 	}
+
 	h.logger.Info("CDK validation success")
+
 	return nil
 }
 
@@ -238,6 +244,7 @@ func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersion
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
+
 	param, err := h.doHandleGetLatestParam(c)
 	if err != nil {
 		return err
@@ -284,14 +291,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if err := h.doValidateCDK(param, resourceId, c.IP()); err != nil {
-		var e RemoteError
-		if errors.As(err, &e) {
-			resp := response.BusinessError(e.Error()).With(e.Code)
-			return c.Status(fiber.StatusForbidden).JSON(resp)
-		} else {
-			resp := response.UnexpectedError()
-			return c.Status(fiber.StatusInternalServerError).JSON(resp)
-		}
+		return err
 	}
 
 	if latest.VersionName == currentVersion {

@@ -42,15 +42,6 @@ var (
 	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
 )
 
-type RemoteError struct {
-	Code int
-	Msg  string
-}
-
-func (r RemoteError) Error() string {
-	return r.Msg
-}
-
 var (
 	OsMap = map[string]string{
 		// any
