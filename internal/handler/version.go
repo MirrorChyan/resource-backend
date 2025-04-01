@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
@@ -221,22 +222,19 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 
 func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
 
-	var request GetLatestVersionRequest
-
-	if err := c.QueryParser(&request); err != nil {
-		h.logger.Error("Failed to parse query",
-			zap.Error(err),
-		)
-		return nil, errs.ErrInvalidParams
+	var req GetLatestVersionRequest
+	if err := validator.ValidateQuery(c, &req); err != nil {
+		return nil, err
 	}
 
-	request.ResourceID = c.Params(ResourceKey)
+	req.ResourceID = c.Params(ResourceKey)
 
-	err := h.bindRequiredParams(&request.OS, &request.Arch, &request.Channel)
+	err := h.bindRequiredParams(&req.OS, &req.Arch, &req.Channel)
 	if err != nil {
 		return nil, err
 	}
-	return &request, nil
+
+	return &req, nil
 }
 
 func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
