@@ -97,8 +97,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	if req.Channel != types.ChannelStable.String() {
 		parsable := h.verComparator.IsVersionParsable(req.Name)
 		if !parsable {
-			resp := response.BusinessError("version name is not supported for parsing, please use the stable channel")
-			return c.Status(fiber.StatusBadRequest).JSON(resp)
+			return errs.ErrResourceVersionNameUnparsable
 		}
 	}
 

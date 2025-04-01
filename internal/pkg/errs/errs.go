@@ -8,7 +8,7 @@ import (
 
 var (
 	ErrInvalidParams = New(BizCodeInvalidParams, http.StatusBadRequest, "invalid params", nil)
-	
+
 	ErrResourceNotFound                 = New(BizCodeResourceNotFound, http.StatusNotFound, "resource not found", nil)
 	ErrResourceInvalidOS                = New(BizCodeResourceInvalidOS, http.StatusInternalServerError, "invalid os", nil)
 	ErrResourceInvalidArch              = New(BizCodeResourceInvalidArch, http.StatusInternalServerError, "invalid arch", nil)
@@ -16,6 +16,7 @@ var (
 	ErrResourceIDAlreadyExists          = New(BizCodeResourceIDAlreadyExists, http.StatusBadRequest, "resource id already exists", nil)
 	ErrResourceVersionNameConflict      = New(BizCodeResourceVersionNameConflict, http.StatusConflict, "version name under the current platform architecture already exists", nil)
 	ErrResourceVersionStorageProcessing = New(BizCodeResourceVersionStorageProcessing, http.StatusConflict, "current version storage in process", nil)
+	ErrResourceVersionNameUnparsable    = New(BizResourceVersionNameUnparsable, http.StatusBadRequest, "version name is not supported for parsing, please use the stable channel", nil)
 )
 
 type Error struct {
