@@ -92,6 +92,20 @@ func ValidateBody(c *fiber.Ctx, dest any) error {
 		return errs.ErrInvalidParams
 	}
 
+	return ValidateStruct(dest)
+}
+
+func ValidateQuery(c *fiber.Ctx, dest any) error {
+
+	if err := c.QueryParser(dest); err != nil {
+		return errs.ErrInvalidParams
+	}
+
+	return ValidateStruct(dest)
+}
+
+func ValidateStruct(dest any) error {
+
 	if err := Validate.Struct(dest); err != nil {
 
 		ves, ok := err.(validator.ValidationErrors)
