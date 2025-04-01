@@ -10,4 +10,5 @@ const (
 	BizCodeResourceIDAlreadyExists          = 8005
 	BizCodeResourceVersionNameConflict      = 8006
 	BizCodeResourceVersionStorageProcessing = 8007
+	BizResourceVersionNameUnparsable        = 8008
 )
