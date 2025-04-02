@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/versioninfo"
@@ -18,6 +19,7 @@ type VersionInfoCreate struct {
 	config
 	mutation *VersionInfoMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetVersionName sets the "version_name" field.
@@ -162,6 +164,7 @@ func (vic *VersionInfoCreate) createSpec() (*VersionInfo, *sqlgraph.CreateSpec) 
 		_node = &VersionInfo{config: vic.config}
 		_spec = sqlgraph.NewCreateSpec(versioninfo.Table, sqlgraph.NewFieldSpec(versioninfo.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = vic.conflict
 	if value, ok := vic.mutation.VersionName(); ok {
 		_spec.SetField(versioninfo.FieldVersionName, field.TypeString, value)
 		_node.VersionName = value
@@ -181,11 +184,238 @@ func (vic *VersionInfoCreate) createSpec() (*VersionInfo, *sqlgraph.CreateSpec) 
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.VersionInfo.Create().
+//		SetVersionName(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.VersionInfoUpsert) {
+//			SetVersionName(v+v).
+//		}).
+//		Exec(ctx)
+func (vic *VersionInfoCreate) OnConflict(opts ...sql.ConflictOption) *VersionInfoUpsertOne {
+	vic.conflict = opts
+	return &VersionInfoUpsertOne{
+		create: vic,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.VersionInfo.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (vic *VersionInfoCreate) OnConflictColumns(columns ...string) *VersionInfoUpsertOne {
+	vic.conflict = append(vic.conflict, sql.ConflictColumns(columns...))
+	return &VersionInfoUpsertOne{
+		create: vic,
+	}
+}
+
+type (
+	// VersionInfoUpsertOne is the builder for "upsert"-ing
+	//  one VersionInfo node.
+	VersionInfoUpsertOne struct {
+		create *VersionInfoCreate
+	}
+
+	// VersionInfoUpsert is the "OnConflict" setter.
+	VersionInfoUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetVersionName sets the "version_name" field.
+func (u *VersionInfoUpsert) SetVersionName(v string) *VersionInfoUpsert {
+	u.Set(versioninfo.FieldVersionName, v)
+	return u
+}
+
+// UpdateVersionName sets the "version_name" field to the value that was provided on create.
+func (u *VersionInfoUpsert) UpdateVersionName() *VersionInfoUpsert {
+	u.SetExcluded(versioninfo.FieldVersionName)
+	return u
+}
+
+// SetReleaseNote sets the "release_note" field.
+func (u *VersionInfoUpsert) SetReleaseNote(v string) *VersionInfoUpsert {
+	u.Set(versioninfo.FieldReleaseNote, v)
+	return u
+}
+
+// UpdateReleaseNote sets the "release_note" field to the value that was provided on create.
+func (u *VersionInfoUpsert) UpdateReleaseNote() *VersionInfoUpsert {
+	u.SetExcluded(versioninfo.FieldReleaseNote)
+	return u
+}
+
+// SetCustomData sets the "custom_data" field.
+func (u *VersionInfoUpsert) SetCustomData(v string) *VersionInfoUpsert {
+	u.Set(versioninfo.FieldCustomData, v)
+	return u
+}
+
+// UpdateCustomData sets the "custom_data" field to the value that was provided on create.
+func (u *VersionInfoUpsert) UpdateCustomData() *VersionInfoUpsert {
+	u.SetExcluded(versioninfo.FieldCustomData)
+	return u
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (u *VersionInfoUpsert) SetCreatedAt(v time.Time) *VersionInfoUpsert {
+	u.Set(versioninfo.FieldCreatedAt, v)
+	return u
+}
+
+// UpdateCreatedAt sets the "created_at" field to the value that was provided on create.
+func (u *VersionInfoUpsert) UpdateCreatedAt() *VersionInfoUpsert {
+	u.SetExcluded(versioninfo.FieldCreatedAt)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.VersionInfo.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *VersionInfoUpsertOne) UpdateNewValues() *VersionInfoUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.VersionInfo.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *VersionInfoUpsertOne) Ignore() *VersionInfoUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *VersionInfoUpsertOne) DoNothing() *VersionInfoUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the VersionInfoCreate.OnConflict
+// documentation for more info.
+func (u *VersionInfoUpsertOne) Update(set func(*VersionInfoUpsert)) *VersionInfoUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&VersionInfoUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetVersionName sets the "version_name" field.
+func (u *VersionInfoUpsertOne) SetVersionName(v string) *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetVersionName(v)
+	})
+}
+
+// UpdateVersionName sets the "version_name" field to the value that was provided on create.
+func (u *VersionInfoUpsertOne) UpdateVersionName() *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateVersionName()
+	})
+}
+
+// SetReleaseNote sets the "release_note" field.
+func (u *VersionInfoUpsertOne) SetReleaseNote(v string) *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetReleaseNote(v)
+	})
+}
+
+// UpdateReleaseNote sets the "release_note" field to the value that was provided on create.
+func (u *VersionInfoUpsertOne) UpdateReleaseNote() *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateReleaseNote()
+	})
+}
+
+// SetCustomData sets the "custom_data" field.
+func (u *VersionInfoUpsertOne) SetCustomData(v string) *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetCustomData(v)
+	})
+}
+
+// UpdateCustomData sets the "custom_data" field to the value that was provided on create.
+func (u *VersionInfoUpsertOne) UpdateCustomData() *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateCustomData()
+	})
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (u *VersionInfoUpsertOne) SetCreatedAt(v time.Time) *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetCreatedAt(v)
+	})
+}
+
+// UpdateCreatedAt sets the "created_at" field to the value that was provided on create.
+func (u *VersionInfoUpsertOne) UpdateCreatedAt() *VersionInfoUpsertOne {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateCreatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *VersionInfoUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for VersionInfoCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *VersionInfoUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *VersionInfoUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *VersionInfoUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // VersionInfoCreateBulk is the builder for creating many VersionInfo entities in bulk.
 type VersionInfoCreateBulk struct {
 	config
 	err      error
 	builders []*VersionInfoCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the VersionInfo entities in the database.
@@ -215,6 +445,7 @@ func (vicb *VersionInfoCreateBulk) Save(ctx context.Context) ([]*VersionInfo, er
 					_, err = mutators[i+1].Mutate(root, vicb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = vicb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, vicb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -265,6 +496,166 @@ func (vicb *VersionInfoCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (vicb *VersionInfoCreateBulk) ExecX(ctx context.Context) {
 	if err := vicb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.VersionInfo.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.VersionInfoUpsert) {
+//			SetVersionName(v+v).
+//		}).
+//		Exec(ctx)
+func (vicb *VersionInfoCreateBulk) OnConflict(opts ...sql.ConflictOption) *VersionInfoUpsertBulk {
+	vicb.conflict = opts
+	return &VersionInfoUpsertBulk{
+		create: vicb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.VersionInfo.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (vicb *VersionInfoCreateBulk) OnConflictColumns(columns ...string) *VersionInfoUpsertBulk {
+	vicb.conflict = append(vicb.conflict, sql.ConflictColumns(columns...))
+	return &VersionInfoUpsertBulk{
+		create: vicb,
+	}
+}
+
+// VersionInfoUpsertBulk is the builder for "upsert"-ing
+// a bulk of VersionInfo nodes.
+type VersionInfoUpsertBulk struct {
+	create *VersionInfoCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.VersionInfo.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *VersionInfoUpsertBulk) UpdateNewValues() *VersionInfoUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.VersionInfo.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *VersionInfoUpsertBulk) Ignore() *VersionInfoUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *VersionInfoUpsertBulk) DoNothing() *VersionInfoUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the VersionInfoCreateBulk.OnConflict
+// documentation for more info.
+func (u *VersionInfoUpsertBulk) Update(set func(*VersionInfoUpsert)) *VersionInfoUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&VersionInfoUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetVersionName sets the "version_name" field.
+func (u *VersionInfoUpsertBulk) SetVersionName(v string) *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetVersionName(v)
+	})
+}
+
+// UpdateVersionName sets the "version_name" field to the value that was provided on create.
+func (u *VersionInfoUpsertBulk) UpdateVersionName() *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateVersionName()
+	})
+}
+
+// SetReleaseNote sets the "release_note" field.
+func (u *VersionInfoUpsertBulk) SetReleaseNote(v string) *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetReleaseNote(v)
+	})
+}
+
+// UpdateReleaseNote sets the "release_note" field to the value that was provided on create.
+func (u *VersionInfoUpsertBulk) UpdateReleaseNote() *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateReleaseNote()
+	})
+}
+
+// SetCustomData sets the "custom_data" field.
+func (u *VersionInfoUpsertBulk) SetCustomData(v string) *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetCustomData(v)
+	})
+}
+
+// UpdateCustomData sets the "custom_data" field to the value that was provided on create.
+func (u *VersionInfoUpsertBulk) UpdateCustomData() *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateCustomData()
+	})
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (u *VersionInfoUpsertBulk) SetCreatedAt(v time.Time) *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.SetCreatedAt(v)
+	})
+}
+
+// UpdateCreatedAt sets the "created_at" field to the value that was provided on create.
+func (u *VersionInfoUpsertBulk) UpdateCreatedAt() *VersionInfoUpsertBulk {
+	return u.Update(func(s *VersionInfoUpsert) {
+		s.UpdateCreatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *VersionInfoUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the VersionInfoCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for VersionInfoCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *VersionInfoUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
