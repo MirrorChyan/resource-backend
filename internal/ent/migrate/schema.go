@@ -84,7 +84,7 @@ var (
 	// VersionInfosColumns holds the columns for the "version_infos" table.
 	VersionInfosColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "version_name", Type: field.TypeString},
+		{Name: "version_name", Type: field.TypeString, Unique: true},
 		{Name: "release_note", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
 		{Name: "custom_data", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
 		{Name: "created_at", Type: field.TypeTime},

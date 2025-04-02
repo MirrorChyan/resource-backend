@@ -15,7 +15,7 @@ type VersionInfo struct {
 // Fields of the VersionInfo.
 func (VersionInfo) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("version_name").NotEmpty(),
+		field.String("version_name").NotEmpty().Unique(),
 		field.String("release_note").
 			SchemaType(
 				map[string]string{
