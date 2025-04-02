@@ -9,6 +9,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/schema"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/ent/versioninfo"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -65,4 +66,22 @@ func init() {
 	versionDescCreatedAt := versionFields[5].Descriptor()
 	// version.DefaultCreatedAt holds the default value on creation for the created_at field.
 	version.DefaultCreatedAt = versionDescCreatedAt.Default.(func() time.Time)
+	versioninfoFields := schema.VersionInfo{}.Fields()
+	_ = versioninfoFields
+	// versioninfoDescVersionName is the schema descriptor for version_name field.
+	versioninfoDescVersionName := versioninfoFields[0].Descriptor()
+	// versioninfo.VersionNameValidator is a validator for the "version_name" field. It is called by the builders before save.
+	versioninfo.VersionNameValidator = versioninfoDescVersionName.Validators[0].(func(string) error)
+	// versioninfoDescReleaseNote is the schema descriptor for release_note field.
+	versioninfoDescReleaseNote := versioninfoFields[1].Descriptor()
+	// versioninfo.DefaultReleaseNote holds the default value on creation for the release_note field.
+	versioninfo.DefaultReleaseNote = versioninfoDescReleaseNote.Default.(string)
+	// versioninfoDescCustomData is the schema descriptor for custom_data field.
+	versioninfoDescCustomData := versioninfoFields[2].Descriptor()
+	// versioninfo.DefaultCustomData holds the default value on creation for the custom_data field.
+	versioninfo.DefaultCustomData = versioninfoDescCustomData.Default.(string)
+	// versioninfoDescCreatedAt is the schema descriptor for created_at field.
+	versioninfoDescCreatedAt := versioninfoFields[3].Descriptor()
+	// versioninfo.DefaultCreatedAt holds the default value on creation for the created_at field.
+	versioninfo.DefaultCreatedAt = versioninfoDescCreatedAt.Default.(func() time.Time)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/ent/versioninfo"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -75,9 +76,10 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			resource.Table: resource.ValidColumn,
-			storage.Table:  storage.ValidColumn,
-			version.Table:  version.ValidColumn,
+			resource.Table:    resource.ValidColumn,
+			storage.Table:     storage.ValidColumn,
+			version.Table:     version.ValidColumn,
+			versioninfo.Table: versioninfo.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

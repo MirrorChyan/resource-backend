@@ -18,6 +18,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/ent/versioninfo"
 )
 
 // Client is the client that holds all ent builders.
@@ -31,6 +32,8 @@ type Client struct {
 	Storage *StorageClient
 	// Version is the client for interacting with the Version builders.
 	Version *VersionClient
+	// VersionInfo is the client for interacting with the VersionInfo builders.
+	VersionInfo *VersionInfoClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -45,6 +48,7 @@ func (c *Client) init() {
 	c.Resource = NewResourceClient(c.config)
 	c.Storage = NewStorageClient(c.config)
 	c.Version = NewVersionClient(c.config)
+	c.VersionInfo = NewVersionInfoClient(c.config)
 }
 
 type (
@@ -135,11 +139,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Resource: NewResourceClient(cfg),
-		Storage:  NewStorageClient(cfg),
-		Version:  NewVersionClient(cfg),
+		ctx:         ctx,
+		config:      cfg,
+		Resource:    NewResourceClient(cfg),
+		Storage:     NewStorageClient(cfg),
+		Version:     NewVersionClient(cfg),
+		VersionInfo: NewVersionInfoClient(cfg),
 	}, nil
 }
 
@@ -157,11 +162,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Resource: NewResourceClient(cfg),
-		Storage:  NewStorageClient(cfg),
-		Version:  NewVersionClient(cfg),
+		ctx:         ctx,
+		config:      cfg,
+		Resource:    NewResourceClient(cfg),
+		Storage:     NewStorageClient(cfg),
+		Version:     NewVersionClient(cfg),
+		VersionInfo: NewVersionInfoClient(cfg),
 	}, nil
 }
 
@@ -193,6 +199,7 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Resource.Use(hooks...)
 	c.Storage.Use(hooks...)
 	c.Version.Use(hooks...)
+	c.VersionInfo.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -201,6 +208,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Resource.Intercept(interceptors...)
 	c.Storage.Intercept(interceptors...)
 	c.Version.Intercept(interceptors...)
+	c.VersionInfo.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -212,6 +220,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Storage.mutate(ctx, m)
 	case *VersionMutation:
 		return c.Version.mutate(ctx, m)
+	case *VersionInfoMutation:
+		return c.VersionInfo.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -696,12 +706,145 @@ func (c *VersionClient) mutate(ctx context.Context, m *VersionMutation) (Value, 
 	}
 }
 
+// VersionInfoClient is a client for the VersionInfo schema.
+type VersionInfoClient struct {
+	config
+}
+
+// NewVersionInfoClient returns a client for the VersionInfo from the given config.
+func NewVersionInfoClient(c config) *VersionInfoClient {
+	return &VersionInfoClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `versioninfo.Hooks(f(g(h())))`.
+func (c *VersionInfoClient) Use(hooks ...Hook) {
+	c.hooks.VersionInfo = append(c.hooks.VersionInfo, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `versioninfo.Intercept(f(g(h())))`.
+func (c *VersionInfoClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VersionInfo = append(c.inters.VersionInfo, interceptors...)
+}
+
+// Create returns a builder for creating a VersionInfo entity.
+func (c *VersionInfoClient) Create() *VersionInfoCreate {
+	mutation := newVersionInfoMutation(c.config, OpCreate)
+	return &VersionInfoCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VersionInfo entities.
+func (c *VersionInfoClient) CreateBulk(builders ...*VersionInfoCreate) *VersionInfoCreateBulk {
+	return &VersionInfoCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VersionInfoClient) MapCreateBulk(slice any, setFunc func(*VersionInfoCreate, int)) *VersionInfoCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VersionInfoCreateBulk{err: fmt.Errorf("calling to VersionInfoClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VersionInfoCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VersionInfoCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VersionInfo.
+func (c *VersionInfoClient) Update() *VersionInfoUpdate {
+	mutation := newVersionInfoMutation(c.config, OpUpdate)
+	return &VersionInfoUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VersionInfoClient) UpdateOne(vi *VersionInfo) *VersionInfoUpdateOne {
+	mutation := newVersionInfoMutation(c.config, OpUpdateOne, withVersionInfo(vi))
+	return &VersionInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VersionInfoClient) UpdateOneID(id int) *VersionInfoUpdateOne {
+	mutation := newVersionInfoMutation(c.config, OpUpdateOne, withVersionInfoID(id))
+	return &VersionInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VersionInfo.
+func (c *VersionInfoClient) Delete() *VersionInfoDelete {
+	mutation := newVersionInfoMutation(c.config, OpDelete)
+	return &VersionInfoDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VersionInfoClient) DeleteOne(vi *VersionInfo) *VersionInfoDeleteOne {
+	return c.DeleteOneID(vi.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VersionInfoClient) DeleteOneID(id int) *VersionInfoDeleteOne {
+	builder := c.Delete().Where(versioninfo.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VersionInfoDeleteOne{builder}
+}
+
+// Query returns a query builder for VersionInfo.
+func (c *VersionInfoClient) Query() *VersionInfoQuery {
+	return &VersionInfoQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVersionInfo},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VersionInfo entity by its id.
+func (c *VersionInfoClient) Get(ctx context.Context, id int) (*VersionInfo, error) {
+	return c.Query().Where(versioninfo.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VersionInfoClient) GetX(ctx context.Context, id int) *VersionInfo {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VersionInfoClient) Hooks() []Hook {
+	return c.hooks.VersionInfo
+}
+
+// Interceptors returns the client interceptors.
+func (c *VersionInfoClient) Interceptors() []Interceptor {
+	return c.inters.VersionInfo
+}
+
+func (c *VersionInfoClient) mutate(ctx context.Context, m *VersionInfoMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VersionInfoCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VersionInfoUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VersionInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VersionInfoDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VersionInfo mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Resource, Storage, Version []ent.Hook
+		Resource, Storage, Version, VersionInfo []ent.Hook
 	}
 	inters struct {
-		Resource, Storage, Version []ent.Interceptor
+		Resource, Storage, Version, VersionInfo []ent.Interceptor
 	}
 )
