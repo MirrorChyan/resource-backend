@@ -18,6 +18,8 @@ type Tx struct {
 	Storage *StorageClient
 	// Version is the client for interacting with the Version builders.
 	Version *VersionClient
+	// VersionInfo is the client for interacting with the VersionInfo builders.
+	VersionInfo *VersionInfoClient
 
 	// lazily loaded.
 	client     *Client
@@ -152,6 +154,7 @@ func (tx *Tx) init() {
 	tx.Resource = NewResourceClient(tx.config)
 	tx.Storage = NewStorageClient(tx.config)
 	tx.Version = NewVersionClient(tx.config)
+	tx.VersionInfo = NewVersionInfoClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

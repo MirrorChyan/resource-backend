@@ -81,11 +81,26 @@ var (
 			},
 		},
 	}
+	// VersionInfosColumns holds the columns for the "version_infos" table.
+	VersionInfosColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "version_name", Type: field.TypeString},
+		{Name: "release_note", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
+		{Name: "custom_data", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "longtext"}},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// VersionInfosTable holds the schema information for the "version_infos" table.
+	VersionInfosTable = &schema.Table{
+		Name:       "version_infos",
+		Columns:    VersionInfosColumns,
+		PrimaryKey: []*schema.Column{VersionInfosColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ResourcesTable,
 		StoragesTable,
 		VersionsTable,
+		VersionInfosTable,
 	}
 )
 

@@ -14,3 +14,6 @@ type Storage func(*sql.Selector)
 
 // Version is the predicate function for version builders.
 type Version func(*sql.Selector)
+
+// VersionInfo is the predicate function for versioninfo builders.
+type VersionInfo func(*sql.Selector)
