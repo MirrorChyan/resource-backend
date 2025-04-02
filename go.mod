@@ -1,6 +1,7 @@
 module github.com/MirrorChyan/resource-backend
 
 go 1.23.1
+toolchain go1.24.1
 
 require (
 	entgo.io/ent v0.14.3
@@ -22,7 +23,7 @@ require (
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.21.1
-	github.com/redis/go-redis/v9 v9.7.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/segmentio/ksuid v1.0.4
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
