@@ -1,60 +1,58 @@
 package config
 
 import (
+	"bytes"
+	"context"
 	"fmt"
-	"github.com/hashicorp/consul/api"
-	"go.uber.org/zap"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
+	"time"
 )
 
 const ServiceName = "resource-backend"
 
-func NewConsulClient() *api.Client {
-	var (
-		cfg    = GConfig
-		option = api.DefaultConfig()
-	)
-	option.Address = cfg.Registry.Endpoint
+type watcher struct {
+	*clientv3.Client
+	waitIndex uint64
+	key       string
+}
 
-	client, err := api.NewClient(option)
+func newConfigWatcher() *watcher {
+	var (
+		cfg = GConfig
+	)
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{cfg.Registry.Endpoint},
+		DialTimeout: 5 * time.Second,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	return client
+
+	return &watcher{
+		Client:    cli,
+		waitIndex: 0,
+		key:       fmt.Sprintf("%s/%s.%s", cfg.Registry.Path, DefaultConfigName, DefaultConfigType),
+	}
 }
 
-func doRegisterService(client *api.Client) {
-	var (
-		cfg = GConfig
-		sid = cfg.Registry.ServiceId
-	)
-	service := &api.AgentServiceRegistration{
-		ID:      sid,
-		Name:    ServiceName,
-		Port:    cfg.Instance.Port,
-		Address: cfg.Instance.Address,
-		Check: &api.AgentServiceCheck{
-			HTTP:     fmt.Sprintf("http://%s:%d/health", cfg.Instance.Address, cfg.Instance.Port),
-			Interval: "10s",
-		},
-	}
-
-	if err := client.Agent().ServiceRegister(service); err != nil {
+func (p *watcher) pull() {
+	resp, err := p.Get(context.Background(), p.key)
+	if err != nil {
 		log.Fatal(err)
 	}
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		for {
-			select {
-			case sig := <-ch:
-				zap.L().Info("Catch Signal", zap.String("signal", sig.String()), zap.String("ServiceDeregister", sid))
-				_ = client.Agent().ServiceDeregister(sid)
-				os.Exit(0)
-			}
+	triggerUpdate(func() error {
+		return vp.MergeConfig(bytes.NewReader(resp.Kvs[0].Value))
+	})
+}
+
+func (p *watcher) watch() {
+	watch := p.Watch(context.Background(), p.key)
+	for response := range watch {
+		for _, ev := range response.Events {
+			triggerUpdate(func() error {
+				return vp.MergeConfig(bytes.NewReader(ev.Kv.Value))
+			})
 		}
-	}()
+	}
 }

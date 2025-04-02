@@ -1,47 +1,14 @@
 package config
 
 import (
-	"bytes"
-	"fmt"
-	"log"
-	"time"
-
 	"github.com/bytedance/sonic"
-	"github.com/hashicorp/consul/api"
+	"log"
 )
 
 func doLoadRemoteConfig() {
-	var (
-		cfg    = GConfig
-		client = NewConsulClient()
-		path   = cfg.Registry.Path
-	)
-
-	worker := poller{
-		store:     client.KV(),
-		waitIndex: 0,
-		key:       fmt.Sprintf("%s/%s.%s", path, DefaultConfigName, DefaultConfigType),
-	}
-	worker.loadRemoteConfigImmediately()
-	worker.doPollRemoteConfig()
-
-	doRegisterService(client)
-
-}
-func (p *poller) loadRemoteConfigImmediately() {
-
-	keypair, _, err := p.store.Get(p.key, &api.QueryOptions{})
-	if err != nil {
-		log.Fatal("Load Remote Config Error", err)
-	}
-
-	triggerUpdate(func() error {
-		if err = vp.MergeConfig(bytes.NewReader(keypair.Value)); err != nil {
-			log.Fatal("MergeConfig Remote Config Error", err)
-		}
-		return nil
-	})
-
+	client := newConfigWatcher()
+	client.pull()
+	client.watch()
 }
 
 var c = sonic.Config{
@@ -84,34 +51,5 @@ func triggerUpdate(update func() error) {
 		}
 
 	}
-
-}
-
-type poller struct {
-	store     *api.KV
-	waitIndex uint64
-	key       string
-}
-
-func (p *poller) doPollRemoteConfig() {
-	go func() {
-		for {
-			keypair, meta, err := p.store.Get(p.key, &api.QueryOptions{
-				WaitIndex: p.waitIndex,
-			})
-			if keypair == nil && err == nil {
-				err = fmt.Errorf("key ( %s ) was not found", p.key)
-			}
-			if err != nil {
-				log.Println("Remote Config Update Error", err)
-				time.Sleep(time.Second * 5)
-				continue
-			}
-			p.waitIndex = meta.LastIndex
-			triggerUpdate(func() error {
-				return vp.MergeConfig(bytes.NewReader(keypair.Value))
-			})
-		}
-	}()
 
 }
