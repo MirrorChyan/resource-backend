@@ -40,12 +40,12 @@ type ExistVersionNameWithOSAndArchParam struct {
 }
 
 type UpdateReleaseNoteDetailParam struct {
-	VersionID         int
+	VersionName       string
 	ReleaseNoteDetail string
 }
 
 type UpdateReleaseNoteSummaryParam struct {
-	VersionID          int
+	VersionName        string
 	ReleaseNoteSummary string
 }
 

@@ -21,8 +21,6 @@ const (
 select id                  as version_id,
        name                as version_name,
        number              as version_number,
-       release_note        as release_note,
-       custom_data         as custom_data,
        os                  as os,
        arch                as arch,
        channel             as channel,
@@ -42,9 +40,7 @@ from (select t.*,
                          v.created_at,
                          v.name,
                          v.number,
-                         v.channel,
-                         v.release_note,
-                         v.custom_data
+                         v.channel
                   from versions v
                   where resource_versions = ?) lv
                      left join storages s on lv.id = s.version_storages

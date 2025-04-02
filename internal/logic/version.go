@@ -711,19 +711,30 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	return nil
 }
 
-func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
+func (l *VersionLogic) GetMultiLatestVersionInfo(ctx context.Context, resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
 	var (
 		key = l.cacheGroup.GetCacheKey(resourceId, os, arch, channel)
 	)
 	val, err := l.cacheGroup.MultiVersionInfoCache.ComputeIfAbsent(key, func() (*MultiVersionInfo, error) {
 		info, err := l.doGetLatestVersionInfo(resourceId, os, arch, channel)
 		switch {
-		case err == nil:
-			return &MultiVersionInfo{LatestVersionInfo: info}, nil
 		case errors.Is(err, errs.ErrResourceNotFound):
 			return &MultiVersionInfo{}, nil
+		case err != nil:
+			return nil, err
 		}
-		return nil, err
+
+		extra, err := l.versionRepo.GetVersionExtraInfoByName(ctx, info.VersionName)
+		if err != nil && !ent.IsNotFound(err) {
+			return nil, err
+		}
+
+		if extra != nil {
+			info.ReleaseNote = extra.ReleaseNote
+			info.CustomData = extra.CustomData
+		}
+
+		return &MultiVersionInfo{LatestVersionInfo: info}, nil
 	})
 	if err != nil {
 		return nil, err
@@ -740,7 +751,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 			return nil, misc.StorageInfoNotFoundError
 		}
 
-		ut, err := l.resourceLogic.FindUpdateTypeById(context.Background(), resourceId)
+		ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
 		if err != nil {
 			return nil, err
 		}
@@ -969,9 +980,9 @@ func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
 }
 
 func (l *VersionLogic) UpdateReleaseNote(ctx context.Context, param UpdateReleaseNoteDetailParam) error {
-	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionID, param.ReleaseNoteDetail)
+	return l.versionRepo.UpdateVersionReleaseNote(ctx, param.VersionName, param.ReleaseNoteDetail)
 }
 
 func (l *VersionLogic) UpdateCustomData(ctx context.Context, param UpdateReleaseNoteSummaryParam) error {
-	return l.versionRepo.UpdateVersionCustomData(ctx, param.VersionID, param.ReleaseNoteSummary)
+	return l.versionRepo.UpdateVersionCustomData(ctx, param.VersionName, param.ReleaseNoteSummary)
 }

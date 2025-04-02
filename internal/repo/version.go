@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"github.com/MirrorChyan/resource-backend/internal/ent/versioninfo"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
@@ -41,14 +42,28 @@ func (r *Version) CreateVersion(ctx context.Context, resID string, channel versi
 		Save(ctx)
 }
 
-func (r *Version) UpdateVersionReleaseNote(ctx context.Context, verID int, releaseNote string) error {
-	return r.db.Version.UpdateOneID(verID).
-		SetReleaseNote(releaseNote).
+func (r *Version) UpdateVersionReleaseNote(ctx context.Context, versionName, releaseNote string) error {
+	return r.db.VersionInfo.Create().
+		SetCustomData(releaseNote).
+		SetVersionName(versionName).
+		OnConflict().
+		Update(func(upsert *ent.VersionInfoUpsert) {
+			upsert.SetCustomData(releaseNote)
+		}).
 		Exec(ctx)
 }
 
-func (r *Version) UpdateVersionCustomData(ctx context.Context, verID int, customData string) error {
-	return r.db.Version.UpdateOneID(verID).
+func (r *Version) UpdateVersionCustomData(ctx context.Context, versionName, customData string) error {
+	return r.db.VersionInfo.Create().
 		SetCustomData(customData).
+		SetVersionName(versionName).
+		OnConflict().
+		Update(func(upsert *ent.VersionInfoUpsert) {
+			upsert.SetCustomData(customData)
+		}).
 		Exec(ctx)
+}
+
+func (r *Version) GetVersionExtraInfoByName(ctx context.Context, versionName string) (*ent.VersionInfo, error) {
+	return r.db.VersionInfo.Query().Where(versioninfo.VersionNameEQ(versionName)).First(ctx)
 }

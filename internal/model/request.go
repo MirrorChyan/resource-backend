@@ -41,6 +41,5 @@ type UpdateReleaseNoteRequest struct {
 
 type UpdateCustomDataRequest struct {
 	VersionName string `json:"version_name"`
-	Channel     string `json:"channel"`
 	Content     string `json:"content"`
 }

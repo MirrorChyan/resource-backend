@@ -260,7 +260,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		cdk            = param.CDK
 	)
 
-	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
+	latest, err := h.versionLogic.GetMultiLatestVersionInfo(ctx, resourceId, system, arch, channel)
 	if err != nil {
 		return err
 	}
@@ -424,24 +424,8 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		req.Content = req.Content[:30000]
 	}
 
-	if ch, ok := ChannelMap[req.Channel]; ok {
-		req.Channel = ch
-	} else {
-		return errors.New("invalid channel")
-	}
-
-	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
-	if err != nil {
-		h.logger.Error("failed to load store version",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
 	err = h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteDetailParam{
-		VersionID:         ver.ID,
+		VersionName:       req.VersionName,
 		ReleaseNoteDetail: req.Content,
 	})
 	if err != nil {
@@ -497,25 +481,8 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if ch, ok := ChannelMap[req.Channel]; ok {
-		req.Channel = ch
-	} else {
-		return errors.New("invalid channel")
-	}
-
-	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
-	if err != nil {
-		h.logger.Error("failed to load store version",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-
 	err = h.versionLogic.UpdateCustomData(ctx, UpdateReleaseNoteSummaryParam{
-		VersionID:          ver.ID,
+		VersionName:        req.VersionName,
 		ReleaseNoteSummary: req.Content,
 	})
 	if err != nil {
