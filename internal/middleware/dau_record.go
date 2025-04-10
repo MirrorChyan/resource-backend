@@ -24,7 +24,12 @@ func NewDailyActiveUserRecorder(rdb *redis.Client) fiber.Handler {
 		for {
 			select {
 			case ip := <-ch:
-				buf = append(buf, ip)
+				arr := strings.Split(ip, ",")
+				if len(arr) < 2 {
+					buf = append(buf, ip)
+				} else {
+					buf = append(buf, arr[0])
+				}
 			case <-ticker.C:
 				if len(buf) > 0 {
 					prefix := time.Now().Format(time.DateOnly)
