@@ -20,7 +20,8 @@ func Error(c *fiber.Ctx, err error) error {
 			e.Details(),
 		).With(e.BizCode())
 		return c.Status(e.HTTPCode()).JSON(resp)
-
+	case nil:
+		return nil
 	default:
 		zap.L().Error("unexpected error",
 			zap.Error(err),

@@ -1,6 +1,7 @@
 package errs
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -32,7 +33,6 @@ func New(bizCode, httpCode int, message string, internal error) *Error {
 		bizCode:  bizCode,
 		httpCode: httpCode,
 		message:  message,
-		details:  make(map[string]any),
 		internal: internal,
 	}
 }
@@ -47,7 +47,8 @@ func (e *Error) Error() string {
 }
 
 func (e *Error) Is(target error) bool {
-	t, ok := target.(*Error)
+	var t *Error
+	ok := errors.As(target, &t)
 	return ok && e.bizCode == t.BizCode()
 }
 
@@ -82,10 +83,6 @@ func (e *Error) Wrap(err error) *Error {
 }
 
 func (e *Error) WithDetails(details map[string]any) *Error {
-
-	if details == nil {
-		details = make(map[string]any)
-	}
 
 	return &Error{
 		bizCode:  e.bizCode,
