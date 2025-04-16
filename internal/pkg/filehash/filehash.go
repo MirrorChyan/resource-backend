@@ -2,7 +2,7 @@ package filehash
 
 import (
 	"encoding/hex"
-	"github.com/MirrorChyan/resource-backend/internal/pkg"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"github.com/minio/sha256-simd"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -22,8 +22,8 @@ func Calculate(filePath string) (string, error) {
 	}(file)
 
 	h := sha256.New()
-	buf := pkg.GetBuffer()
-	defer pkg.PutBuffer(buf)
+	buf := bufpool.GetBuffer()
+	defer bufpool.PutBuffer(buf)
 	if _, err := io.CopyBuffer(h, file, buf); err != nil {
 		return "", err
 	}

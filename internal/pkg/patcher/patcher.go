@@ -3,7 +3,7 @@ package patcher
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/pkg"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"github.com/bytedance/sonic"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -95,8 +95,8 @@ func (t transferInfo) transfer() error {
 		_ = dst.Close()
 	}(dst)
 
-	buf := pkg.GetBuffer()
-	defer pkg.PutBuffer(buf)
+	buf := bufpool.GetBuffer()
+	defer bufpool.PutBuffer(buf)
 	_, err = io.CopyBuffer(dst, src, buf)
 
 	return err
