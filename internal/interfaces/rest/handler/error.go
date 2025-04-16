@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )

@@ -6,7 +6,7 @@ package wire
 import (
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/handler"
+	"github.com/MirrorChyan/resource-backend/internal/interfaces/rest/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
 	"github.com/MirrorChyan/resource-backend/internal/repo"

@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
-	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"

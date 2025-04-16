@@ -1,7 +1,7 @@
 package rest
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/handler"
+	"github.com/MirrorChyan/resource-backend/internal/interfaces/rest/handler"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/contrib/fiberzap/v2"
