@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"sync/atomic"
 
-	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 )
 
 type ChangeType int
@@ -223,7 +223,7 @@ func GenerateV2(patchName, origin, dest string, changes []Change) (string, error
 		archivePath = filepath.Join(dest, archiveName)
 	)
 
-	if err = archive.CompressToZip(root, archivePath); err != nil {
+	if err = archiver.CompressToZip(root, archivePath); err != nil {
 		return "", err
 	}
 

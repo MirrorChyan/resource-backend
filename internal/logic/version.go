@@ -23,7 +23,7 @@ import (
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/oss"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/patcher"
@@ -353,7 +353,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			l.logger.Debug("start unpack resource",
 				zap.String("save dir", flat),
 			)
-			if err = archive.UnpackZip(dest, flat); err != nil {
+			if err = archiver.UnpackZip(dest, flat); err != nil {
 				l.logger.Error("Failed to unpack file",
 					zap.String("version name", versionName),
 					zap.Error(err),
