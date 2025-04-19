@@ -850,7 +850,7 @@ func (l *VersionLogic) GetDistributeURL(info *DistributeInfo) (string, error) {
 
 	key := strings.Join([]string{misc.DispensePrefix, rk}, ":")
 
-	_, err = l.rdb.Set(ctx, key, val, time.Minute*5).Result()
+	_, err = l.rdb.Set(ctx, key, val, time.Minute*30).Result()
 	if err != nil {
 		l.logger.Error("failed to set distribute info",
 			zap.Error(err),
