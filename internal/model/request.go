@@ -12,7 +12,7 @@ type CreateVersionRequest struct {
 	OS       string `json:"os" form:"os"`
 	Arch     string `json:"arch" form:"arch"`
 	Channel  string `json:"channel" form:"channel"`
-	Filename string `json:"filename" form:"filename" validate:"required,nopath"`
+	Filename string `json:"filename" form:"filename"`
 }
 
 type CreateVersionCallBackRequest struct {
