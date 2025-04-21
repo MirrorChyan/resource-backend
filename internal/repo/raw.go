@@ -79,6 +79,7 @@ from (select t.*,
                   where resource_versions = ?) lv
                      left join storages s on lv.id = s.version_storages
             where vs between 1 and 100
+              and s.package_path is not null
               and s.update_type = 'full')
                as t) t2
 where rn not in (1, 2)`

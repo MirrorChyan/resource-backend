@@ -38,7 +38,7 @@ func Success(data any, msg ...string) *Response {
 }
 
 func BusinessError(msg string, data ...any) *Response {
-	if len(data) > 0 {
+	if len(data) > 0 && data[0] != nil {
 		return New(CodeBusiness, msg, data[0])
 	}
 	return New(CodeBusiness, msg, nil)

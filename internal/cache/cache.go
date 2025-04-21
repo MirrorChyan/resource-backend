@@ -8,7 +8,7 @@ import (
 
 type Cache[K string, V any] struct {
 	cache *ristretto.Cache[K, V]
-	group singleflight.Group
+	group *singleflight.Group
 	ttl   time.Duration
 }
 
@@ -61,7 +61,7 @@ func NewCache[K string, V any](ttl time.Duration) *Cache[K, V] {
 	})
 	return &Cache[K, V]{
 		cache: cache,
-		group: singleflight.Group{},
+		group: &singleflight.Group{},
 		ttl:   ttl,
 	}
 }

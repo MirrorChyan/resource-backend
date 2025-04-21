@@ -2,25 +2,21 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"github.com/MirrorChyan/resource-backend/internal/application"
+	"github.com/MirrorChyan/resource-backend/internal/interfaces/rest"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	. "github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/handler"
-	"github.com/MirrorChyan/resource-backend/internal/logger"
 	_ "github.com/MirrorChyan/resource-backend/internal/pkg/banner"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/logger"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
 	"github.com/MirrorChyan/resource-backend/internal/tasks"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
-	"github.com/bytedance/sonic"
-	"github.com/gofiber/contrib/fiberzap/v2"
-	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
-
-const BodyLimit = 1000 * 1024 * 1024
 
 func main() {
 
@@ -52,15 +48,7 @@ func main() {
 		dl         = db.NewRedSync(redis)
 		group      = cache.NewVersionCacheGroup(redis)
 		comparator = vercomp.NewComparator()
-		app        = fiber.New(fiber.Config{
-			BodyLimit:   BodyLimit,
-			ProxyHeader: fiber.HeaderXForwardedFor,
-
-			JSONEncoder: sonic.Marshal,
-			JSONDecoder: sonic.Unmarshal,
-
-			ErrorHandler: handler.Error,
-		})
+		app        = application.New()
 	)
 
 	handlerSet := wire.NewHandlerSet(zap.L(),
@@ -69,42 +57,18 @@ func main() {
 		group,
 		comparator)
 
-	initRoute(app, handlerSet)
+	restSrv := rest.NewRouter()
+	rest.InitRoutes(restSrv, handlerSet)
 
-	addr := fmt.Sprintf(":%d", GConfig.Instance.Port)
+	app.AddAdapter(
+		restserver.NewAdapter(restSrv),
+	)
 
-	if err := app.Listen(addr); err != nil {
-		zap.L().Fatal("failed to start server",
-			zap.Error(err),
-		)
-	}
-
+	app.Run(context.Background())
 }
 
 func setUpConfigAndLog() {
 	// in the full life cycle
 	InitGlobalConfig()
 	zap.ReplaceGlobals(logger.New())
-}
-
-func initRoute(app *fiber.App, handlerSet *wire.HandlerSet) {
-	app.Use(fiberzap.New(fiberzap.Config{
-		Logger: zap.L(),
-		SkipURIs: []string{
-			"/metrics",
-			"/health",
-		},
-	}))
-
-	r := app.Group("/")
-
-	handlerSet.ResourceHandler.Register(r)
-
-	handlerSet.VersionHandler.Register(r)
-
-	handlerSet.StorageHandler.Register(r)
-
-	handlerSet.MetricsHandler.Register(r)
-
-	handlerSet.HeathCheckHandler.Register(r)
 }

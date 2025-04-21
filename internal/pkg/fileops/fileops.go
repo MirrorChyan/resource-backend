@@ -1,7 +1,7 @@
 package fileops
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/pkg"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"io"
 	"os"
 
@@ -31,8 +31,8 @@ func CopyFile(src, dst string) error {
 		}
 	}(dest)
 
-	buf := pkg.GetBuffer()
-	defer pkg.PutBuffer(buf)
+	buf := bufpool.GetBuffer()
+	defer bufpool.PutBuffer(buf)
 	_, err = io.CopyBuffer(dest, source, buf)
 	return err
 }

@@ -40,22 +40,7 @@ var (
 	NotAllowedFileTypeError = errors.New("not allowed file type")
 
 	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
-
-	ResourceNotFoundError = errors.New("resource not found")
-
-	InvalidOsError      = errors.New("invalid os")
-	InvalidArchError    = errors.New("invalid arch")
-	InvalidChannelError = errors.New("invalid channel")
 )
-
-type RemoteError struct {
-	Code int
-	Msg  string
-}
-
-func (r RemoteError) Error() string {
-	return r.Msg
-}
 
 var (
 	OsMap = map[string]string{

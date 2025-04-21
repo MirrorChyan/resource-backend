@@ -1,23 +1,20 @@
 package handler
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/handler/response"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
 	"github.com/gofiber/fiber/v2"
-	"go.uber.org/zap"
 )
 
 type ResourceHandler struct {
-	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
 }
 
-func NewResourceHandler(logger *zap.Logger, resourceLogic *logic.ResourceLogic) *ResourceHandler {
+func NewResourceHandler(resourceLogic *logic.ResourceLogic) *ResourceHandler {
 	return &ResourceHandler{
-		logger:        logger,
 		resourceLogic: resourceLogic,
 	}
 }
@@ -34,40 +31,20 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		return err
 	}
 
-	ctx := c.UserContext()
-
-	exists, err := h.resourceLogic.Exists(ctx, req.ID)
-	if err != nil {
-		h.logger.Error("failed to check resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-	}
-	if exists {
-		resp := response.BusinessError("resource id already exists")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
 	var t = req.UpdateType
 	if t == "" {
 		t = types.UpdateIncremental.String()
 	}
 
-	param := CreateResourceParam{
+	res, err := h.resourceLogic.Create(c.UserContext(), CreateResourceParam{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
 		UpdateType:  t,
-	}
+	})
 
-	res, err := h.resourceLogic.Create(ctx, param)
 	if err != nil {
-		h.logger.Error("failed to create resource",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError(err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
 
 	resp := response.Success(CreateResourceResponseData{
@@ -75,5 +52,5 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		Name:        res.Name,
 		Description: res.Description,
 	})
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.JSON(resp)
 }

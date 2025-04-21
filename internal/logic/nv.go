@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -133,9 +135,48 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestPar
 	if err != nil {
 		return nil, err
 	}
+
+	var (
+		rel   = l.cleanTwiceStoragePath(result.PackagePath)
+		group = l.GetCacheGroup()
+		key   = group.GetCacheKey(rel)
+	)
+	fileSize, err := group.FileStatSizeCache.ComputeIfAbsent(key, func() (int64, error) {
+		stat, err := os.Stat(result.PackagePath)
+		if err == nil {
+			return stat.Size(), nil
+		}
+		l.logger.Warn("failed to get local file size",
+			zap.String("path", result.PackagePath),
+			zap.Error(err),
+		)
+
+		var p = filepath.Join(l.storageLogic.OSSDir, rel)
+		info, err := os.Stat(p)
+		if err == nil {
+			return info.Size(), nil
+		}
+		l.logger.Warn("failed to get oss file size",
+			zap.String("path", p),
+			zap.Error(err),
+		)
+		return 0, err
+
+	})
+
+	if err != nil {
+		l.logger.Error("failed to get file size",
+			zap.String("resource id", param.ResourceId),
+			zap.String("path", result.PackagePath),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
 	return &UpdateInfo{
-		RelPath:    l.cleanTwiceStoragePath(result.PackagePath),
+		RelPath:    rel,
 		SHA256:     result.PackageHash,
 		UpdateType: result.UpdateType,
+		FileSize:   *fileSize,
 	}, nil
 }

@@ -1,7 +1,7 @@
-package archive
+package archiver
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/pkg"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 
 	"archive/tar"
 	"archive/zip"
@@ -175,8 +175,8 @@ func CompressToZip(srcDir, destZip string) error {
 			return err
 		}
 
-		buf := pkg.GetBuffer()
-		defer pkg.PutBuffer(buf)
+		buf := bufpool.GetBuffer()
+		defer bufpool.PutBuffer(buf)
 		_, err = io.CopyBuffer(zipFileWriter, file, buf)
 		return err
 	})

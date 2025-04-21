@@ -9,7 +9,7 @@ package wire
 import (
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/handler"
+	"github.com/MirrorChyan/resource-backend/internal/interfaces/rest/handler"
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/logic/dispense"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
@@ -28,7 +28,7 @@ func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisCli
 	repoRepo := repo.NewRepo(client, db)
 	resource := repo.NewResource(repoRepo)
 	resourceLogic := logic.NewResourceLogic(logger, resource, multiCacheGroup)
-	resourceHandler := handler.NewResourceHandler(logger, resourceLogic)
+	resourceHandler := handler.NewResourceHandler(resourceLogic)
 	version := repo.NewVersion(repoRepo)
 	rawQuery := repo.NewRawQuery(repoRepo)
 	distributeLogic := dispense.NewDistributeLogic(logger, redisClient)

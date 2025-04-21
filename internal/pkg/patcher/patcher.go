@@ -3,7 +3,7 @@ package patcher
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/pkg"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"github.com/bytedance/sonic"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"sync/atomic"
 
-	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 )
 
 type ChangeType int
@@ -95,8 +95,8 @@ func (t transferInfo) transfer() error {
 		_ = dst.Close()
 	}(dst)
 
-	buf := pkg.GetBuffer()
-	defer pkg.PutBuffer(buf)
+	buf := bufpool.GetBuffer()
+	defer bufpool.PutBuffer(buf)
 	_, err = io.CopyBuffer(dst, src, buf)
 
 	return err
@@ -223,7 +223,7 @@ func GenerateV2(patchName, origin, dest string, changes []Change) (string, error
 		archivePath = filepath.Join(dest, archiveName)
 	)
 
-	if err = archive.CompressToZip(root, archivePath); err != nil {
+	if err = archiver.CompressToZip(root, archivePath); err != nil {
 		return "", err
 	}
 

@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"os"
 	"regexp"
+	"strings"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/go-playground/locales/en"
@@ -30,6 +32,14 @@ func init() {
 		t, _ := ut.T("slug", fe.Field())
 		return t
 	})
+
+	Validate.RegisterTranslation("nopath", trans, func(ut ut.Translator) error {
+		return ut.Add("nopath", "{0} cannot contain path separator", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("nopath", fe.Field())
+		return t
+	})
+
 }
 
 var Validate = New()
@@ -39,6 +49,7 @@ func New() *validator.Validate {
 	validate := validator.New()
 
 	validate.RegisterValidation("slug", slug)
+	validate.RegisterValidation("nopath", nopath)
 
 	return validate
 }
@@ -46,6 +57,11 @@ func New() *validator.Validate {
 func slug(fl validator.FieldLevel) bool {
 	val := fl.Field().String()
 	return slugRegexp.MatchString(val)
+}
+
+func nopath(fl validator.FieldLevel) bool {
+	val := fl.Field().String()
+	return strings.Contains(val, string(os.PathSeparator))
 }
 
 type ValidationError struct {
@@ -73,11 +89,22 @@ func convertValidationErrors(ves validator.ValidationErrors) []*ValidationError 
 func ValidateBody(c *fiber.Ctx, dest any) error {
 
 	if err := c.BodyParser(dest); err != nil {
-		return &errs.Error{
-			StatusCode: fiber.StatusBadRequest,
-			Message:    "invalid params",
-		}
+		return errs.ErrInvalidParams
 	}
+
+	return ValidateStruct(dest)
+}
+
+func ValidateQuery(c *fiber.Ctx, dest any) error {
+
+	if err := c.QueryParser(dest); err != nil {
+		return errs.ErrInvalidParams
+	}
+
+	return ValidateStruct(dest)
+}
+
+func ValidateStruct(dest any) error {
 
 	if err := Validate.Struct(dest); err != nil {
 
@@ -88,13 +115,9 @@ func ValidateBody(c *fiber.Ctx, dest any) error {
 
 		validationErrors := convertValidationErrors(ves)
 
-		return &errs.Error{
-			StatusCode: fiber.StatusBadRequest,
-			Message:    "invalid params",
-			Data: fiber.Map{
-				"violations": validationErrors,
-			},
-		}
+		return errs.ErrInvalidParams.WithDetails(fiber.Map{
+			"violations": validationErrors,
+		})
 	}
 
 	return nil

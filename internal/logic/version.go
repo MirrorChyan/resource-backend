@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ import (
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/oss"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/archive"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/patcher"
@@ -161,6 +162,24 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		channel     = param.Channel
 		filename    = param.Filename
 	)
+
+	if exists, err := l.resourceLogic.Exists(ctx, resourceId); err != nil {
+		return nil, err
+	} else if !exists {
+		return nil, errs.ErrResourceNotFound
+	}
+
+	if exists, err := l.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
+		ResourceId:  resourceId,
+		VersionName: versionName,
+		OS:          system,
+		Arch:        arch,
+	}); err != nil {
+		return nil, err
+	} else if exists {
+		return nil, errs.ErrResourceVersionNameConflict
+	}
+
 	ver, err := l.LoadStoreNewVersionTx(ctx, resourceId, versionName, channel)
 	if err != nil {
 		return nil, err
@@ -174,7 +193,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, err
 	} else if err == nil || val == "1" {
-		return nil, errors.New("current version storage in process")
+		return nil, errs.ErrResourceVersionStorageProcessing
 	}
 
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
@@ -188,13 +207,8 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		return nil, err
 	}
 
-	switch {
-	case ut == types.UpdateIncremental:
+	if ut == types.UpdateIncremental {
 		filename = misc.DefaultResourceName
-	case filename == "":
-		return nil, errors.New("filename is required")
-	case strings.Contains(filename, string(os.PathSeparator)):
-		return nil, errors.New("filename cannot contain path separator")
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
@@ -339,7 +353,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			l.logger.Debug("start unpack resource",
 				zap.String("save dir", flat),
 			)
-			if err = archive.UnpackZip(dest, flat); err != nil {
+			if err = archiver.UnpackZip(dest, flat); err != nil {
 				l.logger.Error("Failed to unpack file",
 					zap.String("version name", versionName),
 					zap.Error(err),
@@ -706,7 +720,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 		switch {
 		case err == nil:
 			return &MultiVersionInfo{LatestVersionInfo: info}, nil
-		case errors.Is(err, misc.ResourceNotFoundError):
+		case errors.Is(err, errs.ErrResourceNotFound):
 			return &MultiVersionInfo{}, nil
 		}
 		return nil, err
@@ -734,7 +748,7 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 
 		return info, nil
 	}
-	return nil, misc.ResourceNotFoundError
+	return nil, errs.ErrResourceNotFound
 }
 
 func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel string) (*LatestVersionInfo, error) {
@@ -743,7 +757,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		return nil, err
 	}
 	if len(info) == 0 {
-		return nil, misc.ResourceNotFoundError
+		return nil, errs.ErrResourceNotFound
 	}
 
 	var stable, beta, alpha *LatestVersionInfo
@@ -783,7 +797,7 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 		}
 	}
 
-	return nil, misc.ResourceNotFoundError
+	return nil, errs.ErrResourceNotFound
 }
 
 func (l *VersionLogic) doCompare(args ...*LatestVersionInfo) (*LatestVersionInfo, error) {

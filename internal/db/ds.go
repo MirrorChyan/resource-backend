@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/MirrorChyan/resource-backend/internal/config"
@@ -41,5 +42,10 @@ func NewDataSource() (*sql.Driver, error) {
 	if err != nil {
 		return nil, err
 	}
+	db := drv.DB()
+	db.SetMaxOpenConns(100)
+	db.SetMaxIdleConns(50)
+	db.SetConnMaxLifetime(25 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 	return drv, nil
 }
