@@ -47,8 +47,8 @@ func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
 	group := &MultiCacheGroup{
 		FullUpdateStorageCache:     NewCache[string, *ent.Storage](72 * time.Hour),
 		VersionNameIdCache:         NewCache[string, int](-1),
-		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](72 * time.Hour),
-		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](24 * time.Hour),
+		IncrementalUpdateInfoCache: NewCache[string, *model.IncrementalUpdateInfo](168 * time.Hour),
+		MultiVersionInfoCache:      NewCache[string, *model.MultiVersionInfo](168 * time.Hour),
 		ResourceInfoCache:          NewCache[string, *ent.Resource](-1),
 		FileStatSizeCache:          NewCache[string, int64](72 * time.Hour),
 	}
