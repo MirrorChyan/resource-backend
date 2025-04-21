@@ -15,10 +15,11 @@ func Error(c *fiber.Ctx, err error) error {
 		return fiber.DefaultErrorHandler(c, e)
 
 	case *errs.Error:
-		resp := response.BusinessError(
-			e.Message(),
-			e.Details(),
-		).With(e.BizCode())
+		var details any
+		if e.Details() != nil {
+			details = e.Details()
+		}
+		resp := response.BusinessError(e.Message(), details).With(e.BizCode())
 		return c.Status(e.HTTPCode()).JSON(resp)
 	case nil:
 		return nil
