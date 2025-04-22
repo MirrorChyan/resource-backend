@@ -51,11 +51,73 @@ func InitAsynqServer(l *zap.Logger, v *VersionLogic) *asynq.Server {
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(misc.DiffTask, doHandleGeneratePackage(l, v))
 	mux.HandleFunc(misc.ProcessStorageTask, doHandleCalculatePackageHash(l, v))
+	mux.HandleFunc(misc.PurgeTask, doHandlePurge(l, v))
 
 	if err := server.Start(mux); err != nil {
 		panic(err)
 	}
+
+	initScheduler(l)
+
 	return server
+}
+
+func initScheduler(l *zap.Logger) {
+	var (
+		conf = config.GConfig
+	)
+
+	location, _ := time.LoadLocation("Asia/Shanghai")
+
+	scheduler := asynq.NewScheduler(asynq.RedisClientOpt{
+		Addr: conf.Redis.Addr,
+		DB:   conf.Redis.AsynqDB,
+	}, &asynq.SchedulerOpts{
+
+		HeartbeatInterval: time.Minute,
+		Logger:            logger{l.Sugar()},
+		Location:          location,
+		PostEnqueueFunc: func(info *asynq.TaskInfo, err error) {
+			l.Info("scheduler enqueued a task",
+				zap.String("task id", info.ID),
+				zap.Any("enqueued at", info),
+				zap.Error(err),
+			)
+		},
+	})
+	l.Info("scheduler starting",
+		zap.String("location", location.String()),
+	)
+	id, err := scheduler.Register("0 5 * * ?", asynq.NewTask(misc.PurgeTask, nil))
+	if err != nil {
+		l.Error("failed to register scheduler",
+			zap.Error(err),
+		)
+		panic(err)
+	}
+	l.Info("scheduler registered",
+		zap.String("id", id),
+	)
+
+	if err := scheduler.Start(); err != nil {
+		panic(err)
+	}
+
+}
+
+func doHandlePurge(l *zap.Logger, v *VersionLogic) func(context.Context, *asynq.Task) error {
+	return func(ctx context.Context, task *asynq.Task) error {
+		l.Warn("start purge old storages")
+		err := v.storageLogic.ClearOldStorages(ctx)
+		if err != nil {
+			l.Error("failed to purge old storages",
+				zap.Error(err),
+			)
+		}
+		l.Warn("end purge old storages")
+		// ignore error
+		return nil
+	}
 }
 
 func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx context.Context, task *asynq.Task) error {

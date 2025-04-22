@@ -30,6 +30,7 @@ const (
 const (
 	ProcessStorageTask = "storage"
 	DiffTask           = "diff"
+	PurgeTask          = "purge"
 )
 
 const SniffLen = 4
