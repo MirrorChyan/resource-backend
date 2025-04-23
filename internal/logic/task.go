@@ -77,13 +77,6 @@ func initScheduler(l *zap.Logger) {
 		HeartbeatInterval: time.Minute,
 		Logger:            logger{l.Sugar()},
 		Location:          location,
-		PostEnqueueFunc: func(info *asynq.TaskInfo, err error) {
-			l.Info("scheduler enqueued a task",
-				zap.String("task id", info.ID),
-				zap.Any("enqueued at", info),
-				zap.Error(err),
-			)
-		},
 	})
 	l.Info("scheduler starting",
 		zap.String("location", location.String()),
