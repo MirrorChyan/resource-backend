@@ -66,6 +66,5 @@ func supplyExtraConfig() {
 
 	// default concurrency
 	GConfig.Extra.Concurrency = 100
-	GConfig.Extra.DownloadLimitCount = 10
 
 }

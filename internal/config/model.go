@@ -48,7 +48,6 @@ type (
 	ExtraConfig struct {
 		DownloadPrefixInfo      map[string][]RobinServer `mapstructure:"download_prefix_info"`
 		DownloadEffectiveTime   time.Duration            `mapstructure:"download_effective_time"`
-		DownloadLimitCount      int64                    `mapstructure:"download_limit_count"`
 		DownloadRedirectPrefix  string                   `mapstructure:"download_redirect_prefix"`
 		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
 		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
@@ -69,6 +68,7 @@ type (
 		PrivateKey            string `mapstructure:"private_key"`
 		UploaderValidationURL string `mapstructure:"uploader_validation_url"`
 		CDKValidationURL      string `mapstructure:"cdk_validation_url"`
+		DownloadValidationURL string `mapstructure:"download_validation_url"`
 	}
 	OSSConfig struct {
 		ExternalHost string `mapstructure:"external_host"`
