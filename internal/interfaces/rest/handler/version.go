@@ -368,10 +368,6 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		if errors.Is(err, misc.ResourceLimitError) {
 			return c.Status(fiber.StatusForbidden).SendString(err.Error())
 		}
-
-		h.logger.Error("failed to RedirectToDownload",
-			zap.Error(err),
-		)
 		return err
 	}
 	h.logger.Info("RedirectToDownload",
