@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/gofiber/fiber/v2"
+	"github.com/valyala/fasthttp"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -886,6 +888,64 @@ func (l *VersionLogic) GetDistributeLocation(ctx context.Context, rk string) (st
 	err = sonic.UnmarshalString(val, info)
 	if err != nil {
 		return "", err
+	}
+
+	body, err := sonic.Marshal(DownloadValidateCDKRequest{
+		CDK:      info.CDK,
+		Resource: info.Resource,
+		UA:       info.UA,
+		IP:       info.IP,
+		Version:  info.Version,
+		Filesize: info.Filesize,
+	})
+
+	var (
+		conf    = GConfig
+		agent   = fiber.AcquireAgent()
+		request = agent.Request()
+		resp    = fasthttp.AcquireResponse()
+		result  CDKAuthResponse
+	)
+
+	defer func() {
+		fiber.ReleaseAgent(agent)
+		fasthttp.ReleaseResponse(resp)
+	}()
+
+	request.SetRequestURI(conf.Auth.DownloadValidationURL)
+	request.Header.SetMethod(fiber.MethodPost)
+	request.Header.SetContentType(fiber.MIMEApplicationJSON)
+	request.SetBody(body)
+
+	if err := agent.Parse(); err != nil {
+		l.logger.Error("Failed to parse request",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	if err := agent.Do(request, resp); err != nil {
+		l.logger.Error("Failed to send request",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	if err := sonic.Unmarshal(resp.Body(), &result); err != nil {
+		l.logger.Error("Failed to decode response",
+			zap.Error(err),
+		)
+		return "", err
+	}
+	var (
+		code = result.Code
+		msg  = result.Msg
+	)
+	switch {
+	case code > 0:
+		return "", errs.New(code, fiber.StatusForbidden, msg, nil)
+	case code < 0:
+		return "", errors.New("unknown error")
 	}
 
 	url, err := l.distributeLogic.Distribute(info)

@@ -29,6 +29,7 @@ auth:
   sign_secret: "secret"
   uploader_validation_url: "https://uploader.validation.example"
   cdk_validation_url: "https://cdk.validation.example"
+  download_validation_url: "https://download.validation.example"
 
 oss:
   endpoint: "https://oss-cn-hangzhou.aliyuncs.com"

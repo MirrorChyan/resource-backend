@@ -168,7 +168,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		agent   = fiber.AcquireAgent()
 		request = agent.Request()
 		resp    = fasthttp.AcquireResponse()
-		result  ValidateCDKResponse
+		result  CDKAuthResponse
 	)
 
 	defer func() {
@@ -290,7 +290,9 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.JSON(resp)
 	}
 
-	if err := h.doValidateCDK(param, resourceId, c.IP()); err != nil {
+	ip := c.IP()
+
+	if err := h.doValidateCDK(param, resourceId, ip); err != nil {
 		return err
 	}
 
@@ -310,17 +312,18 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	data.SHA256 = result.SHA256
-	data.FileSize = result.FileSize
+	data.Filesize = result.Filesize
 	data.UpdateType = result.UpdateType
 	data.CustomData = latest.CustomData
 
-	region := h.doPickRegionInfo(c)
-
 	url, err := h.versionLogic.GetDistributeURL(&DistributeInfo{
-		Region:   region,
 		CDK:      cdk,
-		RelPath:  result.RelPath,
+		UA:       param.UserAgent,
+		IP:       ip,
 		Resource: resourceId,
+		Version:  latest.VersionName,
+		Filesize: result.Filesize,
+		RelPath:  result.RelPath,
 	})
 	if err != nil {
 		return err
@@ -351,14 +354,6 @@ func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
 	return rf, false
 }
 
-func (h *VersionHandler) doPickRegionInfo(c *fiber.Ctx) string {
-	region := string(c.Request().Header.Peek(RegionHeaderKey))
-	if region == "" {
-		region = config.GConfig.Instance.RegionId
-	}
-	return region
-}
-
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 	var (
 		rk  = c.Params("key")
@@ -373,11 +368,7 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		if errors.Is(err, misc.ResourceLimitError) {
 			return c.Status(fiber.StatusForbidden).SendString(err.Error())
 		}
-
-		h.logger.Error("failed to RedirectToDownload",
-			zap.Error(err),
-		)
-		return c.Status(fiber.StatusInternalServerError).JSON(response.UnexpectedError())
+		return err
 	}
 	h.logger.Info("RedirectToDownload",
 		zap.String("distribute key", rk),

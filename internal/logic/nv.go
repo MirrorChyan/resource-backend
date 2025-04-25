@@ -141,7 +141,7 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestPar
 		group = l.GetCacheGroup()
 		key   = group.GetCacheKey(rel)
 	)
-	fileSize, err := group.FileStatSizeCache.ComputeIfAbsent(key, func() (int64, error) {
+	filesize, err := group.FilesizeStatCache.ComputeIfAbsent(key, func() (int64, error) {
 		stat, err := os.Stat(result.PackagePath)
 		if err == nil {
 			return stat.Size(), nil
@@ -177,6 +177,6 @@ func (l *VersionLogic) GetUpdateInfo(ctx context.Context, param UpdateRequestPar
 		RelPath:    rel,
 		SHA256:     result.PackageHash,
 		UpdateType: result.UpdateType,
-		FileSize:   *fileSize,
+		Filesize:   *filesize,
 	}, nil
 }

@@ -25,6 +25,8 @@ database:
 auth:
   uploader_validation_url: "https://uploader.validation.example"
   cdk_validation_url: "https://cdk.validation.example"
+  download_validation_url: "https://download.validation.example"
+
 
 extra:
   create_new_version_webhook: "https://example.com/message"
