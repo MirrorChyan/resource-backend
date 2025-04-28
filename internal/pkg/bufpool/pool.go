@@ -2,7 +2,7 @@ package bufpool
 
 import "sync"
 
-const blockSize = 4 * 1024 * 1024
+const blockSize = 64 * 1024
 
 var bufferPool = sync.Pool{
 	New: func() any {
