@@ -26,4 +26,5 @@ type QueryLatestResponseData struct {
 	CustomData  string `json:"custom_data,omitempty"`
 	ReleaseNote string `json:"release_note"`
 	Filesize    int64  `json:"filesize,omitempty"`
+	ExpiredTime int64  `json:"expired_time,omitempty"`
 }

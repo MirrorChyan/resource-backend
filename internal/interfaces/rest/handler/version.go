@@ -145,7 +145,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 	return c.JSON(response.Success(nil))
 }
 
-func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) error {
+func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) (int64, error) {
 
 	h.logger.Info("Validating CDK")
 
@@ -160,7 +160,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		h.logger.Error("Failed to marshal JSON",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	var (
@@ -168,7 +168,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		agent   = fiber.AcquireAgent()
 		request = agent.Request()
 		resp    = fasthttp.AcquireResponse()
-		result  CDKAuthResponse
+		result  ValidateResponse
 	)
 
 	defer func() {
@@ -185,21 +185,21 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		h.logger.Error("Failed to parse request",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	if err := agent.Do(request, resp); err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	if err := sonic.Unmarshal(resp.Body(), &result); err != nil {
 		h.logger.Error("Failed to decode response",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	var (
@@ -212,18 +212,18 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 			zap.Int("code", code),
 			zap.String("msg", msg),
 		)
-		return errs.New(code, fiber.StatusForbidden, msg, nil)
+		return 0, errs.New(code, fiber.StatusForbidden, msg, nil)
 	case code < 0:
 		h.logger.Error("CDK validation failed",
 			zap.Int("code", code),
 			zap.String("msg", msg),
 		)
-		return errors.New("unknown error")
+		return 0, errors.New("unknown error")
 	}
 
 	h.logger.Info("CDK validation success")
 
-	return nil
+	return result.Data, nil
 }
 
 func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
@@ -265,7 +265,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return err
 	}
 
-	var data = QueryLatestResponseData{
+	var resp = &QueryLatestResponseData{
 		VersionName:   latest.VersionName,
 		VersionNumber: latest.VersionNumber,
 		ReleaseNote:   latest.ReleaseNote,
@@ -276,29 +276,30 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	if cdk == "" {
 		if latest.VersionName == currentVersion {
-			data.ReleaseNote = "placeholder"
+			resp.ReleaseNote = "placeholder"
 		}
-		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
+		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
 
 	release, limited := h.doLimitByConfig(resourceId)
 	defer release()
 	if limited {
-		data.VersionName = param.CurrentVersion
-		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
+		resp.VersionName = param.CurrentVersion
+		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
 
 	ip := c.IP()
 
-	if err := h.doValidateCDK(param, resourceId, ip); err != nil {
+	ts, err := h.doValidateCDK(param, resourceId, ip)
+	if err != nil {
 		return err
 	}
 
 	if latest.VersionName == currentVersion {
-		data.ReleaseNote = "placeholder"
-		resp := response.Success(data, "current version is latest")
+		resp.ReleaseNote = "placeholder"
+		resp := response.Success(resp, "current version is latest")
 		return c.JSON(resp)
 	}
 
@@ -310,11 +311,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-
-	data.SHA256 = result.SHA256
-	data.Filesize = result.Filesize
-	data.UpdateType = result.UpdateType
-	data.CustomData = latest.CustomData
 
 	url, err := h.versionLogic.GetDistributeURL(&DistributeInfo{
 		CDK:      cdk,
@@ -329,9 +325,14 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return err
 	}
 
-	data.Url = url
+	resp.SHA256 = result.SHA256
+	resp.Filesize = result.Filesize
+	resp.UpdateType = result.UpdateType
+	resp.CustomData = latest.CustomData
+	resp.ExpiredTime = ts
+	resp.Url = url
 
-	return c.JSON(response.Success(data))
+	return c.JSON(response.Success(resp))
 }
 
 func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
