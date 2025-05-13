@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -15,7 +18,6 @@ import (
 	"github.com/valyala/fasthttp"
 
 	"github.com/MirrorChyan/resource-backend/internal/logic"
-	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/gofiber/fiber/v2"
@@ -27,6 +29,7 @@ type VersionHandler struct {
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
 	verComparator *vercomp.VersionComparator
+	collect       func(string, string, string)
 }
 
 func NewVersionHandler(
@@ -35,12 +38,72 @@ func NewVersionHandler(
 	versionLogic *logic.VersionLogic,
 	verComparator *vercomp.VersionComparator,
 ) *VersionHandler {
-	return &VersionHandler{
+	handler := &VersionHandler{
 		logger:        logger,
 		resourceLogic: resourceLogic,
 		versionLogic:  versionLogic,
 		verComparator: verComparator,
 	}
+
+	handler.collect = handler.getCollector()
+	return handler
+}
+
+func (h *VersionHandler) getCollector() func(rid string, version string, ip string) {
+	rdb := h.versionLogic.GetRedisClient()
+	type p struct {
+		rid, version, ip string
+	}
+
+	var (
+		ch     = make(chan p, 100)
+		logger = zap.L()
+	)
+
+	go func() {
+		var (
+			ctx    = context.Background()
+			buf    = make([]p, 0, 1000)
+			ticker = time.NewTicker(time.Second * 12)
+		)
+		defer ticker.Stop()
+		for {
+			select {
+			case part := <-ch:
+				buf = append(buf, part)
+			case <-ticker.C:
+				if len(buf) > 0 {
+					date := time.Now().Format(time.DateOnly)
+					pipeliner := rdb.Pipeline()
+					for _, val := range buf {
+						key := strings.Join([]string{
+							VersionPrefix,
+							date,
+							val.rid,
+						}, ":")
+						pipeliner.SAdd(ctx, key, val.version)
+						pipeliner.PFAdd(ctx, strings.Join([]string{
+							key,
+							val.version,
+						}, ":"), val.ip)
+					}
+					if _, e := pipeliner.Exec(ctx); e != nil {
+						logger.Warn("update version stat error", zap.Error(e))
+					}
+					buf = buf[:0]
+				}
+			}
+		}
+	}()
+
+	return func(rid string, version string, ip string) {
+		arr := strings.Split(ip, ",")
+		if len(arr) >= 2 {
+			ip = arr[0]
+		}
+		ch <- p{rid, version, ip}
+	}
+
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
@@ -145,7 +208,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 	return c.JSON(response.Success(nil))
 }
 
-func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) error {
+func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) (int64, error) {
 
 	h.logger.Info("Validating CDK")
 
@@ -160,7 +223,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		h.logger.Error("Failed to marshal JSON",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	var (
@@ -168,7 +231,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		agent   = fiber.AcquireAgent()
 		request = agent.Request()
 		resp    = fasthttp.AcquireResponse()
-		result  CDKAuthResponse
+		result  ValidateResponse
 	)
 
 	defer func() {
@@ -185,21 +248,21 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 		h.logger.Error("Failed to parse request",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	if err := agent.Do(request, resp); err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	if err := sonic.Unmarshal(resp.Body(), &result); err != nil {
 		h.logger.Error("Failed to decode response",
 			zap.Error(err),
 		)
-		return err
+		return 0, err
 	}
 
 	var (
@@ -212,18 +275,18 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 			zap.Int("code", code),
 			zap.String("msg", msg),
 		)
-		return errs.New(code, fiber.StatusForbidden, msg, nil)
+		return 0, errs.New(code, fiber.StatusForbidden, msg, nil)
 	case code < 0:
 		h.logger.Error("CDK validation failed",
 			zap.Int("code", code),
 			zap.String("msg", msg),
 		)
-		return errors.New("unknown error")
+		return 0, errors.New("unknown error")
 	}
 
 	h.logger.Info("CDK validation success")
 
-	return nil
+	return result.Data, nil
 }
 
 func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
@@ -252,6 +315,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var (
 		ctx            = c.UserContext()
+		ip             = c.IP()
 		resourceId     = param.ResourceID
 		system         = param.OS
 		arch           = param.Arch
@@ -265,7 +329,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return err
 	}
 
-	var data = QueryLatestResponseData{
+	var resp = &QueryLatestResponseData{
 		VersionName:   latest.VersionName,
 		VersionNumber: latest.VersionNumber,
 		ReleaseNote:   latest.ReleaseNote,
@@ -274,31 +338,32 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Arch:          param.Arch,
 	}
 
+	h.collect(resourceId, currentVersion, ip)
+
 	if cdk == "" {
 		if latest.VersionName == currentVersion {
-			data.ReleaseNote = "placeholder"
+			resp.ReleaseNote = "placeholder"
 		}
-		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
+		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
 
 	release, limited := h.doLimitByConfig(resourceId)
 	defer release()
 	if limited {
-		data.VersionName = param.CurrentVersion
-		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
+		resp.VersionName = param.CurrentVersion
+		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
 
-	ip := c.IP()
-
-	if err := h.doValidateCDK(param, resourceId, ip); err != nil {
+	ts, err := h.doValidateCDK(param, resourceId, ip)
+	if err != nil {
 		return err
 	}
 
 	if latest.VersionName == currentVersion {
-		data.ReleaseNote = "placeholder"
-		resp := response.Success(data, "current version is latest")
+		resp.ReleaseNote = "placeholder"
+		resp := response.Success(resp, "current version is latest")
 		return c.JSON(resp)
 	}
 
@@ -310,11 +375,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-
-	data.SHA256 = result.SHA256
-	data.Filesize = result.Filesize
-	data.UpdateType = result.UpdateType
-	data.CustomData = latest.CustomData
 
 	url, err := h.versionLogic.GetDistributeURL(&DistributeInfo{
 		CDK:      cdk,
@@ -329,9 +389,14 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return err
 	}
 
-	data.Url = url
+	resp.SHA256 = result.SHA256
+	resp.Filesize = result.Filesize
+	resp.UpdateType = result.UpdateType
+	resp.CustomData = latest.CustomData
+	resp.ExpiredTime = ts
+	resp.Url = url
 
-	return c.JSON(response.Success(data))
+	return c.JSON(response.Success(resp))
 }
 
 func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
@@ -365,7 +430,7 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		if errors.Is(err, redis.Nil) {
 			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
 		}
-		if errors.Is(err, misc.ResourceLimitError) {
+		if errors.Is(err, ResourceLimitError) {
 			return c.Status(fiber.StatusForbidden).SendString(err.Error())
 		}
 		return err

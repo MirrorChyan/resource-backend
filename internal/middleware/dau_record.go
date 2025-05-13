@@ -12,7 +12,7 @@ import (
 
 func NewDailyActiveUserRecorder(rdb *redis.Client) fiber.Handler {
 	var (
-		ch     = make(chan string, 1200)
+		ch     = make(chan string, 100)
 		logger = zap.L()
 	)
 	go func() {

@@ -21,6 +21,12 @@ type CDKAuthResponse struct {
 	Msg  string `json:"msg"`
 }
 
+type ValidateResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data int64  `json:"data"`
+}
+
 type ValidateUploaderResponse struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
