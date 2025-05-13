@@ -6,14 +6,9 @@ import (
 	"sync/atomic"
 )
 
-const (
-	ResourceKey     = "rid"
-	RegionHeaderKey = "X-Region"
-)
+const ResourceKey = "rid"
 
 const (
-	ResourcePrefix = "res"
-
 	ZipSuffix = ".zip"
 
 	DefaultResourceName = "resource.zip"
@@ -21,16 +16,22 @@ const (
 	DispensePrefix = "dispense"
 )
 
+// used by diff
 const (
 	GenerateTagKey           = "generate"
 	LoadStoreNewVersionKey   = "LoadStoreNewVersionTx"
 	ProcessStoragePendingKey = "ProcessStoragePending"
 )
 
+// used by task
 const (
 	ProcessStorageTask = "storage"
 	DiffTask           = "diff"
 	PurgeTask          = "purge"
+)
+
+const (
+	VersionPrefix = "ver"
 )
 
 const SniffLen = 4

@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -15,7 +18,6 @@ import (
 	"github.com/valyala/fasthttp"
 
 	"github.com/MirrorChyan/resource-backend/internal/logic"
-	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/gofiber/fiber/v2"
@@ -27,6 +29,7 @@ type VersionHandler struct {
 	resourceLogic *logic.ResourceLogic
 	versionLogic  *logic.VersionLogic
 	verComparator *vercomp.VersionComparator
+	collect       func(string, string, string)
 }
 
 func NewVersionHandler(
@@ -35,12 +38,72 @@ func NewVersionHandler(
 	versionLogic *logic.VersionLogic,
 	verComparator *vercomp.VersionComparator,
 ) *VersionHandler {
-	return &VersionHandler{
+	handler := &VersionHandler{
 		logger:        logger,
 		resourceLogic: resourceLogic,
 		versionLogic:  versionLogic,
 		verComparator: verComparator,
 	}
+
+	handler.collect = handler.getCollector()
+	return handler
+}
+
+func (h *VersionHandler) getCollector() func(rid string, version string, ip string) {
+	rdb := h.versionLogic.GetRedisClient()
+	type p struct {
+		rid, version, ip string
+	}
+
+	var (
+		ch     = make(chan p, 100)
+		logger = zap.L()
+	)
+
+	go func() {
+		var (
+			ctx    = context.Background()
+			buf    = make([]p, 0, 1000)
+			ticker = time.NewTicker(time.Second * 12)
+		)
+		defer ticker.Stop()
+		for {
+			select {
+			case part := <-ch:
+				buf = append(buf, part)
+			case <-ticker.C:
+				if len(buf) > 0 {
+					date := time.Now().Format(time.DateOnly)
+					pipeliner := rdb.Pipeline()
+					for _, val := range buf {
+						key := strings.Join([]string{
+							VersionPrefix,
+							date,
+							val.rid,
+						}, ":")
+						pipeliner.SAdd(ctx, key, val.version)
+						pipeliner.PFAdd(ctx, strings.Join([]string{
+							key,
+							val.version,
+						}, ":"), val.ip)
+					}
+					if _, e := pipeliner.Exec(ctx); e != nil {
+						logger.Warn("update version stat error", zap.Error(e))
+					}
+					buf = buf[:0]
+				}
+			}
+		}
+	}()
+
+	return func(rid string, version string, ip string) {
+		arr := strings.Split(ip, ",")
+		if len(arr) >= 2 {
+			ip = arr[0]
+		}
+		ch <- p{rid, version, ip}
+	}
+
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
@@ -252,6 +315,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	var (
 		ctx            = c.UserContext()
+		ip             = c.IP()
 		resourceId     = param.ResourceID
 		system         = param.OS
 		arch           = param.Arch
@@ -274,6 +338,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Arch:          param.Arch,
 	}
 
+	h.collect(resourceId, currentVersion, ip)
+
 	if cdk == "" {
 		if latest.VersionName == currentVersion {
 			resp.ReleaseNote = "placeholder"
@@ -289,8 +355,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
-
-	ip := c.IP()
 
 	ts, err := h.doValidateCDK(param, resourceId, ip)
 	if err != nil {
@@ -366,7 +430,7 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		if errors.Is(err, redis.Nil) {
 			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
 		}
-		if errors.Is(err, misc.ResourceLimitError) {
+		if errors.Is(err, ResourceLimitError) {
 			return c.Status(fiber.StatusForbidden).SendString(err.Error())
 		}
 		return err
