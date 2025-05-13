@@ -56,8 +56,7 @@ func (h *VersionHandler) getCollector() func(rid string, version string, ip stri
 	}
 
 	var (
-		ch     = make(chan p, 100)
-		logger = zap.L()
+		ch = make(chan p, 100)
 	)
 
 	go func() {
@@ -74,21 +73,17 @@ func (h *VersionHandler) getCollector() func(rid string, version string, ip stri
 			case <-ticker.C:
 				if len(buf) > 0 {
 					date := time.Now().Format(time.DateOnly)
-					pipeliner := rdb.Pipeline()
 					for _, val := range buf {
 						key := strings.Join([]string{
 							VersionPrefix,
 							date,
 							val.rid,
 						}, ":")
-						pipeliner.SAdd(ctx, key, val.version)
-						pipeliner.PFAdd(ctx, strings.Join([]string{
+						rdb.SAdd(ctx, key, val.version)
+						rdb.PFAdd(ctx, strings.Join([]string{
 							key,
 							val.version,
 						}, ":"), val.ip)
-					}
-					if _, e := pipeliner.Exec(ctx); e != nil {
-						logger.Warn("update version stat error", zap.Error(e))
 					}
 					buf = buf[:0]
 				}
