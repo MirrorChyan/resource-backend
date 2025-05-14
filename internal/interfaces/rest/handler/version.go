@@ -49,21 +49,25 @@ func NewVersionHandler(
 	return handler
 }
 
-func (h *VersionHandler) getCollector() func(rid string, version string, ip string) {
+type tuple struct {
+	rid     string
+	version string
+	ip      string
+}
+
+func (h *VersionHandler) getCollector() func(string, string, string) {
 	rdb := h.versionLogic.GetRedisClient()
-	type p struct {
-		rid, version, ip string
-	}
 
 	var (
-		ch = make(chan p, 100)
+		ch = make(chan tuple, 100)
 	)
 
 	go func() {
 		var (
 			ctx    = context.Background()
-			buf    = make([]p, 0, 1000)
+			buf    = make([]tuple, 0, 1000)
 			ticker = time.NewTicker(time.Second * 12)
+			logger = h.logger
 		)
 		defer ticker.Stop()
 		for {
@@ -73,18 +77,38 @@ func (h *VersionHandler) getCollector() func(rid string, version string, ip stri
 			case <-ticker.C:
 				if len(buf) > 0 {
 					date := time.Now().Format(time.DateOnly)
-					for _, val := range buf {
-						key := strings.Join([]string{
-							VersionPrefix,
-							date,
-							val.rid,
-						}, ":")
-						rdb.SAdd(ctx, key, val.version)
-						rdb.PFAdd(ctx, strings.Join([]string{
-							key,
-							val.version,
-						}, ":"), val.ip)
+					_, err := rdb.Pipelined(ctx, func(pipeliner redis.Pipeliner) error {
+						for _, val := range buf {
+							skey := strings.Join([]string{
+								VersionPrefix,
+								date,
+								val.rid,
+							}, ":")
+							hkey := strings.Join([]string{
+								skey,
+								val.version,
+							}, ":")
+							rdb.PFAdd(ctx, hkey, val.ip)
+
+							rdb.SAdd(ctx, skey, val.version)
+
+							// FIXME remove this
+							logger.Warn("Record With Debug",
+								zap.String("rid", val.rid),
+								zap.String("version", val.version),
+								zap.String("ip", val.ip),
+								zap.String("skey", skey),
+								zap.String("hkey", hkey),
+							)
+
+						}
+
+						return nil
+					})
+					if err != nil {
+						logger.Warn("pipelined exec error", zap.Error(err))
 					}
+
 					buf = buf[:0]
 				}
 			}
@@ -96,7 +120,11 @@ func (h *VersionHandler) getCollector() func(rid string, version string, ip stri
 		if len(arr) >= 2 {
 			ip = arr[0]
 		}
-		ch <- p{rid, version, ip}
+		ch <- tuple{
+			rid:     rid,
+			version: version,
+			ip:      ip,
+		}
 	}
 
 }
