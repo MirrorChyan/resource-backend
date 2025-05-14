@@ -89,18 +89,7 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 								val.version,
 							}, ":")
 							rdb.PFAdd(ctx, hkey, val.ip)
-
 							rdb.SAdd(ctx, skey, val.version)
-
-							// FIXME remove this
-							logger.Warn("Record With Debug",
-								zap.String("rid", val.rid),
-								zap.String("version", val.version),
-								zap.String("ip", val.ip),
-								zap.String("skey", skey),
-								zap.String("hkey", hkey),
-							)
-
 						}
 
 						return nil
@@ -120,6 +109,11 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 		if len(arr) >= 2 {
 			ip = arr[0]
 		}
+		h.logger.Info("Record With Debug",
+			zap.String("rid", rid),
+			zap.String("version", version),
+			zap.String("ip", ip),
+		)
 		ch <- tuple{
 			rid:     rid,
 			version: version,
