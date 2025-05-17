@@ -58,48 +58,25 @@ type tuple struct {
 func (h *VersionHandler) getCollector() func(string, string, string) {
 	rdb := h.versionLogic.GetRedisClient()
 
-	var (
-		ch = make(chan tuple, 100)
-	)
+	var ch = make(chan tuple, 100)
 
 	go func() {
-		var (
-			ctx    = context.Background()
-			buf    = make([]tuple, 0, 1000)
-			ticker = time.NewTicker(time.Second * 12)
-			logger = h.logger
-		)
-		defer ticker.Stop()
+		var ctx = context.Background()
 		for {
 			select {
-			case part := <-ch:
-				buf = append(buf, part)
-			case <-ticker.C:
-				if len(buf) > 0 {
-					date := time.Now().Format(time.DateOnly)
-					_, err := rdb.Pipelined(ctx, func(pipeliner redis.Pipeliner) error {
-						for _, val := range buf {
-							skey := strings.Join([]string{
-								VersionPrefix,
-								date,
-								val.rid,
-							}, ":")
-							hkey := strings.Join([]string{
-								skey,
-								val.version,
-							}, ":")
-							rdb.PFAdd(ctx, hkey, val.ip)
-							rdb.SAdd(ctx, skey, val.version)
-						}
-
-						return nil
-					})
-					if err != nil {
-						logger.Warn("pipelined exec error", zap.Error(err))
-					}
-
-					buf = buf[:0]
-				}
+			case val := <-ch:
+				date := time.Now().Format(time.DateOnly)
+				skey := strings.Join([]string{
+					VersionPrefix,
+					date,
+					val.rid,
+				}, ":")
+				hkey := strings.Join([]string{
+					skey,
+					val.version,
+				}, ":")
+				rdb.PFAdd(ctx, hkey, val.ip)
+				rdb.SAdd(ctx, skey, val.version)
 			}
 		}
 	}()
@@ -109,11 +86,6 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 		if len(arr) >= 2 {
 			ip = arr[0]
 		}
-		h.logger.Info("Record With Debug",
-			zap.String("rid", rid),
-			zap.String("version", version),
-			zap.String("ip", ip),
-		)
 		ch <- tuple{
 			rid:     rid,
 			version: version,

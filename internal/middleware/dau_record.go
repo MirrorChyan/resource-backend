@@ -16,31 +16,20 @@ func NewDailyActiveUserRecorder(rdb *redis.Client) fiber.Handler {
 		logger = zap.L()
 	)
 	go func() {
-		var (
-			buf    = make([]string, 0, 1000)
-			ticker = time.NewTicker(time.Second * 7)
-		)
-		defer ticker.Stop()
 		for {
 			select {
 			case ip := <-ch:
 				arr := strings.Split(ip, ",")
 				if len(arr) < 2 {
-					buf = append(buf, ip)
-				} else {
-					buf = append(buf, arr[0])
+					ip = arr[0]
 				}
-			case <-ticker.C:
-				if len(buf) > 0 {
-					prefix := time.Now().Format(time.DateOnly)
-					_, e := rdb.PFAdd(context.Background(), strings.Join([]string{
-						"DAU",
-						prefix,
-					}, ":"), buf).Result()
-					if e != nil {
-						logger.Warn("Update DAU error", zap.Error(e))
-					}
-					buf = buf[:0]
+				prefix := time.Now().Format(time.DateOnly)
+				_, e := rdb.PFAdd(context.Background(), strings.Join([]string{
+					"dau",
+					prefix,
+				}, ":"), ip).Result()
+				if e != nil {
+					logger.Warn("Update DAU error", zap.Error(e))
 				}
 			}
 		}
