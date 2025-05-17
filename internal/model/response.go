@@ -19,12 +19,12 @@ type QueryLatestResponseData struct {
 	Url           string `json:"url,omitempty"`
 	SHA256        string `json:"sha256,omitempty"`
 	Channel       string `json:"channel"`
-	OS            string `json:"os,omitempty"`
-	Arch          string `json:"arch,omitempty"`
+	OS            string `json:"os"`
+	Arch          string `json:"arch"`
 	// UpdateType is the type of the update, it can be "full" or "incremental"
-	UpdateType  string `json:"update_type,omitempty"`
-	CustomData  string `json:"custom_data,omitempty"`
-	ReleaseNote string `json:"release_note"`
-	Filesize    int64  `json:"filesize,omitempty"`
-	ExpiredTime int64  `json:"expired_time,omitempty"`
+	UpdateType     string `json:"update_type,omitempty"`
+	CustomData     string `json:"custom_data,omitempty"`
+	ReleaseNote    string `json:"release_note"`
+	Filesize       int64  `json:"filesize,omitempty"`
+	CDKExpiredTime int64  `json:"cdk_expired_time,omitempty"`
 }
