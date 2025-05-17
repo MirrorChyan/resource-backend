@@ -318,7 +318,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return err
 	}
 
-	var resp = &QueryLatestResponseData{
+	var data = &QueryLatestResponseData{
 		VersionName:   latest.VersionName,
 		VersionNumber: latest.VersionNumber,
 		ReleaseNote:   latest.ReleaseNote,
@@ -331,17 +331,17 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	if cdk == "" {
 		if latest.VersionName == currentVersion {
-			resp.ReleaseNote = "placeholder"
+			data.ReleaseNote = "placeholder"
 		}
-		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
+		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
 
 	release, limited := h.doLimitByConfig(resourceId)
 	defer release()
 	if limited {
-		resp.VersionName = param.CurrentVersion
-		resp := response.Success(resp, "current resource latest version is "+latest.VersionName)
+		data.VersionName = param.CurrentVersion
+		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
 		return c.JSON(resp)
 	}
 
@@ -351,8 +351,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	if latest.VersionName == currentVersion {
-		resp.ReleaseNote = "placeholder"
-		resp := response.Success(resp, "current version is latest")
+		data.ReleaseNote = "placeholder"
+		resp := response.Success(data, "current version is latest")
 		return c.JSON(resp)
 	}
 
@@ -378,14 +378,14 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return err
 	}
 
-	resp.SHA256 = result.SHA256
-	resp.Filesize = result.Filesize
-	resp.UpdateType = result.UpdateType
-	resp.CustomData = latest.CustomData
-	resp.ExpiredTime = ts
-	resp.Url = url
+	data.SHA256 = result.SHA256
+	data.Filesize = result.Filesize
+	data.UpdateType = result.UpdateType
+	data.CustomData = latest.CustomData
+	data.CDKExpiredTime = ts
+	data.Url = url
 
-	return c.JSON(response.Success(resp))
+	return c.JSON(response.Success(data))
 }
 
 func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
