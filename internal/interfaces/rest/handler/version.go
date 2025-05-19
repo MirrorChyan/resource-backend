@@ -58,7 +58,7 @@ type tuple struct {
 func (h *VersionHandler) getCollector() func(string, string, string) {
 	rdb := h.versionLogic.GetRedisClient()
 
-	var ch = make(chan tuple, 100)
+	var ch = make(chan tuple, 1000)
 
 	go func() {
 		var ctx = context.Background()
