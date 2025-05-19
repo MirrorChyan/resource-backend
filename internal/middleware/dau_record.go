@@ -12,17 +12,17 @@ import (
 
 func NewDailyActiveUserRecorder(rdb *redis.Client) fiber.Handler {
 	var (
-		ch     = make(chan string, 100)
+		ch     = make(chan string, 1000)
 		logger = zap.L()
 	)
 	go func() {
 		for {
 			select {
 			case ip := <-ch:
-				arr := strings.Split(ip, ",")
-				if len(arr) < 2 {
-					ip = arr[0]
+				if ip == "" {
+					continue
 				}
+				ip = strings.Split(ip, ",")[0]
 				prefix := time.Now().Format(time.DateOnly)
 				_, e := rdb.PFAdd(context.Background(), strings.Join([]string{
 					"dau",
