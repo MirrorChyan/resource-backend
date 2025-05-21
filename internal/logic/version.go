@@ -784,7 +784,11 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 	case types.ChannelBeta.String():
 		v, err := l.doCompare(stable, beta)
 		if err != nil {
-			return nil, err
+			l.logger.Error("failed to compare stable version",
+				zap.Any("stable", stable),
+				zap.Any("beta", beta),
+			)
+			v = beta
 		}
 		if v != nil {
 			return v, nil
@@ -792,7 +796,12 @@ func (l *VersionLogic) doGetLatestVersionInfo(resourceId, os, arch, channel stri
 	case types.ChannelAlpha.String():
 		v, err := l.doCompare(stable, beta, alpha)
 		if err != nil {
-			return nil, err
+			l.logger.Error("failed to compare stable version",
+				zap.Any("stable", stable),
+				zap.Any("beta", beta),
+				zap.Any("alpha", alpha),
+			)
+			v = alpha
 		}
 		if v != nil {
 			return v, nil
