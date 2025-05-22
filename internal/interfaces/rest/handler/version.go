@@ -9,7 +9,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
-	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
@@ -145,13 +144,6 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 
 	if err := h.bindRequiredParams(&req.OS, &req.Arch, &req.Channel); err != nil {
 		return err
-	}
-
-	if req.Channel != types.ChannelStable.String() {
-		parsable := h.verComparator.IsVersionParsable(req.Name)
-		if !parsable {
-			return errs.ErrResourceVersionNameUnparsable
-		}
 	}
 
 	token, err := h.versionLogic.CreatePreSignedUrl(c.UserContext(), CreateVersionParam{
