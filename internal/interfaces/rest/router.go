@@ -19,7 +19,7 @@ func NewRouter() *fiber.App {
 		ProxyHeader: fiber.HeaderXForwardedFor,
 
 		JSONEncoder: sonic.Marshal,
-		JSONDecoder: sonic.Unmarshal,
+		//JSONDecoder: sonic.Unmarshal,
 
 		ErrorHandler: handler.Error,
 	})
