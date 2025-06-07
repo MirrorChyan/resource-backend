@@ -38,6 +38,8 @@ oss:
 
 extra:
   create_new_version_webhook: "https://example.com/message"
+  create_new_version_blacklist:
+    - "xxx"
   sql_debug_mode: true
   download_effective_time: "10m"
   download_limit_count: 10
