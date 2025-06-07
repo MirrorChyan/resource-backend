@@ -46,16 +46,17 @@ type (
 		AsynqDB  int    `mapstructure:"asynq_db"`
 	}
 	ExtraConfig struct {
-		DownloadPrefixInfo      map[string][]RobinServer `mapstructure:"download_prefix_info"`
-		DownloadEffectiveTime   time.Duration            `mapstructure:"download_effective_time"`
-		DownloadRedirectPrefix  string                   `mapstructure:"download_redirect_prefix"`
-		SqlDebugMode            bool                     `mapstructure:"sql_debug_mode"`
-		CreateNewVersionWebhook string                   `mapstructure:"create_new_version_webhook"`
-		PurgeErrorWebhook       string                   `mapstructure:"purge_error_webhook"`
-		CdnPrefix               string                   `mapstructure:"cdn_prefix"`
-		DistributeCdnRatio      int                      `mapstructure:"distribute_cdn_ratio"`
-		DistributeCdnRegion     []string                 `mapstructure:"distribute_cdn_region"`
-		Concurrency             int32                    `mapstructure:"concurrency"`
+		DownloadPrefixInfo        map[string][]RobinServer `mapstructure:"download_prefix_info"`
+		DownloadEffectiveTime     time.Duration            `mapstructure:"download_effective_time"`
+		DownloadRedirectPrefix    string                   `mapstructure:"download_redirect_prefix"`
+		SqlDebugMode              bool                     `mapstructure:"sql_debug_mode"`
+		CreateNewVersionWebhook   string                   `mapstructure:"create_new_version_webhook"`
+		CreateNewVersionBlacklist []string                 `mapstructure:"create_new_version_blacklist"`
+		PurgeErrorWebhook         string                   `mapstructure:"purge_error_webhook"`
+		CdnPrefix                 string                   `mapstructure:"cdn_prefix"`
+		DistributeCdnRatio        int                      `mapstructure:"distribute_cdn_ratio"`
+		DistributeCdnRegion       []string                 `mapstructure:"distribute_cdn_region"`
+		Concurrency               int32                    `mapstructure:"concurrency"`
 	}
 
 	RobinServer struct {

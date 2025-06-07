@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -543,6 +544,10 @@ func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arc
 		webhook = cfg.Extra.CreateNewVersionWebhook
 	)
 	if webhook == "" {
+		return
+	}
+
+	if slices.Contains(cfg.Extra.CreateNewVersionBlacklist, resourceId) {
 		return
 	}
 
