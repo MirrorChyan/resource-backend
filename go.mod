@@ -5,7 +5,7 @@ go 1.23.1
 require (
 	entgo.io/ent v0.14.3
 	github.com/Masterminds/semver/v3 v3.3.1
-	github.com/bytedance/sonic v1.13.2
+	github.com/bytedance/sonic v1.13.3
 	github.com/dgraph-io/ristretto/v2 v2.1.0
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1

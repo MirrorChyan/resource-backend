@@ -452,6 +452,7 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	if err := c.BodyParser(req); err != nil {
 		h.logger.Error("failed to parse request body",
 			zap.Error(err),
+			zap.String("input", string(c.Body())),
 		)
 		resp := response.BusinessError("invalid param")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
