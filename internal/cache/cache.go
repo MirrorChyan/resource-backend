@@ -55,8 +55,8 @@ func (c *Cache[K, V]) EvictAll() {
 
 func NewCache[K string, V any](ttl time.Duration) *Cache[K, V] {
 	cache, _ := ristretto.NewCache(&ristretto.Config[K, V]{
-		NumCounters: 500,
-		MaxCost:     500,
+		NumCounters: 2048,
+		MaxCost:     2048,
 		BufferItems: 128,
 	})
 	return &Cache[K, V]{
