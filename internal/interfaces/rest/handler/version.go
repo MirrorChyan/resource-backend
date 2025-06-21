@@ -339,6 +339,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	ts, err := h.doValidateCDK(param, resourceId, ip)
 	if err != nil {
+		var biz *errs.Error
+		if errors.As(err, &biz) {
+			return biz.WithDetails(data)
+		}
 		return err
 	}
 

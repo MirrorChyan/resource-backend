@@ -3,7 +3,6 @@ package errs
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 )
 
@@ -24,7 +23,7 @@ type Error struct {
 	bizCode  int
 	httpCode int
 	message  string
-	details  map[string]any
+	details  any
 	internal error
 }
 
@@ -68,7 +67,7 @@ func (e *Error) Message() string {
 	return e.message
 }
 
-func (e *Error) Details() map[string]any {
+func (e *Error) Details() any {
 	return e.details
 }
 
@@ -82,24 +81,7 @@ func (e *Error) Wrap(err error) *Error {
 	}
 }
 
-func (e *Error) WithDetails(details map[string]any) *Error {
-
-	return &Error{
-		bizCode:  e.bizCode,
-		httpCode: e.httpCode,
-		message:  e.message,
-		details:  details,
-		internal: e.internal,
-	}
-}
-
-func (e *Error) AddDetail(key string, value any) *Error {
-
-	details := make(map[string]any, len(e.details)+1)
-
-	maps.Copy(details, e.details)
-
-	details[key] = value
+func (e *Error) WithDetails(details any) *Error {
 
 	return &Error{
 		bizCode:  e.bizCode,
