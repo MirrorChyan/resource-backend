@@ -377,6 +377,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 			l.logger.Debug("start unpack resource",
 				zap.String("save dir", flat),
+				zap.String("filetype", string(val.FileType)),
 			)
 
 			fileType = val.FileType
