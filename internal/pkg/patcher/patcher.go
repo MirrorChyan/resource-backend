@@ -273,7 +273,7 @@ func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
 		}
 	}
 
-	switch info.SrcFileType {
+	switch info.FileType {
 	case string(types.Zip):
 		err := extractZipFile(origin, pending)
 		if err != nil {
@@ -291,7 +291,7 @@ func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
 		return err
 	}
 
-	switch info.DestFileType {
+	switch info.FileType {
 	case string(types.Zip):
 		if err = archiver.CompressToZip(root, dest); err != nil {
 			return err

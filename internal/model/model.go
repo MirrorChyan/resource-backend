@@ -57,8 +57,7 @@ type FileDetectResult struct {
 }
 
 type PatchInfoTuple struct {
-	SrcPackage   string
-	SrcFileType  string
-	DestPackage  string
-	DestFileType string
+	SrcPackage  string
+	DestPackage string
+	FileType    string
 }

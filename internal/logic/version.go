@@ -707,10 +707,9 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	}, ""))
 
 	tuple := PatchInfoTuple{
-		SrcPackage:   originPackage,
-		SrcFileType:  param.CurrentFileType,
-		DestPackage:  destPackage,
-		DestFileType: param.TargetFileType,
+		SrcPackage:  originPackage,
+		DestPackage: destPackage,
+		FileType:    param.TargetFileType,
 	}
 
 	err = patcher.GenerateV2(tuple, changes)
@@ -752,7 +751,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		stat, _ := os.Stat(destPackage)
 
 		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx,
-			target, current, tuple.DestFileType, stat.Size(),
+			target, current, tuple.FileType, stat.Size(),
 			system, arch, destPackage, hashes,
 		)
 		if err != nil {
