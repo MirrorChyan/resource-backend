@@ -111,23 +111,44 @@ func (su *StorageUpdate) ClearPackageHashSha256() *StorageUpdate {
 	return su
 }
 
-// SetResourcePath sets the "resource_path" field.
-func (su *StorageUpdate) SetResourcePath(s string) *StorageUpdate {
-	su.mutation.SetResourcePath(s)
+// SetFileType sets the "file_type" field.
+func (su *StorageUpdate) SetFileType(s string) *StorageUpdate {
+	su.mutation.SetFileType(s)
 	return su
 }
 
-// SetNillableResourcePath sets the "resource_path" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableResourcePath(s *string) *StorageUpdate {
+// SetNillableFileType sets the "file_type" field if the given value is not nil.
+func (su *StorageUpdate) SetNillableFileType(s *string) *StorageUpdate {
 	if s != nil {
-		su.SetResourcePath(*s)
+		su.SetFileType(*s)
 	}
 	return su
 }
 
-// ClearResourcePath clears the value of the "resource_path" field.
-func (su *StorageUpdate) ClearResourcePath() *StorageUpdate {
-	su.mutation.ClearResourcePath()
+// ClearFileType clears the value of the "file_type" field.
+func (su *StorageUpdate) ClearFileType() *StorageUpdate {
+	su.mutation.ClearFileType()
+	return su
+}
+
+// SetFileSize sets the "file_size" field.
+func (su *StorageUpdate) SetFileSize(i int64) *StorageUpdate {
+	su.mutation.ResetFileSize()
+	su.mutation.SetFileSize(i)
+	return su
+}
+
+// SetNillableFileSize sets the "file_size" field if the given value is not nil.
+func (su *StorageUpdate) SetNillableFileSize(i *int64) *StorageUpdate {
+	if i != nil {
+		su.SetFileSize(*i)
+	}
+	return su
+}
+
+// AddFileSize adds i to the "file_size" field.
+func (su *StorageUpdate) AddFileSize(i int64) *StorageUpdate {
+	su.mutation.AddFileSize(i)
 	return su
 }
 
@@ -291,11 +312,17 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if su.mutation.PackageHashSha256Cleared() {
 		_spec.ClearField(storage.FieldPackageHashSha256, field.TypeString)
 	}
-	if value, ok := su.mutation.ResourcePath(); ok {
-		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
+	if value, ok := su.mutation.FileType(); ok {
+		_spec.SetField(storage.FieldFileType, field.TypeString, value)
 	}
-	if su.mutation.ResourcePathCleared() {
-		_spec.ClearField(storage.FieldResourcePath, field.TypeString)
+	if su.mutation.FileTypeCleared() {
+		_spec.ClearField(storage.FieldFileType, field.TypeString)
+	}
+	if value, ok := su.mutation.FileSize(); ok {
+		_spec.SetField(storage.FieldFileSize, field.TypeInt64, value)
+	}
+	if value, ok := su.mutation.AddedFileSize(); ok {
+		_spec.AddField(storage.FieldFileSize, field.TypeInt64, value)
 	}
 	if value, ok := su.mutation.FileHashes(); ok {
 		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
@@ -466,23 +493,44 @@ func (suo *StorageUpdateOne) ClearPackageHashSha256() *StorageUpdateOne {
 	return suo
 }
 
-// SetResourcePath sets the "resource_path" field.
-func (suo *StorageUpdateOne) SetResourcePath(s string) *StorageUpdateOne {
-	suo.mutation.SetResourcePath(s)
+// SetFileType sets the "file_type" field.
+func (suo *StorageUpdateOne) SetFileType(s string) *StorageUpdateOne {
+	suo.mutation.SetFileType(s)
 	return suo
 }
 
-// SetNillableResourcePath sets the "resource_path" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableResourcePath(s *string) *StorageUpdateOne {
+// SetNillableFileType sets the "file_type" field if the given value is not nil.
+func (suo *StorageUpdateOne) SetNillableFileType(s *string) *StorageUpdateOne {
 	if s != nil {
-		suo.SetResourcePath(*s)
+		suo.SetFileType(*s)
 	}
 	return suo
 }
 
-// ClearResourcePath clears the value of the "resource_path" field.
-func (suo *StorageUpdateOne) ClearResourcePath() *StorageUpdateOne {
-	suo.mutation.ClearResourcePath()
+// ClearFileType clears the value of the "file_type" field.
+func (suo *StorageUpdateOne) ClearFileType() *StorageUpdateOne {
+	suo.mutation.ClearFileType()
+	return suo
+}
+
+// SetFileSize sets the "file_size" field.
+func (suo *StorageUpdateOne) SetFileSize(i int64) *StorageUpdateOne {
+	suo.mutation.ResetFileSize()
+	suo.mutation.SetFileSize(i)
+	return suo
+}
+
+// SetNillableFileSize sets the "file_size" field if the given value is not nil.
+func (suo *StorageUpdateOne) SetNillableFileSize(i *int64) *StorageUpdateOne {
+	if i != nil {
+		suo.SetFileSize(*i)
+	}
+	return suo
+}
+
+// AddFileSize adds i to the "file_size" field.
+func (suo *StorageUpdateOne) AddFileSize(i int64) *StorageUpdateOne {
+	suo.mutation.AddFileSize(i)
 	return suo
 }
 
@@ -676,11 +724,17 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 	if suo.mutation.PackageHashSha256Cleared() {
 		_spec.ClearField(storage.FieldPackageHashSha256, field.TypeString)
 	}
-	if value, ok := suo.mutation.ResourcePath(); ok {
-		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
+	if value, ok := suo.mutation.FileType(); ok {
+		_spec.SetField(storage.FieldFileType, field.TypeString, value)
 	}
-	if suo.mutation.ResourcePathCleared() {
-		_spec.ClearField(storage.FieldResourcePath, field.TypeString)
+	if suo.mutation.FileTypeCleared() {
+		_spec.ClearField(storage.FieldFileType, field.TypeString)
+	}
+	if value, ok := suo.mutation.FileSize(); ok {
+		_spec.SetField(storage.FieldFileSize, field.TypeInt64, value)
+	}
+	if value, ok := suo.mutation.AddedFileSize(); ok {
+		_spec.AddField(storage.FieldFileSize, field.TypeInt64, value)
 	}
 	if value, ok := suo.mutation.FileHashes(); ok {
 		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)

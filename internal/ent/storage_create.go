@@ -83,16 +83,30 @@ func (sc *StorageCreate) SetNillablePackageHashSha256(s *string) *StorageCreate 
 	return sc
 }
 
-// SetResourcePath sets the "resource_path" field.
-func (sc *StorageCreate) SetResourcePath(s string) *StorageCreate {
-	sc.mutation.SetResourcePath(s)
+// SetFileType sets the "file_type" field.
+func (sc *StorageCreate) SetFileType(s string) *StorageCreate {
+	sc.mutation.SetFileType(s)
 	return sc
 }
 
-// SetNillableResourcePath sets the "resource_path" field if the given value is not nil.
-func (sc *StorageCreate) SetNillableResourcePath(s *string) *StorageCreate {
+// SetNillableFileType sets the "file_type" field if the given value is not nil.
+func (sc *StorageCreate) SetNillableFileType(s *string) *StorageCreate {
 	if s != nil {
-		sc.SetResourcePath(*s)
+		sc.SetFileType(*s)
+	}
+	return sc
+}
+
+// SetFileSize sets the "file_size" field.
+func (sc *StorageCreate) SetFileSize(i int64) *StorageCreate {
+	sc.mutation.SetFileSize(i)
+	return sc
+}
+
+// SetNillableFileSize sets the "file_size" field if the given value is not nil.
+func (sc *StorageCreate) SetNillableFileSize(i *int64) *StorageCreate {
+	if i != nil {
+		sc.SetFileSize(*i)
 	}
 	return sc
 }
@@ -196,6 +210,10 @@ func (sc *StorageCreate) defaults() {
 		v := storage.DefaultArch
 		sc.mutation.SetArch(v)
 	}
+	if _, ok := sc.mutation.FileSize(); !ok {
+		v := storage.DefaultFileSize
+		sc.mutation.SetFileSize(v)
+	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		v := storage.DefaultCreatedAt()
 		sc.mutation.SetCreatedAt(v)
@@ -217,6 +235,9 @@ func (sc *StorageCreate) check() error {
 	}
 	if _, ok := sc.mutation.Arch(); !ok {
 		return &ValidationError{Name: "arch", err: errors.New(`ent: missing required field "Storage.arch"`)}
+	}
+	if _, ok := sc.mutation.FileSize(); !ok {
+		return &ValidationError{Name: "file_size", err: errors.New(`ent: missing required field "Storage.file_size"`)}
 	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Storage.created_at"`)}
@@ -273,9 +294,13 @@ func (sc *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		_spec.SetField(storage.FieldPackageHashSha256, field.TypeString, value)
 		_node.PackageHashSha256 = value
 	}
-	if value, ok := sc.mutation.ResourcePath(); ok {
-		_spec.SetField(storage.FieldResourcePath, field.TypeString, value)
-		_node.ResourcePath = value
+	if value, ok := sc.mutation.FileType(); ok {
+		_spec.SetField(storage.FieldFileType, field.TypeString, value)
+		_node.FileType = value
+	}
+	if value, ok := sc.mutation.FileSize(); ok {
+		_spec.SetField(storage.FieldFileSize, field.TypeInt64, value)
+		_node.FileSize = value
 	}
 	if value, ok := sc.mutation.FileHashes(); ok {
 		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
