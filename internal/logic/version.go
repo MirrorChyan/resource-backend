@@ -212,7 +212,15 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	}
 
 	if ut == types.UpdateIncremental {
-		filename = misc.DefaultResourceName
+		switch {
+		case strings.HasSuffix(filename, misc.ZipSuffix):
+			filename = strings.Join([]string{misc.DefaultResourceName, misc.ZipSuffix}, "")
+		case strings.HasSuffix(filename, misc.TgzSuffix):
+			filename = strings.Join([]string{misc.DefaultResourceName, misc.TgzSuffix}, "")
+		default:
+			text := fmt.Sprintf("incremental resource %s file ext not supported", filename)
+			return nil, errs.NewUnchecked(text)
+		}
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)

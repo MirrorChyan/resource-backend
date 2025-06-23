@@ -12,7 +12,7 @@ const (
 	ZipSuffix = ".zip"
 	TgzSuffix = ".tar.gz"
 
-	DefaultResourceName = "resource.zip"
+	DefaultResourceName = "resource"
 
 	DispensePrefix = "dispense"
 )
