@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
@@ -133,8 +134,11 @@ func extractTgzFile(origin string, pending map[string]string) error {
 			return err
 		}
 		if header.Typeflag == tar.TypeReg {
-
-			if dest, ok := pending[header.Name]; ok {
+			key := header.Name
+			if strings.HasPrefix(key, "./") {
+				key = key[2:]
+			}
+			if dest, ok := pending[key]; key != "" && ok {
 				out, err := os.OpenFile(dest, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 				if err != nil {
 					return err
