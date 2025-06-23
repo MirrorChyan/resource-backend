@@ -275,12 +275,12 @@ func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
 
 	switch info.SrcFileType {
 	case string(types.Zip):
-		err := extractTgzFile(origin, pending)
+		err := extractZipFile(origin, pending)
 		if err != nil {
 			return fmt.Errorf("failed to extract zip file: %w", err)
 		}
 	case string(types.Tgz):
-		err := extractZipFile(origin, pending)
+		err := extractTgzFile(origin, pending)
 		if err != nil {
 			return fmt.Errorf("failed to extract tgz file: %w", err)
 		}
