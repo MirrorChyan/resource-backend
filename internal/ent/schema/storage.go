@@ -30,9 +30,13 @@ func (Storage) Fields() []ent.Field {
 			Optional(),
 		field.String("package_hash_sha256").
 			Optional(),
-		field.String("resource_path").
+		// zip, tgz, etc..
+		field.String("file_type").
 			Optional().
 			Comment("only for full update"),
+		field.Int64("file_size").
+			Default(0).
+			Comment("file size"),
 		field.JSON("file_hashes", map[string]string{}).
 			Optional().
 			Comment("only for full update"),

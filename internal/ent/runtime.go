@@ -43,8 +43,12 @@ func init() {
 	storageDescArch := storageFields[2].Descriptor()
 	// storage.DefaultArch holds the default value on creation for the arch field.
 	storage.DefaultArch = storageDescArch.Default.(string)
+	// storageDescFileSize is the schema descriptor for file_size field.
+	storageDescFileSize := storageFields[6].Descriptor()
+	// storage.DefaultFileSize holds the default value on creation for the file_size field.
+	storage.DefaultFileSize = storageDescFileSize.Default.(int64)
 	// storageDescCreatedAt is the schema descriptor for created_at field.
-	storageDescCreatedAt := storageFields[7].Descriptor()
+	storageDescCreatedAt := storageFields[8].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.
 	storage.DefaultCreatedAt = storageDescCreatedAt.Default.(func() time.Time)
 	versionFields := schema.Version{}.Fields()

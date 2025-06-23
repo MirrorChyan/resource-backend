@@ -1,6 +1,9 @@
 package model
 
-import "github.com/MirrorChyan/resource-backend/internal/ent"
+import (
+	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
+)
 
 type CreateResourceParam struct {
 	ID          string
@@ -78,6 +81,8 @@ type StorageInfoCreatePayload struct {
 	Arch       string
 	Channel    string
 	FileHashes map[string]string
+
+	IncrementalType types.FileType
 }
 
 type IncrementalUpdateInfo struct {
@@ -92,6 +97,8 @@ type PatchTaskExecuteParam struct {
 	TargetOriginPackage  string
 	TargetVersionId      int
 	CurrentVersionId     int
+	TargetFileType       string
+	CurrentFileType      string
 	TargetStorageHashes  map[string]string
 	CurrentStorageHashes map[string]string
 	OS                   string
