@@ -134,12 +134,14 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			channel     = payload.Channel
 			hashes      = payload.FileHashes
 			versionName = payload.VersionName
+			fileType    = payload.IncrementalType
 		)
 
 		err := v.DoProcessStorage(ctx,
 			resourceId,
 			versionId, versionName,
 			channel, system, arch, dest,
+			fileType,
 			hashes,
 		)
 		if err != nil {

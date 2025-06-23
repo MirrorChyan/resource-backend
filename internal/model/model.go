@@ -1,5 +1,7 @@
 package model
 
+import "github.com/MirrorChyan/resource-backend/internal/model/types"
+
 type ValidateCDKRequest struct {
 	CDK      string `json:"cdk"`
 	Resource string `json:"resource"`
@@ -47,4 +49,16 @@ type DistributeInfo struct {
 	Version  string `json:"version,omitempty"`
 	Filesize int64  `json:"filesize,omitempty"`
 	RelPath  string `json:"rel_path"`
+}
+
+type FileDetectResult struct {
+	Valid    bool
+	FileType types.FileType
+}
+
+type PatchInfoTuple struct {
+	SrcPackage   string
+	SrcFileType  string
+	DestPackage  string
+	DestFileType string
 }

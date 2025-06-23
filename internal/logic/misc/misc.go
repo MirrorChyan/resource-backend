@@ -10,6 +10,7 @@ const ResourceKey = "rid"
 
 const (
 	ZipSuffix = ".zip"
+	TgzSuffix = ".tar.gz"
 
 	DefaultResourceName = "resource.zip"
 
@@ -35,6 +36,11 @@ const (
 )
 
 const SniffLen = 4
+
+var (
+	ZipMagicHeader = []byte("PK\x03\x04")
+	TgzMagicHeader = []byte("\x1F\x8B\x08")
+)
 
 var (
 	StorageInfoNotFoundError = errors.New("storage info not found")

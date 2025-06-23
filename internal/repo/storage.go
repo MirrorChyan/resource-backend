@@ -5,6 +5,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 )
 
 type Storage struct {
@@ -17,25 +18,37 @@ func NewStorage(db *Repo) *Storage {
 	}
 }
 
-func (r *Storage) CreateFullUpdateStorage(ctx context.Context, verID int, os, arch, fullUpdatePath, packageSHA256 string, fileHashes map[string]string) (*ent.Storage, error) {
+func (r *Storage) CreateFullUpdateStorage(ctx context.Context, verID int,
+	os, arch, path, hash string, fileType types.FileType,
+	size int64,
+	fileHashes map[string]string,
+) (*ent.Storage, error) {
+
 	return r.db.Storage.Create().
 		SetUpdateType(storage.UpdateTypeFull).
 		SetOs(os).
 		SetArch(arch).
-		SetPackagePath(fullUpdatePath).
-		SetPackageHashSha256(packageSHA256).
+		SetPackagePath(path).
+		SetPackageHashSha256(hash).
+		SetFileType(string(fileType)).
+		SetFileSize(size).
 		SetFileHashes(fileHashes).
 		SetVersionID(verID).
 		Save(ctx)
 }
 
-func (r *Storage) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, verID, oldVerID int, os, arch, incrementalUpdatePath, packageSHA256 string) (*ent.Storage, error) {
+func (r *Storage) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx,
+	verID, oldVerID int, filetype string, filesize int64,
+	os, arch, updatePath, hashes string,
+) (*ent.Storage, error) {
 	return tx.Storage.Create().
 		SetUpdateType(storage.UpdateTypeIncremental).
 		SetOs(os).
 		SetArch(arch).
-		SetPackagePath(incrementalUpdatePath).
-		SetPackageHashSha256(packageSHA256).
+		SetPackagePath(updatePath).
+		SetFileSize(filesize).
+		SetFileType(filetype).
+		SetPackageHashSha256(hashes).
 		SetVersionID(verID).
 		SetOldVersionID(oldVerID).
 		Save(ctx)
