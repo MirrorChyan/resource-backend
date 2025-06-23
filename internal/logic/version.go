@@ -704,7 +704,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	destPackage := filepath.Join(dir, strings.Join([]string{
 		strconv.Itoa(current),
 		types.GetFileSuffix(types.FileType(param.TargetFileType)),
-	}, "."))
+	}, ""))
 
 	tuple := PatchInfoTuple{
 		SrcPackage:   originPackage,

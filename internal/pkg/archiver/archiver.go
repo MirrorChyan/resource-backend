@@ -94,7 +94,7 @@ func UnpackTarGz(src, dest string) error {
 		}
 
 		fpath := filepath.Join(dest, header.Name)
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)) {
 			return fmt.Errorf("illegal file path: %s", fpath)
 		}
 
