@@ -88,7 +88,6 @@ func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
 	vid := val.VersionStorages
 	err = r.db.Storage.Update().Where(storage.HasVersionWith(version.ID(vid))).
 		ClearPackagePath().
-		ClearResourcePath().
 		Exec(ctx)
 	if err != nil {
 		return err
