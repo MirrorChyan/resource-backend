@@ -17,7 +17,7 @@ func CopyFile(src, dst string) error {
 		_ = f.Close()
 	}(source)
 
-	dest, err := os.Create(dst)
+	dest, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}

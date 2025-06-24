@@ -36,6 +36,32 @@ func New(bizCode, httpCode int, message string, internal error) *Error {
 	}
 }
 
+func NewUnexpected(msg string, errs ...error) *Error {
+	var err error
+	if len(errs) != 0 {
+		err = errs[0]
+	}
+	return &Error{
+		bizCode:  -1,
+		message:  msg,
+		httpCode: http.StatusInternalServerError,
+		internal: err,
+	}
+}
+
+func NewUnchecked(msg string, errs ...error) *Error {
+	var err error
+	if len(errs) != 0 {
+		err = errs[0]
+	}
+	return &Error{
+		bizCode:  -1,
+		message:  msg,
+		httpCode: http.StatusBadRequest,
+		internal: err,
+	}
+}
+
 func (e *Error) Error() string {
 
 	if e.internal != nil {

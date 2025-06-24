@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
@@ -211,7 +212,15 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	}
 
 	if ut == types.UpdateIncremental {
-		filename = misc.DefaultResourceName
+		switch {
+		case strings.HasSuffix(filename, misc.ZipSuffix):
+			filename = strings.Join([]string{misc.DefaultResourceName, misc.ZipSuffix}, "")
+		case strings.HasSuffix(filename, misc.TgzSuffix):
+			filename = strings.Join([]string{misc.DefaultResourceName, misc.TgzSuffix}, "")
+		default:
+			text := fmt.Sprintf("incremental resource %s file ext not supported", filename)
+			return nil, errs.NewUnchecked(text)
+		}
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
@@ -222,21 +231,39 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 }
 
 // doVerifyRequiredFileType The file must be in zip format
-func (l *VersionLogic) doVerifyRequiredFileType(dest string) bool {
+func (l *VersionLogic) doVerifyRequiredFileType(dest string) FileDetectResult {
 	f, err := os.Open(dest)
 	if err != nil {
 		l.logger.Error("Failed to open file please check file",
 			zap.String("file", dest),
 			zap.Error(err),
 		)
-		return false
+		return FileDetectResult{
+			Valid: false,
+		}
 	}
 	defer func(f *os.File) {
 		_ = f.Close()
 	}(f)
 	sniff := make([]byte, misc.SniffLen)
 	_, _ = f.Read(sniff)
-	return strings.HasSuffix(dest, misc.ZipSuffix) && bytes.HasPrefix(sniff, []byte("PK\x03\x04"))
+	if strings.HasSuffix(dest, misc.ZipSuffix) && bytes.HasPrefix(sniff, misc.ZipMagicHeader) {
+		return FileDetectResult{
+			Valid:    true,
+			FileType: types.Zip,
+		}
+	}
+
+	if strings.HasSuffix(dest, misc.TgzSuffix) && bytes.HasPrefix(sniff, misc.TgzMagicHeader) {
+		return FileDetectResult{
+			Valid:    true,
+			FileType: types.Tgz,
+		}
+	}
+
+	return FileDetectResult{
+		Valid: false,
+	}
 }
 
 func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param CreateVersionCallBackParam) error {
@@ -314,8 +341,10 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		dest          = source
 		hashes        = make(map[string]string)
 	)
+	var fileType types.FileType
 
 	if isIncremental {
+
 		var aspect = func() error {
 			// make sure the storage dir exists
 			dest = filepath.Join(l.storageLogic.RootDir, key)
@@ -334,7 +363,8 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 			l.logger.Debug("end CopyFile")
 
-			if !l.doVerifyRequiredFileType(dest) {
+			val := l.doVerifyRequiredFileType(dest)
+			if !val.Valid {
 				return misc.NotAllowedFileTypeError
 			}
 			flat := l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
@@ -355,14 +385,30 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 			l.logger.Debug("start unpack resource",
 				zap.String("save dir", flat),
+				zap.String("filetype", string(val.FileType)),
 			)
-			if err = archiver.UnpackZip(dest, flat); err != nil {
-				l.logger.Error("Failed to unpack file",
-					zap.String("version name", versionName),
-					zap.Error(err),
-				)
-				return err
+
+			fileType = val.FileType
+
+			switch val.FileType {
+			case types.Zip:
+				if err = archiver.UnpackZip(dest, flat); err != nil {
+					l.logger.Error("Failed to unpack file",
+						zap.String("version name", versionName),
+						zap.Error(err),
+					)
+					return err
+				}
+			case types.Tgz:
+				if err = archiver.UnpackTarGz(dest, flat); err != nil {
+					l.logger.Error("Failed to unpack file",
+						zap.String("version name", versionName),
+						zap.Error(err),
+					)
+					return err
+				}
 			}
+
 			l.logger.Debug("end unpack resource",
 				zap.String("save dir", flat),
 			)
@@ -393,14 +439,15 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}
 
 	var payload = StorageInfoCreatePayload{
-		ResourceId:  resourceId,
-		Dest:        dest,
-		VersionId:   versionId,
-		VersionName: versionName,
-		OS:          system,
-		Arch:        arch,
-		Channel:     channel,
-		FileHashes:  hashes,
+		ResourceId:      resourceId,
+		Dest:            dest,
+		VersionId:       versionId,
+		VersionName:     versionName,
+		OS:              system,
+		Arch:            arch,
+		Channel:         channel,
+		FileHashes:      hashes,
+		IncrementalType: fileType,
 	}
 
 	buf, err := sonic.Marshal(payload)
@@ -439,17 +486,21 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 }
 
 func (l *VersionLogic) DoProcessStorage(ctx context.Context,
-	resourceId string, versionId int, versionName string,
-	channel, system, arch, dest string,
+	resourceId string, versionId int,
+	versionName, channel, system, arch, dest string,
+	fileType types.FileType,
 	hashes map[string]string,
 ) error {
 
-	ph, err := l.doCalculatePackageHash(dest, resourceId, system, arch)
+	ph, size, err := l.doCalculatePackageHash(dest, resourceId, system, arch)
 	if err != nil {
 		return err
 	}
 
-	_, err = l.storageLogic.CreateFullUpdateStorage(ctx, versionId, system, arch, dest, ph, hashes)
+	_, err = l.storageLogic.CreateFullUpdateStorage(ctx, versionId,
+		system, arch, dest, fileType,
+		ph, size, hashes,
+	)
 	if err != nil {
 		l.logger.Error("Failed to create storage",
 			zap.Error(err),
@@ -463,13 +514,10 @@ func (l *VersionLogic) DoProcessStorage(ctx context.Context,
 	return nil
 }
 
-func (l *VersionLogic) doCalculatePackageHash(
-	dest, resourceId string,
-	system, arch string,
-) (string, error) {
+func (l *VersionLogic) doCalculatePackageHash(dest, resourceId, system, arch string) (string, int64, error) {
 	stat, err := os.Stat(dest)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	l.logger.Debug("start calculate package hash",
@@ -485,14 +533,14 @@ func (l *VersionLogic) doCalculatePackageHash(
 			zap.String("arch", arch),
 			zap.Error(err),
 		)
-		return "", err
+		return "", 0, err
 	}
 
 	l.logger.Debug("end calculate package hash",
 		zap.String("package path", dest),
 	)
 
-	return hash, nil
+	return hash, stat.Size(), nil
 }
 
 func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, versionName, channel string) (*ent.Version, error) {
@@ -606,6 +654,8 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 		TargetOriginPackage:  targetInfo.PackagePath,
 		TargetVersionId:      target,
 		CurrentVersionId:     current,
+		TargetFileType:       targetInfo.FileType,
+		CurrentFileType:      currentInfo.FileType,
 		TargetStorageHashes:  targetInfo.FileHashes,
 		CurrentStorageHashes: currentInfo.FileHashes,
 		OS:                   system,
@@ -629,12 +679,12 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, param PatchTaskExecuteParam) error {
 
 	var (
-		resourceId = param.ResourceId
-		target     = param.TargetVersionId
-		current    = param.CurrentVersionId
-		system     = param.OS
-		arch       = param.Arch
-		origin     = param.TargetOriginPackage
+		resourceId    = param.ResourceId
+		target        = param.TargetVersionId
+		current       = param.CurrentVersionId
+		system        = param.OS
+		arch          = param.Arch
+		originPackage = param.TargetOriginPackage
 	)
 
 	changes, err := patcher.CalculateDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
@@ -647,8 +697,22 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 
 	dir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch)
 
-	generate, err := patcher.GenerateV2(strconv.Itoa(current), origin, dir, changes)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create target directory: %w", err)
+	}
 
+	destPackage := filepath.Join(dir, strings.Join([]string{
+		strconv.Itoa(current),
+		types.GetFileSuffix(types.FileType(param.TargetFileType)),
+	}, ""))
+
+	tuple := PatchInfoTuple{
+		SrcPackage:  originPackage,
+		DestPackage: destPackage,
+		FileType:    param.TargetFileType,
+	}
+
+	err = patcher.GenerateV2(tuple, changes)
 	if err != nil {
 		l.logger.Error("Failed to generate patch package",
 			zap.Error(err),
@@ -656,14 +720,12 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	source := filepath.Join(dir, generate)
-
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) (err error) {
 
 		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
 			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
 				// Code before the actual rollback.
-				if err := os.RemoveAll(source); err != nil {
+				if err := os.RemoveAll(destPackage); err != nil {
 					l.logger.Error("Failed to remove patch package",
 						zap.Error(err),
 					)
@@ -674,7 +736,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			})
 		})
 
-		hashes, err := filehash.Calculate(source)
+		hashes, err := filehash.Calculate(destPackage)
 		if err != nil {
 			l.logger.Error("Failed to calculate incremental update package hash",
 				zap.String("resource id", resourceId),
@@ -686,7 +748,12 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			)
 			return err
 		}
-		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx, target, current, system, arch, source, hashes)
+		stat, _ := os.Stat(destPackage)
+
+		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx,
+			target, current, tuple.FileType, stat.Size(),
+			system, arch, destPackage, hashes,
+		)
 		if err != nil {
 			l.logger.Error("Failed to create incremental update storage",
 				zap.Error(err),
@@ -704,12 +771,12 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
-	dest := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(source))
+	dest := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(destPackage))
 	_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
-	err = fileops.CopyFile(source, dest)
+	err = fileops.CopyFile(destPackage, dest)
 	if err != nil {
 		l.logger.Error("failed to copy local to oss",
-			zap.String("source", source),
+			zap.String("source", destPackage),
 			zap.String("destination", dest),
 			zap.Error(err),
 		)

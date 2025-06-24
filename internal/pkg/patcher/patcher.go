@@ -1,8 +1,12 @@
 package patcher
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"compress/gzip"
 	"fmt"
+	"github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"github.com/bytedance/sonic"
 	"golang.org/x/sync/errgroup"
@@ -10,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
@@ -29,7 +34,7 @@ type Change struct {
 	ChangeType ChangeType `json:"change_type"`
 }
 
-func groupChangesByType(changes []Change) map[string][]string {
+func getChangesInfo(changes []Change) map[string][]string {
 	changesMap := make(map[string][]string)
 
 	for _, change := range changes {
@@ -102,60 +107,64 @@ func (t transferInfo) transfer() error {
 	return err
 }
 
-func GenerateV2(patchName, origin, dest string, changes []Change) (string, error) {
-	// create temp root dir
-	root, err := os.MkdirTemp(os.TempDir(), "process-temp")
+func extractTgzFile(origin string, pending map[string]string) error {
+	file, err := os.Open(origin)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp root directory: %w", err)
+		return err
 	}
-	// remove temp root dir
-	defer func(p string) {
-		go func(p string) {
-			_ = os.RemoveAll(p)
-		}(p)
-	}(root)
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
-	if err := os.MkdirAll(dest, os.ModePerm); err != nil {
-		return "", fmt.Errorf("failed to create target directory: %w", err)
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return err
 	}
+	defer func(gzr *gzip.Reader) {
+		_ = gzr.Close()
+	}(gzr)
 
-	var (
-		pending  = make(map[string]string)
-		fileList []transferInfo
-	)
-
-	for _, change := range changes {
-
-		switch change.ChangeType {
-		case Modified, Added:
-
-			var (
-				tmp = filepath.Join(root, change.Filename)
-				dir = filepath.Dir(tmp)
-			)
-			_, err := os.Stat(dir)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					return "", fmt.Errorf("failed to stat temp file directory: %w", err)
-				}
-				if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-					return "", fmt.Errorf("failed to create temp file directory: %w", err)
-				}
+	reader := tar.NewReader(gzr)
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if header.Typeflag == tar.TypeReg {
+			key := header.Name
+			if strings.HasPrefix(key, "./") {
+				key = key[2:]
 			}
-			pending[change.Filename] = tmp
-		case Deleted:
-			// do nothing
-		case Unchanged:
-			// do nothing
-		default:
-			return "", fmt.Errorf("unknown change type: %d", change.ChangeType)
+			if dest, ok := pending[key]; key != "" && ok {
+				out, err := os.OpenFile(dest, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+				if err != nil {
+					return err
+				}
+
+				buf := bufpool.GetBuffer()
+				_, err = io.CopyBuffer(out, reader, buf)
+
+				bufpool.PutBuffer(buf)
+				_ = out.Close()
+			}
+
 		}
 	}
 
+	return nil
+}
+
+func extractZipFile(origin string, pending map[string]string) error {
+	var fileList = make([]transferInfo, 0, len(pending))
 	reader, err := zip.OpenReader(origin)
+
 	if err != nil {
-		return "", err
+		return err
 	}
+
 	defer func(r *zip.ReadCloser) {
 		_ = r.Close()
 	}(reader)
@@ -192,18 +201,16 @@ func GenerateV2(patchName, origin, dest string, changes []Change) (string, error
 		})
 	}
 
-	if err := wg.Wait(); err != nil {
-		return "", err
-	}
+	return wg.Wait()
+}
 
-	var (
-		p    = filepath.Join(root, "changes.json")
-		data = groupChangesByType(changes)
-	)
+func appendChangesRecord(root string, changes []Change) error {
+	path := filepath.Join(root, "changes.json")
+	data := getChangesInfo(changes)
 
-	f, err := os.Create(p)
+	f, err := os.Create(path)
 	if err != nil {
-		return "", fmt.Errorf("failed to create changes.json file: %w", err)
+		return fmt.Errorf("failed to create changes.json file: %w", err)
 	}
 	defer func(f *os.File) {
 		_ = f.Close()
@@ -211,21 +218,93 @@ func GenerateV2(patchName, origin, dest string, changes []Change) (string, error
 
 	buf, err := sonic.Marshal(data)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal changes to JSON: %w", err)
+		return fmt.Errorf("failed to marshal changes to JSON: %w", err)
 	}
 
-	if err := os.WriteFile(p, buf, 0644); err != nil {
-		return "", fmt.Errorf("failed to write JSON to file: %w", err)
+	if err := os.WriteFile(path, buf, 0644); err != nil {
+		return fmt.Errorf("failed to write JSON to file: %w", err)
 	}
+	return nil
+}
+
+func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
 
 	var (
-		archiveName = fmt.Sprintf("%s.zip", patchName)
-		archivePath = filepath.Join(dest, archiveName)
+		origin = info.SrcPackage
+		dest   = info.DestPackage
 	)
 
-	if err = archiver.CompressToZip(root, archivePath); err != nil {
-		return "", err
+	// create temp root dir
+	root, err := os.MkdirTemp(os.TempDir(), "process-temp")
+	if err != nil {
+		return fmt.Errorf("failed to create temp root directory: %w", err)
+	}
+	// remove temp root dir
+	defer func(p string) {
+		go func(p string) {
+			_ = os.RemoveAll(p)
+		}(p)
+	}(root)
+
+	// inner file -> process full path
+	var pending = make(map[string]string)
+
+	for _, change := range changes {
+
+		switch change.ChangeType {
+		case Modified, Added:
+
+			var (
+				tmp = filepath.Join(root, change.Filename)
+				dir = filepath.Dir(tmp)
+			)
+			_, err := os.Stat(dir)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					return fmt.Errorf("failed to stat temp file directory: %w", err)
+				}
+				if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+					return fmt.Errorf("failed to create temp file directory: %w", err)
+				}
+			}
+			pending[change.Filename] = tmp
+		case Deleted:
+			// do nothing
+		case Unchanged:
+			// do nothing
+		default:
+			return fmt.Errorf("unknown change type: %d", change.ChangeType)
+		}
 	}
 
-	return archiveName, nil
+	switch info.FileType {
+	case string(types.Zip):
+		err := extractZipFile(origin, pending)
+		if err != nil {
+			return fmt.Errorf("failed to extract zip file: %w", err)
+		}
+	case string(types.Tgz):
+		err := extractTgzFile(origin, pending)
+		if err != nil {
+			return fmt.Errorf("failed to extract tgz file: %w", err)
+		}
+	}
+
+	err = appendChangesRecord(root, changes)
+	if err != nil {
+		return err
+	}
+
+	switch info.FileType {
+	case string(types.Zip):
+		if err = archiver.CompressToZip(root, dest); err != nil {
+			return err
+		}
+	case string(types.Tgz):
+		if err = archiver.CompressToTarGz(root, dest); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
