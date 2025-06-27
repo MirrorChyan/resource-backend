@@ -15,6 +15,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 type StorageLogic struct {
@@ -149,16 +151,30 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 		)
 		return err
 	}
+	var wg sync.WaitGroup
+	wg.Add(len(resource))
 	for _, val := range resource {
-		if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
-			je := errors.Join(err...)
-			l.logger.Error("failed to purge resource",
-				zap.String("resource id", val.ID),
-				zap.Error(je),
-			)
-			go doErrorNotify(l.logger, je.Error())
-		}
+		go func() {
+			defer func() {
+				if e := recover(); e != nil {
+					l.logger.Error("failed to purge resource",
+						zap.String("resource id", val.ID),
+						zap.Any("panic error", e),
+					)
+				}
+				wg.Done()
+			}()
+			if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
+				je := errors.Join(err...)
+				l.logger.Error("failed to purge resource",
+					zap.String("resource id", val.ID),
+					zap.Error(je),
+				)
+				doErrorNotify(l.logger, strings.Join([]string{val.ID, je.Error()}, ","))
+			}
+		}()
 	}
+	wg.Wait()
 	return nil
 }
 
