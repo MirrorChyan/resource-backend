@@ -1,7 +1,8 @@
 package misc
 
 import (
-	"errors"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/gofiber/fiber/v2"
 	"sync"
 	"sync/atomic"
 )
@@ -24,6 +25,10 @@ const (
 	ProcessStoragePendingKey = "ProcessStoragePending"
 )
 
+const (
+	ProcessFlag = "1"
+)
+
 // used by task
 const (
 	ProcessStorageTask = "storage"
@@ -43,11 +48,11 @@ var (
 )
 
 var (
-	StorageInfoNotFoundError = errors.New("storage info not found")
+	StorageInfoNotFoundError = errs.NewUnchecked("storage info not found")
 
-	NotAllowedFileTypeError = errors.New("not allowed file type")
+	NotAllowedFileTypeError = errs.NewUnchecked("not allowed file type")
 
-	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
+	ResourceLimitError = errs.NewUnchecked("your cdkey has reached the most downloads today").WithHttpCode(fiber.StatusForbidden)
 )
 
 var (

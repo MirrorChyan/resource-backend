@@ -108,7 +108,6 @@ func (e *Error) Wrap(err error) *Error {
 }
 
 func (e *Error) WithDetails(details any) *Error {
-
 	return &Error{
 		bizCode:  e.bizCode,
 		httpCode: e.httpCode,
@@ -116,4 +115,9 @@ func (e *Error) WithDetails(details any) *Error {
 		details:  details,
 		internal: e.internal,
 	}
+}
+
+func (e *Error) WithHttpCode(code int) *Error {
+	e.httpCode = code
+	return e
 }

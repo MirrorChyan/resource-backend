@@ -196,7 +196,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	val, err := l.rdb.Get(ctx, mk).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, err
-	} else if err == nil || val == "1" {
+	} else if err == nil || val == misc.ProcessFlag {
 		return nil, errs.ErrResourceVersionStorageProcessing
 	}
 
@@ -324,7 +324,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	mk := strings.Join([]string{misc.ProcessStoragePendingKey,
 		resourceId, strconv.Itoa(versionId), channel, system, arch,
 	}, ":")
-	result := l.rdb.SetNX(ctx, mk, "1", time.Hour*5)
+	result := l.rdb.SetNX(ctx, mk, misc.ProcessFlag, time.Hour*5)
 	if err := result.Err(); err != nil {
 		return err
 	}

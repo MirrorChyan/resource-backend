@@ -415,9 +415,6 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		if errors.Is(err, redis.Nil) {
 			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
 		}
-		if errors.Is(err, ResourceLimitError) {
-			return c.Status(fiber.StatusForbidden).SendString(err.Error())
-		}
 		return err
 	}
 	h.logger.Info("RedirectToDownload",
