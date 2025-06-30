@@ -230,7 +230,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	return token, err
 }
 
-// doVerifyRequiredFileType The file must be in zip format
+// doVerifyRequiredFileType The file must be in zip or tgz format
 func (l *VersionLogic) doVerifyRequiredFileType(dest string) FileDetectResult {
 	f, err := os.Open(dest)
 	if err != nil {
