@@ -11,12 +11,12 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/bytedance/sonic"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 type StorageLogic struct {
@@ -151,10 +151,9 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 		)
 		return err
 	}
-	var wg sync.WaitGroup
-	wg.Add(len(resource))
+	var wg errgroup.Group
 	for _, val := range resource {
-		go func() {
+		wg.Go(func() error {
 			defer func() {
 				if e := recover(); e != nil {
 					l.logger.Error("failed to purge resource",
@@ -162,7 +161,6 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 						zap.Any("panic error", e),
 					)
 				}
-				wg.Done()
 			}()
 			if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
 				je := errors.Join(err...)
@@ -171,11 +169,13 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 					zap.Error(je),
 				)
 				doErrorNotify(l.logger, strings.Join([]string{val.ID, je.Error()}, ","))
+				return je
 			}
-		}()
+			return nil
+		})
 	}
-	wg.Wait()
-	return nil
+
+	return wg.Wait()
 }
 
 func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) []error {
