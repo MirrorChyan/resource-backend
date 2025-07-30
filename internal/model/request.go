@@ -11,7 +11,6 @@ type ListResourceRequest struct {
 	Sort   string `query:"sort"`
 	Cursor string `query:"cursor"`
 	Limit  int    `query:"limit"`
-	Order  string `query:"order"`
 }
 
 type CreateVersionRequest struct {

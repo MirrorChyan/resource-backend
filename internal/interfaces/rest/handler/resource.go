@@ -65,7 +65,7 @@ func (h *ResourceHandler) List(c *fiber.Ctx) error {
 		return err
 	}
 
-	order := sortorder.Parse(req.Order)
+	order := sortorder.Parse(req.Sort)
 
 	var lastCursor *cursor.Cursor
 	if req.Cursor != "" {
