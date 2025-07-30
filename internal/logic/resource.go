@@ -64,3 +64,17 @@ func (l *ResourceLogic) Create(ctx context.Context, param CreateResourceParam) (
 func (l *ResourceLogic) Exists(ctx context.Context, id string) (bool, error) {
 	return l.resourceRepo.CheckResourceExistsByID(ctx, id)
 }
+
+func (l *ResourceLogic) List(ctx context.Context, param *ListResourceParam) (*ListResourceResult, error) {
+
+	list, currentCursor, hasMore, err := l.resourceRepo.ListResource(ctx, param.Cursor, param.Limit, param.Order)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListResourceResult{
+		List:    list,
+		Cursor:  currentCursor,
+		HasMore: hasMore,
+	}, nil
+}

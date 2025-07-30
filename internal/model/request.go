@@ -7,6 +7,13 @@ type CreateResourceRequest struct {
 	UpdateType  string `json:"update_type" validate:"omitempty,oneof=full incremental"`
 }
 
+type ListResourceRequest struct {
+	Sort   string `query:"sort"`
+	Cursor string `query:"cursor"`
+	Limit  int    `query:"limit"`
+	Order  string `query:"order"`
+}
+
 type CreateVersionRequest struct {
 	Name     string `json:"name" form:"name" validate:"required"`
 	OS       string `json:"os" form:"os"`

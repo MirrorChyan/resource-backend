@@ -1,9 +1,24 @@
 package model
 
+import "time"
+
 type CreateResourceResponseData struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+}
+
+type ResourceResponseItem struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ListResourceResponseData struct {
+	List    []*ResourceResponseItem `json:"list"`
+	Cursor  string                  `json:"cursor"`
+	HasMore bool                    `json:"has_more"`
 }
 
 type CreateVersionResponseData struct {
