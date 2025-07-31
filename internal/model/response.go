@@ -37,9 +37,10 @@ type QueryLatestResponseData struct {
 	OS            string `json:"os"`
 	Arch          string `json:"arch"`
 	// UpdateType is the type of the update, it can be "full" or "incremental"
-	UpdateType     string `json:"update_type,omitempty"`
-	CustomData     string `json:"custom_data,omitempty"`
-	ReleaseNote    string `json:"release_note"`
-	Filesize       int64  `json:"filesize,omitempty"`
-	CDKExpiredTime int64  `json:"cdk_expired_time,omitempty"`
+	UpdateType     string    `json:"update_type,omitempty"`
+	CustomData     string    `json:"custom_data,omitempty"`
+	ReleaseNote    string    `json:"release_note"`
+	Filesize       int64     `json:"filesize,omitempty"`
+	CDKExpiredTime int64     `json:"cdk_expired_time,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 }
