@@ -119,14 +119,18 @@ var (
 	TotalArch    = []string{"", "386", "arm64", "amd64", "arm"}
 )
 
-var LIT = &sync.Map{}
+var lit = &sync.Map{}
 
-func CompareIfAbsent(m *sync.Map, key string) *atomic.Int32 {
-	value, ok := m.Load(key)
+func CompareIfAbsentInner(key string) *atomic.Int32 {
+	value, ok := lit.Load(key)
 	if ok {
 		return value.(*atomic.Int32)
 	}
-
-	r, _ := m.LoadOrStore(key, &atomic.Int32{})
-	return r.(*atomic.Int32)
+	val := &atomic.Int32{}
+	swapped := lit.CompareAndSwap(key, nil, val)
+	if swapped {
+		return val
+	}
+	value, _ = lit.Load(key)
+	return value.(*atomic.Int32)
 }

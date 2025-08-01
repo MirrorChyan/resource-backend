@@ -386,7 +386,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
 	var (
-		counter = CompareIfAbsent(LIT, resourceId)
+		counter = CompareIfAbsentInner(resourceId)
 		con     = config.GConfig.Extra.Concurrency
 		rf      = func() {
 			counter.Add(-1)
