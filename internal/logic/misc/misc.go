@@ -3,8 +3,6 @@ package misc
 import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/gofiber/fiber/v2"
-	"sync"
-	"sync/atomic"
 )
 
 const ResourceKey = "rid"
@@ -118,19 +116,3 @@ var (
 	TotalOs      = []string{"", "windows", "linux", "darwin", "android"}
 	TotalArch    = []string{"", "386", "arm64", "amd64", "arm"}
 )
-
-var lit = &sync.Map{}
-
-func CompareIfAbsentInner(key string) *atomic.Int32 {
-	value, ok := lit.Load(key)
-	if ok {
-		return value.(*atomic.Int32)
-	}
-	val := &atomic.Int32{}
-	swapped := lit.CompareAndSwap(key, nil, val)
-	if swapped {
-		return val
-	}
-	value, _ = lit.Load(key)
-	return value.(*atomic.Int32)
-}
