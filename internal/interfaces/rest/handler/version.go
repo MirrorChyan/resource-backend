@@ -329,14 +329,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.JSON(resp)
 	}
 
-	release, limited := h.doLimitByConfig(resourceId)
-	defer release()
-	if limited {
-		data.VersionName = param.CurrentVersion
-		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
-		return c.JSON(resp)
-	}
-
 	ts, err := h.doValidateCDK(param, resourceId, ip)
 	if err != nil {
 		var biz *errs.Error
@@ -382,26 +374,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.Url = url
 
 	return c.JSON(response.Success(data))
-}
-
-func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
-	var (
-		counter = CompareIfAbsentInner(resourceId)
-		con     = config.GConfig.Extra.Concurrency
-		rf      = func() {
-			counter.Add(-1)
-		}
-		cv = counter.Add(1)
-	)
-
-	if con != 0 {
-		if cv > con {
-			h.logger.Warn("limit by", zap.Int32("concurrency", cv))
-			return rf, true
-		}
-	}
-
-	return rf, false
 }
 
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
