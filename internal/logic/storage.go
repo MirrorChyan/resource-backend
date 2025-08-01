@@ -11,10 +11,12 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/bytedance/sonic"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type StorageLogic struct {
@@ -149,17 +151,31 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 		)
 		return err
 	}
+	var wg errgroup.Group
 	for _, val := range resource {
-		if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
-			je := errors.Join(err...)
-			l.logger.Error("failed to purge resource",
-				zap.String("resource id", val.ID),
-				zap.Error(je),
-			)
-			go doErrorNotify(l.logger, je.Error())
-		}
+		wg.Go(func() error {
+			defer func() {
+				if e := recover(); e != nil {
+					l.logger.Error("failed to purge resource",
+						zap.String("resource id", val.ID),
+						zap.Any("panic error", e),
+					)
+				}
+			}()
+			if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
+				je := errors.Join(err...)
+				l.logger.Error("failed to purge resource",
+					zap.String("resource id", val.ID),
+					zap.Error(je),
+				)
+				doErrorNotify(l.logger, strings.Join([]string{val.ID, je.Error()}, ","))
+				return je
+			}
+			return nil
+		})
 	}
-	return nil
+
+	return wg.Wait()
 }
 
 func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) []error {

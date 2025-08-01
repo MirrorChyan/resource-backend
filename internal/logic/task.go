@@ -100,15 +100,16 @@ func initScheduler(l *zap.Logger) {
 
 func doHandlePurge(l *zap.Logger, v *VersionLogic) func(context.Context, *asynq.Task) error {
 	return func(ctx context.Context, task *asynq.Task) error {
-		l.Warn("start purge old storages")
+		cnt, _ := asynq.GetRetryCount(ctx)
+		l.Warn("start purge old storages with", zap.Int("retry cnt", cnt))
 		err := v.storageLogic.ClearOldStorages(ctx)
 		if err != nil {
 			l.Error("failed to purge old storages",
 				zap.Error(err),
 			)
+			return err
 		}
 		l.Warn("end purge old storages")
-		// ignore error
 		return nil
 	}
 }
