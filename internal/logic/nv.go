@@ -80,7 +80,10 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 	var (
 		targetVersion  = strconv.Itoa(targetInfo.VersionId)
 		currentVersion = strconv.Itoa(currentVersionId)
-		key            = strings.Join([]string{misc.GenerateTagKey, resourceId, targetVersion, currentVersion}, ":")
+		key            = strings.Join([]string{misc.GenerateTagKey,
+			strings.Join([]string{resourceId, targetInfo.OS, targetInfo.Arch}, "-"),
+			targetVersion, currentVersion,
+		}, ":")
 	)
 
 	l.logger.Info("incremental fallback to full update",
