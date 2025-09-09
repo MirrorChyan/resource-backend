@@ -340,6 +340,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 
 	if latest.VersionName == currentVersion {
 		data.ReleaseNote = "placeholder"
+		data.CDKExpiredTime = ts
 		resp := response.Success(data, "current version is latest")
 		return c.JSON(resp)
 	}
