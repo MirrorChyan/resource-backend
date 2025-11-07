@@ -2,14 +2,15 @@ package filehash
 
 import (
 	"encoding/hex"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
-	"github.com/minio/sha256-simd"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync/atomic"
+
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
+	"github.com/minio/sha256-simd"
+	"golang.org/x/sync/errgroup"
 )
 
 func Calculate(filePath string) (string, error) {

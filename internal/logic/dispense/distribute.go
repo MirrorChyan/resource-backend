@@ -3,14 +3,15 @@ package dispense
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/ksuid"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type DistributeLogic struct {

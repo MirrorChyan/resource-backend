@@ -5,17 +5,18 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/model"
-	"github.com/MirrorChyan/resource-backend/internal/model/types"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
-	"github.com/bytedance/sonic"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
+
+	"github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
+	"github.com/bytedance/sonic"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 )

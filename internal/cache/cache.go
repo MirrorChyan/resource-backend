@@ -1,9 +1,10 @@
 package cache
 
 import (
+	"time"
+
 	"github.com/dgraph-io/ristretto/v2"
 	"github.com/golang/groupcache/singleflight"
-	"time"
 )
 
 type Cache[K string, V any] struct {

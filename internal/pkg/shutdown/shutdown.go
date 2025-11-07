@@ -1,10 +1,11 @@
 package shutdown
 
 import (
-	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"go.uber.org/zap"
 )
 
 func GracefulStop(stop func()) {
