@@ -1054,9 +1054,9 @@ func (l *VersionLogic) GetDownloadInfo(ctx context.Context, rk string) (map[stri
 		// 只要两种其他的先留着
 		switch ext {
 		case misc.ZipSuffix:
-			contentType = "application/zip"
+			contentType = misc.ContentTypeZip
 		case misc.TgzSuffix:
-			contentType = "application/gzip"
+			contentType = misc.ContentTypeTarGz
 		}
 	}
 	return map[string]string{

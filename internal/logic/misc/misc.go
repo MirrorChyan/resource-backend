@@ -16,6 +16,11 @@ const (
 	DispensePrefix = "dispense"
 )
 
+const (
+	ContentTypeZip   = "application/zip"
+	ContentTypeTarGz = "application/x-gtar"
+)
+
 // used by diff
 const (
 	GenerateTagKey           = "generate"
