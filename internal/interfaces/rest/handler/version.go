@@ -114,6 +114,9 @@ func (h *VersionHandler) Register(r fiber.Router) {
 }
 
 func (h *VersionHandler) bindRequiredParams(os, arch, channel *string) error {
+	*os = strings.ToLower(*os)
+	*arch = strings.ToLower(*arch)
+	*channel = strings.ToLower(*channel)
 	if o, ok := OsMap[*os]; !ok {
 		return errs.ErrResourceInvalidOS
 	} else {
@@ -301,9 +304,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		resourceId     = param.ResourceID
 		currentVersion = param.CurrentVersion
 		cdk            = param.CDK
+		system         = param.OS
+		arch           = param.Arch
+		channel        = param.Channel
 	)
-
-	system, arch, channel := lowerUpdateParamTuple(param)
 
 	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
 	if err != nil {
@@ -375,12 +379,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.Url = url
 
 	return c.JSON(response.Success(data))
-}
-
-func lowerUpdateParamTuple(param *GetLatestVersionRequest) (string, string, string) {
-	return strings.ToLower(param.OS),
-		strings.ToLower(param.Arch),
-		strings.ToLower(param.Channel)
 }
 
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
