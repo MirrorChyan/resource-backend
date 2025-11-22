@@ -101,6 +101,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 
 	r.Get("/resources/:rid/latest", dau, h.GetLatest)
 	r.Get("/resources/download/:key", h.RedirectToDownload)
+	r.Head("/resources/download/:key", h.HeadDownloadInfo)
 
 	// For Developer
 	versions := r.Group("/resources/:rid/versions")
@@ -298,12 +299,11 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		ctx            = c.UserContext()
 		ip             = c.IP()
 		resourceId     = param.ResourceID
-		system         = param.OS
-		arch           = param.Arch
-		channel        = param.Channel
 		currentVersion = param.CurrentVersion
 		cdk            = param.CDK
 	)
+
+	system, arch, channel := lowerUpdateParamTuple(param)
 
 	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
 	if err != nil {
@@ -315,8 +315,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		VersionNumber: latest.VersionNumber,
 		ReleaseNote:   latest.ReleaseNote,
 		Channel:       channel,
-		OS:            param.OS,
-		Arch:          param.Arch,
+		OS:            system,
+		Arch:          arch,
 	}
 
 	h.collect(resourceId, currentVersion, ip)
@@ -377,6 +377,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	return c.JSON(response.Success(data))
 }
 
+func lowerUpdateParamTuple(param *GetLatestVersionRequest) (string, string, string) {
+	return strings.ToLower(param.OS),
+		strings.ToLower(param.Arch),
+		strings.ToLower(param.Channel)
+}
+
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 	var (
 		rk  = c.Params("key")
@@ -395,6 +401,27 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		zap.String("download url", url),
 	)
 	return c.Redirect(url)
+}
+
+func (h *VersionHandler) HeadDownloadInfo(c *fiber.Ctx) error {
+	var (
+		rk  = c.Params("key")
+		ctx = c.UserContext()
+	)
+
+	info, err := h.versionLogic.GetDownloadInfo(ctx, rk)
+	if err != nil {
+		h.logger.Error("Failed to get download info",
+			zap.String("distribute key", rk),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	for k, v := range info {
+		c.Response().Header.Set(k, v)
+	}
+	return nil
 }
 
 func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {

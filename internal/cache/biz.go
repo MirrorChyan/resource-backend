@@ -2,9 +2,10 @@ package cache
 
 import (
 	"context"
-	"github.com/MirrorChyan/resource-backend/internal/model"
 	"strings"
 	"time"
+
+	"github.com/MirrorChyan/resource-backend/internal/model"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/redis/go-redis/v9"

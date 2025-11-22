@@ -1,9 +1,10 @@
 package fileops
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"io"
 	"os"
+
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 
 	"go.uber.org/zap"
 )

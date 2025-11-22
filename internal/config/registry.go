@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/hashicorp/consul/api"
-	"go.uber.org/zap"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/hashicorp/consul/api"
+	"go.uber.org/zap"
 )
 
 const ServiceName = "resource-backend"

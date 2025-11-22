@@ -2,9 +2,10 @@ package application
 
 import (
 	"context"
+	"time"
+
 	"github.com/MirrorChyan/resource-backend/internal/pkg/shutdown"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Adapter interface {

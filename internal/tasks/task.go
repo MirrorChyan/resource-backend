@@ -1,9 +1,10 @@
 package tasks
 
 import (
+	"log"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/hibiken/asynq"
-	"log"
 )
 
 type TaskQueue struct {

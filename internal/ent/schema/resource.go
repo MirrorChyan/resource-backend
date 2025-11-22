@@ -1,8 +1,9 @@
 package schema
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"time"
+
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"

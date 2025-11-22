@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+
 	"github.com/MirrorChyan/resource-backend/internal/application"
 	"github.com/MirrorChyan/resource-backend/internal/interfaces/rest"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
-	. "github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	_ "github.com/MirrorChyan/resource-backend/internal/pkg/banner"
@@ -69,6 +70,6 @@ func main() {
 
 func setUpConfigAndLog() {
 	// in the full life cycle
-	InitGlobalConfig()
+	config.InitGlobalConfig()
 	zap.ReplaceGlobals(logger.New())
 }

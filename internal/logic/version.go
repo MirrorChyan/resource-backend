@@ -5,9 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
-	"github.com/gofiber/fiber/v2"
-	"github.com/valyala/fasthttp"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/gofiber/fiber/v2"
+	"github.com/valyala/fasthttp"
 
 	"github.com/hibiken/asynq"
 
@@ -1035,6 +1036,33 @@ func (l *VersionLogic) GetDistributeLocation(ctx context.Context, rk string) (st
 	}
 
 	return url, nil
+}
+
+func (l *VersionLogic) GetDownloadInfo(ctx context.Context, rk string) (map[string]string, error) {
+	key := strings.Join([]string{misc.DispensePrefix, rk}, ":")
+	val, err := l.rdb.Get(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	info := &DistributeInfo{}
+	err = sonic.UnmarshalString(val, info)
+	if err != nil {
+		return nil, err
+	}
+	var contentType = fiber.MIMEOctetStream
+	if ext := filepath.Ext(info.RelPath); ext != "" {
+		// 只要两种其他的先留着
+		switch ext {
+		case misc.ZipSuffix:
+			contentType = misc.ContentTypeZip
+		case misc.TgzSuffix:
+			contentType = misc.ContentTypeTarGz
+		}
+	}
+	return map[string]string{
+		fiber.HeaderContentLength: strconv.FormatInt(info.Filesize, 10),
+		fiber.HeaderContentType:   contentType,
+	}, nil
 }
 
 func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, system string, arch string) (*ent.Storage, *ent.Storage, error) {
