@@ -299,12 +299,11 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		ctx            = c.UserContext()
 		ip             = c.IP()
 		resourceId     = param.ResourceID
-		system         = param.OS
-		arch           = param.Arch
-		channel        = param.Channel
 		currentVersion = param.CurrentVersion
 		cdk            = param.CDK
 	)
+
+	system, arch, channel := lowerUpdateParamTuple(param)
 
 	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
 	if err != nil {
@@ -316,8 +315,8 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		VersionNumber: latest.VersionNumber,
 		ReleaseNote:   latest.ReleaseNote,
 		Channel:       channel,
-		OS:            param.OS,
-		Arch:          param.Arch,
+		OS:            system,
+		Arch:          arch,
 	}
 
 	h.collect(resourceId, currentVersion, ip)
@@ -376,6 +375,12 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	data.Url = url
 
 	return c.JSON(response.Success(data))
+}
+
+func lowerUpdateParamTuple(param *GetLatestVersionRequest) (string, string, string) {
+	return strings.ToLower(param.OS),
+		strings.ToLower(param.Arch),
+		strings.ToLower(param.Channel)
 }
 
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
