@@ -100,8 +100,8 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	dau := middleware.NewDailyActiveUserRecorder(h.versionLogic.GetRedisClient())
 
 	r.Get("/resources/:rid/latest", dau, h.GetLatest)
-	r.Get("/resources/download/:key", h.RedirectToDownload)
 	r.Head("/resources/download/:key", h.HeadDownloadInfo)
+	r.Get("/resources/download/:key", h.RedirectToDownload)
 
 	// For Developer
 	versions := r.Group("/resources/:rid/versions")
@@ -409,6 +409,9 @@ func (h *VersionHandler) HeadDownloadInfo(c *fiber.Ctx) error {
 
 	info, err := h.versionLogic.GetDownloadInfo(ctx, rk)
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
+		}
 		h.logger.Error("Failed to get download info",
 			zap.String("distribute key", rk),
 			zap.Error(err),
