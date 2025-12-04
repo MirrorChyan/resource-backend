@@ -22,7 +22,7 @@ A high-performance Go-based resource distribution backend service for managing v
 - **Task Queue**: Asynq (Redis-backed)
 - **DI**: Google Wire (compile-time dependency injection)
 - **Logging**: Uber Zap
-- **JSON**: Sonic (bytedance's high-performance JSON library)
+- **JSON**: Sonic (ByteDance's high-performance JSON library)
 - **Version Parsing**: SemVer, DateTime formats (pluggable parser system)
 
 ## Prerequisites

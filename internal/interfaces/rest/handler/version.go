@@ -79,7 +79,7 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 				})
 				result, err := incr.Result()
 				if err != nil {
-					h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid))
+					h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid), zap.Error(err))
 				} else {
 					// first incr / float 1 no need use epsilon
 					if result == 1 {
