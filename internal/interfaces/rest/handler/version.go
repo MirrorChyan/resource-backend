@@ -64,18 +64,28 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 		for {
 			select {
 			case val := <-ch:
-				date := time.Now().Format(time.DateOnly)
-				skey := strings.Join([]string{
-					VersionPrefix,
-					date,
-					val.rid,
+				viewKey := strings.Join([]string{
+					"sort:resources:request",
+					time.Now().Format("20060102"),
 				}, ":")
-				hkey := strings.Join([]string{
-					skey,
-					val.version,
-				}, ":")
-				rdb.PFAdd(ctx, hkey, val.ip)
-				rdb.SAdd(ctx, skey, val.version)
+
+				incr := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
+					Members: []redis.Z{
+						{
+							Score:  1,
+							Member: val.rid,
+						},
+					},
+				})
+				result, err := incr.Result()
+				if err != nil {
+					h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid), zap.Error(err))
+				} else {
+					// first incr / float 1 no need use epsilon
+					if result == 1 {
+						rdb.Expire(ctx, viewKey, time.Hour*24*9)
+					}
+				}
 			}
 		}
 	}()

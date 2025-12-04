@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -92,7 +93,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		zap.Int("targetVersionId", targetInfo.VersionId),
 	)
 
-	result := l.rdb.SetNX(ctx, key, 1, 0)
+	result := l.rdb.SetNX(ctx, key, 1, time.Hour*168)
 	if err := result.Err(); err != nil {
 		return nil, err
 	}
