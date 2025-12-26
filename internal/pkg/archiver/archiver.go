@@ -177,7 +177,7 @@ func CompressToZip(srcDir, destZip string) error {
 
 		buf := bufpool.GetBuffer()
 		defer bufpool.PutBuffer(buf)
-		_, err = io.CopyBuffer(zipFileWriter, file, buf)
+		_, err = io.CopyBuffer(zipFileWriter, file, *buf)
 		return err
 	})
 }

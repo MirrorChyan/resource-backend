@@ -103,7 +103,7 @@ func (t transferInfo) transfer() error {
 
 	buf := bufpool.GetBuffer()
 	defer bufpool.PutBuffer(buf)
-	_, err = io.CopyBuffer(dst, src, buf)
+	_, err = io.CopyBuffer(dst, src, *buf)
 
 	return err
 }
@@ -146,7 +146,7 @@ func extractTgzFile(origin string, pending map[string]string) error {
 				}
 
 				buf := bufpool.GetBuffer()
-				_, err = io.CopyBuffer(out, reader, buf)
+				_, err = io.CopyBuffer(out, reader, *buf)
 
 				bufpool.PutBuffer(buf)
 				_ = out.Close()

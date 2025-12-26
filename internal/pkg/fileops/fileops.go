@@ -34,7 +34,7 @@ func CopyFile(src, dst string) error {
 
 	buf := bufpool.GetBuffer()
 	defer bufpool.PutBuffer(buf)
-	_, err = io.CopyBuffer(dest, source, buf)
+	_, err = io.CopyBuffer(dest, source, *buf)
 	return err
 }
 
