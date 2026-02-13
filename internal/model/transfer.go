@@ -2,8 +2,9 @@ package model
 
 import (
 	"database/sql"
-	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"time"
+
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
 )
 
 type LatestVersionInfo struct {

@@ -2,14 +2,15 @@ package filehash
 
 import (
 	"encoding/hex"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
-	"github.com/minio/sha256-simd"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync/atomic"
+
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
+	"github.com/minio/sha256-simd"
+	"golang.org/x/sync/errgroup"
 )
 
 func Calculate(filePath string) (string, error) {
@@ -24,7 +25,7 @@ func Calculate(filePath string) (string, error) {
 	h := sha256.New()
 	buf := bufpool.GetBuffer()
 	defer bufpool.PutBuffer(buf)
-	if _, err := io.CopyBuffer(h, file, buf); err != nil {
+	if _, err := io.CopyBuffer(h, file, *buf); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil

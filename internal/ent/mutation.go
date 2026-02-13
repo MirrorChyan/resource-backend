@@ -629,7 +629,9 @@ type StorageMutation struct {
 	arch                *string
 	package_path        *string
 	package_hash_sha256 *string
-	resource_path       *string
+	file_type           *string
+	file_size           *int64
+	addfile_size        *int64
 	file_hashes         *map[string]string
 	created_at          *time.Time
 	clearedFields       map[string]struct{}
@@ -946,53 +948,109 @@ func (m *StorageMutation) ResetPackageHashSha256() {
 	delete(m.clearedFields, storage.FieldPackageHashSha256)
 }
 
-// SetResourcePath sets the "resource_path" field.
-func (m *StorageMutation) SetResourcePath(s string) {
-	m.resource_path = &s
+// SetFileType sets the "file_type" field.
+func (m *StorageMutation) SetFileType(s string) {
+	m.file_type = &s
 }
 
-// ResourcePath returns the value of the "resource_path" field in the mutation.
-func (m *StorageMutation) ResourcePath() (r string, exists bool) {
-	v := m.resource_path
+// FileType returns the value of the "file_type" field in the mutation.
+func (m *StorageMutation) FileType() (r string, exists bool) {
+	v := m.file_type
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldResourcePath returns the old "resource_path" field's value of the Storage entity.
+// OldFileType returns the old "file_type" field's value of the Storage entity.
 // If the Storage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldResourcePath(ctx context.Context) (v string, err error) {
+func (m *StorageMutation) OldFileType(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldResourcePath is only allowed on UpdateOne operations")
+		return v, errors.New("OldFileType is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldResourcePath requires an ID field in the mutation")
+		return v, errors.New("OldFileType requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldResourcePath: %w", err)
+		return v, fmt.Errorf("querying old value for OldFileType: %w", err)
 	}
-	return oldValue.ResourcePath, nil
+	return oldValue.FileType, nil
 }
 
-// ClearResourcePath clears the value of the "resource_path" field.
-func (m *StorageMutation) ClearResourcePath() {
-	m.resource_path = nil
-	m.clearedFields[storage.FieldResourcePath] = struct{}{}
+// ClearFileType clears the value of the "file_type" field.
+func (m *StorageMutation) ClearFileType() {
+	m.file_type = nil
+	m.clearedFields[storage.FieldFileType] = struct{}{}
 }
 
-// ResourcePathCleared returns if the "resource_path" field was cleared in this mutation.
-func (m *StorageMutation) ResourcePathCleared() bool {
-	_, ok := m.clearedFields[storage.FieldResourcePath]
+// FileTypeCleared returns if the "file_type" field was cleared in this mutation.
+func (m *StorageMutation) FileTypeCleared() bool {
+	_, ok := m.clearedFields[storage.FieldFileType]
 	return ok
 }
 
-// ResetResourcePath resets all changes to the "resource_path" field.
-func (m *StorageMutation) ResetResourcePath() {
-	m.resource_path = nil
-	delete(m.clearedFields, storage.FieldResourcePath)
+// ResetFileType resets all changes to the "file_type" field.
+func (m *StorageMutation) ResetFileType() {
+	m.file_type = nil
+	delete(m.clearedFields, storage.FieldFileType)
+}
+
+// SetFileSize sets the "file_size" field.
+func (m *StorageMutation) SetFileSize(i int64) {
+	m.file_size = &i
+	m.addfile_size = nil
+}
+
+// FileSize returns the value of the "file_size" field in the mutation.
+func (m *StorageMutation) FileSize() (r int64, exists bool) {
+	v := m.file_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFileSize returns the old "file_size" field's value of the Storage entity.
+// If the Storage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageMutation) OldFileSize(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFileSize is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFileSize requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFileSize: %w", err)
+	}
+	return oldValue.FileSize, nil
+}
+
+// AddFileSize adds i to the "file_size" field.
+func (m *StorageMutation) AddFileSize(i int64) {
+	if m.addfile_size != nil {
+		*m.addfile_size += i
+	} else {
+		m.addfile_size = &i
+	}
+}
+
+// AddedFileSize returns the value that was added to the "file_size" field in this mutation.
+func (m *StorageMutation) AddedFileSize() (r int64, exists bool) {
+	v := m.addfile_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFileSize resets all changes to the "file_size" field.
+func (m *StorageMutation) ResetFileSize() {
+	m.file_size = nil
+	m.addfile_size = nil
 }
 
 // SetFileHashes sets the "file_hashes" field.
@@ -1229,7 +1287,7 @@ func (m *StorageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StorageMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.update_type != nil {
 		fields = append(fields, storage.FieldUpdateType)
 	}
@@ -1245,8 +1303,11 @@ func (m *StorageMutation) Fields() []string {
 	if m.package_hash_sha256 != nil {
 		fields = append(fields, storage.FieldPackageHashSha256)
 	}
-	if m.resource_path != nil {
-		fields = append(fields, storage.FieldResourcePath)
+	if m.file_type != nil {
+		fields = append(fields, storage.FieldFileType)
+	}
+	if m.file_size != nil {
+		fields = append(fields, storage.FieldFileSize)
 	}
 	if m.file_hashes != nil {
 		fields = append(fields, storage.FieldFileHashes)
@@ -1275,8 +1336,10 @@ func (m *StorageMutation) Field(name string) (ent.Value, bool) {
 		return m.PackagePath()
 	case storage.FieldPackageHashSha256:
 		return m.PackageHashSha256()
-	case storage.FieldResourcePath:
-		return m.ResourcePath()
+	case storage.FieldFileType:
+		return m.FileType()
+	case storage.FieldFileSize:
+		return m.FileSize()
 	case storage.FieldFileHashes:
 		return m.FileHashes()
 	case storage.FieldCreatedAt:
@@ -1302,8 +1365,10 @@ func (m *StorageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldPackagePath(ctx)
 	case storage.FieldPackageHashSha256:
 		return m.OldPackageHashSha256(ctx)
-	case storage.FieldResourcePath:
-		return m.OldResourcePath(ctx)
+	case storage.FieldFileType:
+		return m.OldFileType(ctx)
+	case storage.FieldFileSize:
+		return m.OldFileSize(ctx)
 	case storage.FieldFileHashes:
 		return m.OldFileHashes(ctx)
 	case storage.FieldCreatedAt:
@@ -1354,12 +1419,19 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPackageHashSha256(v)
 		return nil
-	case storage.FieldResourcePath:
+	case storage.FieldFileType:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetResourcePath(v)
+		m.SetFileType(v)
+		return nil
+	case storage.FieldFileSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFileSize(v)
 		return nil
 	case storage.FieldFileHashes:
 		v, ok := value.(map[string]string)
@@ -1390,6 +1462,9 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *StorageMutation) AddedFields() []string {
 	var fields []string
+	if m.addfile_size != nil {
+		fields = append(fields, storage.FieldFileSize)
+	}
 	return fields
 }
 
@@ -1398,6 +1473,8 @@ func (m *StorageMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *StorageMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case storage.FieldFileSize:
+		return m.AddedFileSize()
 	}
 	return nil, false
 }
@@ -1407,6 +1484,13 @@ func (m *StorageMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *StorageMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case storage.FieldFileSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFileSize(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Storage numeric field %s", name)
 }
@@ -1421,8 +1505,8 @@ func (m *StorageMutation) ClearedFields() []string {
 	if m.FieldCleared(storage.FieldPackageHashSha256) {
 		fields = append(fields, storage.FieldPackageHashSha256)
 	}
-	if m.FieldCleared(storage.FieldResourcePath) {
-		fields = append(fields, storage.FieldResourcePath)
+	if m.FieldCleared(storage.FieldFileType) {
+		fields = append(fields, storage.FieldFileType)
 	}
 	if m.FieldCleared(storage.FieldFileHashes) {
 		fields = append(fields, storage.FieldFileHashes)
@@ -1447,8 +1531,8 @@ func (m *StorageMutation) ClearField(name string) error {
 	case storage.FieldPackageHashSha256:
 		m.ClearPackageHashSha256()
 		return nil
-	case storage.FieldResourcePath:
-		m.ClearResourcePath()
+	case storage.FieldFileType:
+		m.ClearFileType()
 		return nil
 	case storage.FieldFileHashes:
 		m.ClearFileHashes()
@@ -1476,8 +1560,11 @@ func (m *StorageMutation) ResetField(name string) error {
 	case storage.FieldPackageHashSha256:
 		m.ResetPackageHashSha256()
 		return nil
-	case storage.FieldResourcePath:
-		m.ResetResourcePath()
+	case storage.FieldFileType:
+		m.ResetFileType()
+		return nil
+	case storage.FieldFileSize:
+		m.ResetFileSize()
 		return nil
 	case storage.FieldFileHashes:
 		m.ResetFileHashes()

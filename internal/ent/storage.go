@@ -30,7 +30,9 @@ type Storage struct {
 	// PackageHashSha256 holds the value of the "package_hash_sha256" field.
 	PackageHashSha256 string `json:"package_hash_sha256,omitempty"`
 	// only for full update
-	ResourcePath string `json:"resource_path,omitempty"`
+	FileType string `json:"file_type,omitempty"`
+	// file size
+	FileSize int64 `json:"file_size,omitempty"`
 	// only for full update
 	FileHashes map[string]string `json:"file_hashes,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -84,9 +86,9 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case storage.FieldFileHashes:
 			values[i] = new([]byte)
-		case storage.FieldID, storage.FieldVersionStorages:
+		case storage.FieldID, storage.FieldFileSize, storage.FieldVersionStorages:
 			values[i] = new(sql.NullInt64)
-		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHashSha256, storage.FieldResourcePath:
+		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHashSha256, storage.FieldFileType:
 			values[i] = new(sql.NullString)
 		case storage.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -143,11 +145,17 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				s.PackageHashSha256 = value.String
 			}
-		case storage.FieldResourcePath:
+		case storage.FieldFileType:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field resource_path", values[i])
+				return fmt.Errorf("unexpected type %T for field file_type", values[i])
 			} else if value.Valid {
-				s.ResourcePath = value.String
+				s.FileType = value.String
+			}
+		case storage.FieldFileSize:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field file_size", values[i])
+			} else if value.Valid {
+				s.FileSize = value.Int64
 			}
 		case storage.FieldFileHashes:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -237,8 +245,11 @@ func (s *Storage) String() string {
 	builder.WriteString("package_hash_sha256=")
 	builder.WriteString(s.PackageHashSha256)
 	builder.WriteString(", ")
-	builder.WriteString("resource_path=")
-	builder.WriteString(s.ResourcePath)
+	builder.WriteString("file_type=")
+	builder.WriteString(s.FileType)
+	builder.WriteString(", ")
+	builder.WriteString("file_size=")
+	builder.WriteString(fmt.Sprintf("%v", s.FileSize))
 	builder.WriteString(", ")
 	builder.WriteString("file_hashes=")
 	builder.WriteString(fmt.Sprintf("%v", s.FileHashes))

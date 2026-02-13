@@ -2,15 +2,16 @@ package logic
 
 import (
 	"context"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type logger struct {
@@ -100,15 +101,16 @@ func initScheduler(l *zap.Logger) {
 
 func doHandlePurge(l *zap.Logger, v *VersionLogic) func(context.Context, *asynq.Task) error {
 	return func(ctx context.Context, task *asynq.Task) error {
-		l.Warn("start purge old storages")
+		cnt, _ := asynq.GetRetryCount(ctx)
+		l.Warn("start purge old storages with", zap.Int("retry cnt", cnt))
 		err := v.storageLogic.ClearOldStorages(ctx)
 		if err != nil {
 			l.Error("failed to purge old storages",
 				zap.Error(err),
 			)
+			return err
 		}
 		l.Warn("end purge old storages")
-		// ignore error
 		return nil
 	}
 }
@@ -134,12 +136,14 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			channel     = payload.Channel
 			hashes      = payload.FileHashes
 			versionName = payload.VersionName
+			fileType    = payload.IncrementalType
 		)
 
 		err := v.DoProcessStorage(ctx,
 			resourceId,
 			versionId, versionName,
 			channel, system, arch, dest,
+			fileType,
 			hashes,
 		)
 		if err != nil {

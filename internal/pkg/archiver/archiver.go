@@ -44,21 +44,22 @@ func UnpackZip(src, dest string) error {
 		if err != nil {
 			return err
 		}
-		defer func(f *os.File) {
-			_ = f.Close()
-		}(outFile)
 
 		rc, err := f.Open()
 		if err != nil {
+			_ = outFile.Close()
 			return err
 		}
-		defer func(f io.ReadCloser) {
-			_ = f.Close()
-		}(rc)
+		cleaner := func() {
+			_ = outFile.Close()
+			_ = rc.Close()
+		}
 
 		if _, err = io.Copy(outFile, rc); err != nil {
+			cleaner()
 			return err
 		}
+		cleaner()
 	}
 	return nil
 }
@@ -93,7 +94,7 @@ func UnpackTarGz(src, dest string) error {
 		}
 
 		fpath := filepath.Join(dest, header.Name)
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)) {
 			return fmt.Errorf("illegal file path: %s", fpath)
 		}
 
@@ -107,17 +108,16 @@ func UnpackTarGz(src, dest string) error {
 				return err
 			}
 
-			outFile, err := os.Create(fpath)
+			outFile, err := os.OpenFile(fpath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return err
 			}
-			defer func(outFile *os.File) {
-				_ = outFile.Close()
-			}(outFile)
 
 			if _, err := io.Copy(outFile, tarReader); err != nil {
+				_ = outFile.Close()
 				return err
 			}
+			_ = outFile.Close()
 		}
 	}
 	return nil
@@ -177,7 +177,7 @@ func CompressToZip(srcDir, destZip string) error {
 
 		buf := bufpool.GetBuffer()
 		defer bufpool.PutBuffer(buf)
-		_, err = io.CopyBuffer(zipFileWriter, file, buf)
+		_, err = io.CopyBuffer(zipFileWriter, file, *buf)
 		return err
 	})
 }

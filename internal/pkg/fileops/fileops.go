@@ -1,9 +1,10 @@
 package fileops
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 	"io"
 	"os"
+
+	"github.com/MirrorChyan/resource-backend/internal/pkg/bufpool"
 
 	"go.uber.org/zap"
 )
@@ -17,7 +18,7 @@ func CopyFile(src, dst string) error {
 		_ = f.Close()
 	}(source)
 
-	dest, err := os.Create(dst)
+	dest, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -33,7 +34,7 @@ func CopyFile(src, dst string) error {
 
 	buf := bufpool.GetBuffer()
 	defer bufpool.PutBuffer(buf)
-	_, err = io.CopyBuffer(dest, source, buf)
+	_, err = io.CopyBuffer(dest, source, *buf)
 	return err
 }
 

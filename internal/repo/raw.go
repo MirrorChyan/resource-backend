@@ -18,71 +18,47 @@ func NewRawQuery(db *Repo) *RawQuery {
 
 const (
 	sql1 = `
-select id                  as version_id,
-       name                as version_name,
-       number              as version_number,
-       release_note        as release_note,
-       custom_data         as custom_data,
-       os                  as os,
-       arch                as arch,
-       channel             as channel,
-       package_hash_sha256 as package_hash_sha256,
-       package_path        as package_path,
-       created_at          as created_at,
-       vs                  as version_serial
-from (select t.*,
-             row_number() over (partition by channel,os,arch order by vs) as rn
-      from (select lv.*,
-                   s.os,
-                   s.arch,
-                   s.package_hash_sha256,
-                   s.package_path
-            from (select row_number() over (partition by channel order by created_at desc ) as vs,
-                         v.id,
-                         v.created_at,
-                         v.name,
-                         v.number,
-                         v.channel,
-                         v.release_note,
-                         v.custom_data
-                  from versions v
-                  where resource_versions = ?) lv
-                     left join storages s on lv.id = s.version_storages
-            where vs between 1 and 100
-              and s.update_type = 'full'
-              and s.os = ?
-              and s.arch = ?)
-               as t) t2
-where rn = 1
+with latest as (select v.id                                                                         as version_id,
+                       v.name                                                                       as version_name,
+                       v.number                                                                     as version_number,
+                       v.release_note                                                               as release_note,
+                       v.custom_data                                                                as custom_data,
+                       v.channel                                                                    as channel,
+                       s.os                                                                         as os,
+                       s.arch                                                                       as arch,
+                       s.package_hash_sha256                                                        as package_hash_sha256,
+                       s.package_path                                                               as package_path,
+                       v.created_at                                                                 as created_at,
+                       row_number() over (partition by channel,os,arch order by s.created_at desc ) as version_serial
+                from versions v
+                         left join storages s on v.id = s.version_storages
+                where s.package_path is not null
+                  and v.resource_versions = ?
+                  and s.os = ?
+                  and s.arch = ?
+                  and s.update_type = 'full')
+select *
+from latest
+where latest.version_serial = 1
 `
-	sql2 = `select name              as version_name,
-       channel           as channel,
-       resource_versions as resource_id,
-       id                as version_id,
-       os                as os,
-       arch              as arch,
-       sid               as storage_id,
-       vs                as version_serial
-from (select t.*,
-             row_number() over (partition by channel,os,arch order by vs) as rn
-      from (select lv.*,
-                   s.os,
-                   s.arch,
-                   s.id as sid,
-                   s.update_type
-            from (select row_number() over (partition by channel order by created_at desc ) as vs,
-                         v.id,
-                         v.name,
-                         v.channel,
-                         v.resource_versions
-                  from versions v
-                  where resource_versions = ?) lv
-                     left join storages s on lv.id = s.version_storages
-            where vs between 1 and 100
-              and s.package_path is not null
-              and s.update_type = 'full')
-               as t) t2
-where rn not in (1, 2)`
+	sql2 = `
+with latest as (select v.name                                                                       as version_name,
+                       v.channel                                                                    as channel,
+                       v.resource_versions                                                          as resource_id,
+                       v.id                                                                         as version_id,
+                       s.os                                                                         as os,
+                       s.arch                                                                       as arch,
+                       s.id                                                                         as storage_id,
+                       row_number() over (partition by channel,os,arch order by s.created_at desc ) as version_serial
+                from versions v
+                         left join storages s on v.id = s.version_storages
+                where s.package_path is not null
+                  and v.resource_versions = ?
+                  and s.update_type = 'full')
+select *
+from latest
+where latest.version_serial not in (1, 2)
+`
 )
 
 func (r *RawQuery) GetSpecifiedLatestVersion(resourceId, os, arch string) ([]model.LatestVersionInfo, error) {

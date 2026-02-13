@@ -1,19 +1,24 @@
 package misc
 
 import (
-	"errors"
-	"sync"
-	"sync/atomic"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/gofiber/fiber/v2"
 )
 
 const ResourceKey = "rid"
 
 const (
 	ZipSuffix = ".zip"
+	TgzSuffix = ".tar.gz"
 
-	DefaultResourceName = "resource.zip"
+	DefaultResourceName = "resource"
 
 	DispensePrefix = "dispense"
+)
+
+const (
+	ContentTypeZip   = "application/zip"
+	ContentTypeTarGz = "application/x-gtar"
 )
 
 // used by diff
@@ -21,6 +26,10 @@ const (
 	GenerateTagKey           = "generate"
 	LoadStoreNewVersionKey   = "LoadStoreNewVersionTx"
 	ProcessStoragePendingKey = "ProcessStoragePending"
+)
+
+const (
+	ProcessFlag = "1"
 )
 
 // used by task
@@ -37,11 +46,16 @@ const (
 const SniffLen = 4
 
 var (
-	StorageInfoNotFoundError = errors.New("storage info not found")
+	ZipMagicHeader = []byte("PK\x03\x04")
+	TgzMagicHeader = []byte("\x1F\x8B\x08")
+)
 
-	NotAllowedFileTypeError = errors.New("not allowed file type")
+var (
+	StorageInfoNotFoundError = errs.NewUnchecked("storage info not found")
 
-	ResourceLimitError = errors.New("your cdkey has reached the most downloads today")
+	NotAllowedFileTypeError = errs.NewUnchecked("not allowed file type")
+
+	ResourceLimitError = errs.NewUnchecked("your cdkey has reached the most downloads today").WithHttpCode(fiber.StatusForbidden)
 )
 
 var (
@@ -69,7 +83,8 @@ var (
 
 	ArchMap = map[string]string{
 		// any
-		"": "",
+		"":    "",
+		"any": "",
 
 		// 386
 		"386":    "386",
@@ -107,15 +122,3 @@ var (
 	TotalOs      = []string{"", "windows", "linux", "darwin", "android"}
 	TotalArch    = []string{"", "386", "arm64", "amd64", "arm"}
 )
-
-var LIT = &sync.Map{}
-
-func CompareIfAbsent(m *sync.Map, key string) *atomic.Int32 {
-	value, ok := m.Load(key)
-	if ok {
-		return value.(*atomic.Int32)
-	}
-
-	r, _ := m.LoadOrStore(key, &atomic.Int32{})
-	return r.(*atomic.Int32)
-}

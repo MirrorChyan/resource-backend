@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -80,7 +81,10 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 	var (
 		targetVersion  = strconv.Itoa(targetInfo.VersionId)
 		currentVersion = strconv.Itoa(currentVersionId)
-		key            = strings.Join([]string{misc.GenerateTagKey, resourceId, targetVersion, currentVersion}, ":")
+		key            = strings.Join([]string{misc.GenerateTagKey,
+			strings.Join([]string{resourceId, targetInfo.OS, targetInfo.Arch}, "-"),
+			targetVersion, currentVersion,
+		}, ":")
 	)
 
 	l.logger.Info("incremental fallback to full update",
@@ -89,7 +93,7 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		zap.Int("targetVersionId", targetInfo.VersionId),
 	)
 
-	result := l.rdb.SetNX(ctx, key, 1, 0)
+	result := l.rdb.SetNX(ctx, key, 1, time.Hour*168)
 	if err := result.Err(); err != nil {
 		return nil, err
 	}

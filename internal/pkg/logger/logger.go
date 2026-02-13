@@ -1,8 +1,9 @@
 package logger
 
 import (
-	"github.com/MirrorChyan/resource-backend/internal/config"
 	"os"
+
+	"github.com/MirrorChyan/resource-backend/internal/config"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

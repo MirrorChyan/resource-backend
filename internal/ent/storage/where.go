@@ -75,9 +75,14 @@ func PackageHashSha256(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldPackageHashSha256, v))
 }
 
-// ResourcePath applies equality check predicate on the "resource_path" field. It's identical to ResourcePathEQ.
-func ResourcePath(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldResourcePath, v))
+// FileType applies equality check predicate on the "file_type" field. It's identical to FileTypeEQ.
+func FileType(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldFileType, v))
+}
+
+// FileSize applies equality check predicate on the "file_size" field. It's identical to FileSizeEQ.
+func FileSize(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldFileSize, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -390,79 +395,119 @@ func PackageHashSha256ContainsFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldContainsFold(FieldPackageHashSha256, v))
 }
 
-// ResourcePathEQ applies the EQ predicate on the "resource_path" field.
-func ResourcePathEQ(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldResourcePath, v))
+// FileTypeEQ applies the EQ predicate on the "file_type" field.
+func FileTypeEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldFileType, v))
 }
 
-// ResourcePathNEQ applies the NEQ predicate on the "resource_path" field.
-func ResourcePathNEQ(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldNEQ(FieldResourcePath, v))
+// FileTypeNEQ applies the NEQ predicate on the "file_type" field.
+func FileTypeNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldFileType, v))
 }
 
-// ResourcePathIn applies the In predicate on the "resource_path" field.
-func ResourcePathIn(vs ...string) predicate.Storage {
-	return predicate.Storage(sql.FieldIn(FieldResourcePath, vs...))
+// FileTypeIn applies the In predicate on the "file_type" field.
+func FileTypeIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldFileType, vs...))
 }
 
-// ResourcePathNotIn applies the NotIn predicate on the "resource_path" field.
-func ResourcePathNotIn(vs ...string) predicate.Storage {
-	return predicate.Storage(sql.FieldNotIn(FieldResourcePath, vs...))
+// FileTypeNotIn applies the NotIn predicate on the "file_type" field.
+func FileTypeNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldFileType, vs...))
 }
 
-// ResourcePathGT applies the GT predicate on the "resource_path" field.
-func ResourcePathGT(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldGT(FieldResourcePath, v))
+// FileTypeGT applies the GT predicate on the "file_type" field.
+func FileTypeGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldFileType, v))
 }
 
-// ResourcePathGTE applies the GTE predicate on the "resource_path" field.
-func ResourcePathGTE(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldGTE(FieldResourcePath, v))
+// FileTypeGTE applies the GTE predicate on the "file_type" field.
+func FileTypeGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldFileType, v))
 }
 
-// ResourcePathLT applies the LT predicate on the "resource_path" field.
-func ResourcePathLT(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldLT(FieldResourcePath, v))
+// FileTypeLT applies the LT predicate on the "file_type" field.
+func FileTypeLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldFileType, v))
 }
 
-// ResourcePathLTE applies the LTE predicate on the "resource_path" field.
-func ResourcePathLTE(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldLTE(FieldResourcePath, v))
+// FileTypeLTE applies the LTE predicate on the "file_type" field.
+func FileTypeLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldFileType, v))
 }
 
-// ResourcePathContains applies the Contains predicate on the "resource_path" field.
-func ResourcePathContains(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldContains(FieldResourcePath, v))
+// FileTypeContains applies the Contains predicate on the "file_type" field.
+func FileTypeContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldFileType, v))
 }
 
-// ResourcePathHasPrefix applies the HasPrefix predicate on the "resource_path" field.
-func ResourcePathHasPrefix(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldHasPrefix(FieldResourcePath, v))
+// FileTypeHasPrefix applies the HasPrefix predicate on the "file_type" field.
+func FileTypeHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldFileType, v))
 }
 
-// ResourcePathHasSuffix applies the HasSuffix predicate on the "resource_path" field.
-func ResourcePathHasSuffix(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldHasSuffix(FieldResourcePath, v))
+// FileTypeHasSuffix applies the HasSuffix predicate on the "file_type" field.
+func FileTypeHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldFileType, v))
 }
 
-// ResourcePathIsNil applies the IsNil predicate on the "resource_path" field.
-func ResourcePathIsNil() predicate.Storage {
-	return predicate.Storage(sql.FieldIsNull(FieldResourcePath))
+// FileTypeIsNil applies the IsNil predicate on the "file_type" field.
+func FileTypeIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldFileType))
 }
 
-// ResourcePathNotNil applies the NotNil predicate on the "resource_path" field.
-func ResourcePathNotNil() predicate.Storage {
-	return predicate.Storage(sql.FieldNotNull(FieldResourcePath))
+// FileTypeNotNil applies the NotNil predicate on the "file_type" field.
+func FileTypeNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldFileType))
 }
 
-// ResourcePathEqualFold applies the EqualFold predicate on the "resource_path" field.
-func ResourcePathEqualFold(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEqualFold(FieldResourcePath, v))
+// FileTypeEqualFold applies the EqualFold predicate on the "file_type" field.
+func FileTypeEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldFileType, v))
 }
 
-// ResourcePathContainsFold applies the ContainsFold predicate on the "resource_path" field.
-func ResourcePathContainsFold(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldContainsFold(FieldResourcePath, v))
+// FileTypeContainsFold applies the ContainsFold predicate on the "file_type" field.
+func FileTypeContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldFileType, v))
+}
+
+// FileSizeEQ applies the EQ predicate on the "file_size" field.
+func FileSizeEQ(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldFileSize, v))
+}
+
+// FileSizeNEQ applies the NEQ predicate on the "file_size" field.
+func FileSizeNEQ(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldFileSize, v))
+}
+
+// FileSizeIn applies the In predicate on the "file_size" field.
+func FileSizeIn(vs ...int64) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldFileSize, vs...))
+}
+
+// FileSizeNotIn applies the NotIn predicate on the "file_size" field.
+func FileSizeNotIn(vs ...int64) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldFileSize, vs...))
+}
+
+// FileSizeGT applies the GT predicate on the "file_size" field.
+func FileSizeGT(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldFileSize, v))
+}
+
+// FileSizeGTE applies the GTE predicate on the "file_size" field.
+func FileSizeGTE(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldFileSize, v))
+}
+
+// FileSizeLT applies the LT predicate on the "file_size" field.
+func FileSizeLT(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldFileSize, v))
+}
+
+// FileSizeLTE applies the LTE predicate on the "file_size" field.
+func FileSizeLTE(v int64) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldFileSize, v))
 }
 
 // FileHashesIsNil applies the IsNil predicate on the "file_hashes" field.

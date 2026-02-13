@@ -61,21 +61,28 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 
 	go func() {
 		var ctx = context.Background()
-		for {
-			select {
-			case val := <-ch:
-				date := time.Now().Format(time.DateOnly)
-				skey := strings.Join([]string{
-					VersionPrefix,
-					date,
-					val.rid,
-				}, ":")
-				hkey := strings.Join([]string{
-					skey,
-					val.version,
-				}, ":")
-				rdb.PFAdd(ctx, hkey, val.ip)
-				rdb.SAdd(ctx, skey, val.version)
+		for val := range ch {
+			viewKey := strings.Join([]string{
+				"sort:resources:request",
+				time.Now().Format("20060102"),
+			}, ":")
+
+			incr := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
+				Members: []redis.Z{
+					{
+						Score:  1,
+						Member: val.rid,
+					},
+				},
+			})
+			result, err := incr.Result()
+			if err != nil {
+				h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid), zap.Error(err))
+			} else {
+				// first incr / float 1 no need use epsilon
+				if result == 1 {
+					rdb.Expire(ctx, viewKey, time.Hour*24*9)
+				}
 			}
 		}
 	}()
@@ -100,6 +107,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	dau := middleware.NewDailyActiveUserRecorder(h.versionLogic.GetRedisClient())
 
 	r.Get("/resources/:rid/latest", dau, h.GetLatest)
+	r.Head("/resources/download/:key", h.HeadDownloadInfo)
 	r.Get("/resources/download/:key", h.RedirectToDownload)
 
 	// For Developer
@@ -113,6 +121,9 @@ func (h *VersionHandler) Register(r fiber.Router) {
 }
 
 func (h *VersionHandler) bindRequiredParams(os, arch, channel *string) error {
+	*os = strings.ToLower(*os)
+	*arch = strings.ToLower(*arch)
+	*channel = strings.ToLower(*channel)
 	if o, ok := OsMap[*os]; !ok {
 		return errs.ErrResourceInvalidOS
 	} else {
@@ -298,11 +309,11 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		ctx            = c.UserContext()
 		ip             = c.IP()
 		resourceId     = param.ResourceID
+		currentVersion = param.CurrentVersion
+		cdk            = param.CDK
 		system         = param.OS
 		arch           = param.Arch
 		channel        = param.Channel
-		currentVersion = param.CurrentVersion
-		cdk            = param.CDK
 	)
 
 	latest, err := h.versionLogic.GetMultiLatestVersionInfo(resourceId, system, arch, channel)
@@ -315,9 +326,9 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		VersionNumber: latest.VersionNumber,
 		ReleaseNote:   latest.ReleaseNote,
 		Channel:       channel,
-		OS:            param.OS,
-		Arch:          param.Arch,
-		CreatedAt:     latest.CreatedAt,
+		OS:            system,
+		Arch:          arch,
+    CreatedAt:     latest.CreatedAt,
 	}
 
 	h.collect(resourceId, currentVersion, ip)
@@ -330,21 +341,18 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.JSON(resp)
 	}
 
-	release, limited := h.doLimitByConfig(resourceId)
-	defer release()
-	if limited {
-		data.VersionName = param.CurrentVersion
-		resp := response.Success(data, "current resource latest version is "+latest.VersionName)
-		return c.JSON(resp)
-	}
-
 	ts, err := h.doValidateCDK(param, resourceId, ip)
 	if err != nil {
+		var biz *errs.Error
+		if errors.As(err, &biz) {
+			return biz.WithDetails(data)
+		}
 		return err
 	}
 
 	if latest.VersionName == currentVersion {
 		data.ReleaseNote = "placeholder"
+		data.CDKExpiredTime = ts
 		resp := response.Success(data, "current version is latest")
 		return c.JSON(resp)
 	}
@@ -381,26 +389,6 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	return c.JSON(response.Success(data))
 }
 
-func (h *VersionHandler) doLimitByConfig(resourceId string) (func(), bool) {
-	var (
-		counter = CompareIfAbsent(LIT, resourceId)
-		con     = config.GConfig.Extra.Concurrency
-		rf      = func() {
-			counter.Add(-1)
-		}
-		cv = counter.Add(1)
-	)
-
-	if con != 0 {
-		if cv > con {
-			h.logger.Warn("limit by", zap.Int32("concurrency", cv))
-			return rf, true
-		}
-	}
-
-	return rf, false
-}
-
 func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 	var (
 		rk  = c.Params("key")
@@ -412,9 +400,6 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		if errors.Is(err, redis.Nil) {
 			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
 		}
-		if errors.Is(err, ResourceLimitError) {
-			return c.Status(fiber.StatusForbidden).SendString(err.Error())
-		}
 		return err
 	}
 	h.logger.Info("RedirectToDownload",
@@ -422,6 +407,30 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		zap.String("download url", url),
 	)
 	return c.Redirect(url)
+}
+
+func (h *VersionHandler) HeadDownloadInfo(c *fiber.Ctx) error {
+	var (
+		rk  = c.Params("key")
+		ctx = c.UserContext()
+	)
+
+	info, err := h.versionLogic.GetDownloadInfo(ctx, rk)
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
+		}
+		h.logger.Error("Failed to get download info",
+			zap.String("distribute key", rk),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	for k, v := range info {
+		c.Response().Header.Set(k, v)
+	}
+	return nil
 }
 
 func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
@@ -453,6 +462,7 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	if err := c.BodyParser(req); err != nil {
 		h.logger.Error("failed to parse request body",
 			zap.Error(err),
+			zap.String("input", string(c.Body())),
 		)
 		resp := response.BusinessError("invalid param")
 		return c.Status(fiber.StatusBadRequest).JSON(resp)

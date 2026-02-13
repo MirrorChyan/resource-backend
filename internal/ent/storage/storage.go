@@ -25,8 +25,10 @@ const (
 	FieldPackagePath = "package_path"
 	// FieldPackageHashSha256 holds the string denoting the package_hash_sha256 field in the database.
 	FieldPackageHashSha256 = "package_hash_sha256"
-	// FieldResourcePath holds the string denoting the resource_path field in the database.
-	FieldResourcePath = "resource_path"
+	// FieldFileType holds the string denoting the file_type field in the database.
+	FieldFileType = "file_type"
+	// FieldFileSize holds the string denoting the file_size field in the database.
+	FieldFileSize = "file_size"
 	// FieldFileHashes holds the string denoting the file_hashes field in the database.
 	FieldFileHashes = "file_hashes"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -63,7 +65,8 @@ var Columns = []string{
 	FieldArch,
 	FieldPackagePath,
 	FieldPackageHashSha256,
-	FieldResourcePath,
+	FieldFileType,
+	FieldFileSize,
 	FieldFileHashes,
 	FieldCreatedAt,
 	FieldVersionStorages,
@@ -95,6 +98,8 @@ var (
 	DefaultOs string
 	// DefaultArch holds the default value on creation for the "arch" field.
 	DefaultArch string
+	// DefaultFileSize holds the default value on creation for the "file_size" field.
+	DefaultFileSize int64
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 )
@@ -155,9 +160,14 @@ func ByPackageHashSha256(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPackageHashSha256, opts...).ToFunc()
 }
 
-// ByResourcePath orders the results by the resource_path field.
-func ByResourcePath(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldResourcePath, opts...).ToFunc()
+// ByFileType orders the results by the file_type field.
+func ByFileType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFileType, opts...).ToFunc()
+}
+
+// ByFileSize orders the results by the file_size field.
+func ByFileSize(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFileSize, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

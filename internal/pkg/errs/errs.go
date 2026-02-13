@@ -3,7 +3,6 @@ package errs
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 )
 
@@ -11,9 +10,9 @@ var (
 	ErrInvalidParams = New(BizCodeInvalidParams, http.StatusBadRequest, "invalid params", nil)
 
 	ErrResourceNotFound                 = New(BizCodeResourceNotFound, http.StatusNotFound, "resource not found", nil)
-	ErrResourceInvalidOS                = New(BizCodeResourceInvalidOS, http.StatusInternalServerError, "invalid os", nil)
-	ErrResourceInvalidArch              = New(BizCodeResourceInvalidArch, http.StatusInternalServerError, "invalid arch", nil)
-	ErrResourceInvalidChannel           = New(BizCodeResourceInvalidChannel, http.StatusInternalServerError, "invalid channel", nil)
+	ErrResourceInvalidOS                = New(BizCodeResourceInvalidOS, http.StatusBadRequest, "invalid os", nil)
+	ErrResourceInvalidArch              = New(BizCodeResourceInvalidArch, http.StatusBadRequest, "invalid arch", nil)
+	ErrResourceInvalidChannel           = New(BizCodeResourceInvalidChannel, http.StatusBadRequest, "invalid channel", nil)
 	ErrResourceIDAlreadyExists          = New(BizCodeResourceIDAlreadyExists, http.StatusBadRequest, "resource id already exists", nil)
 	ErrResourceVersionNameConflict      = New(BizCodeResourceVersionNameConflict, http.StatusConflict, "version name under the current platform architecture already exists", nil)
 	ErrResourceVersionStorageProcessing = New(BizCodeResourceVersionStorageProcessing, http.StatusConflict, "current version storage in process", nil)
@@ -24,7 +23,7 @@ type Error struct {
 	bizCode  int
 	httpCode int
 	message  string
-	details  map[string]any
+	details  any
 	internal error
 }
 
@@ -34,6 +33,32 @@ func New(bizCode, httpCode int, message string, internal error) *Error {
 		httpCode: httpCode,
 		message:  message,
 		internal: internal,
+	}
+}
+
+func NewUnexpected(msg string, errs ...error) *Error {
+	var err error
+	if len(errs) != 0 {
+		err = errs[0]
+	}
+	return &Error{
+		bizCode:  -1,
+		message:  msg,
+		httpCode: http.StatusInternalServerError,
+		internal: err,
+	}
+}
+
+func NewUnchecked(msg string, errs ...error) *Error {
+	var err error
+	if len(errs) != 0 {
+		err = errs[0]
+	}
+	return &Error{
+		bizCode:  -1,
+		message:  msg,
+		httpCode: http.StatusBadRequest,
+		internal: err,
 	}
 }
 
@@ -68,7 +93,7 @@ func (e *Error) Message() string {
 	return e.message
 }
 
-func (e *Error) Details() map[string]any {
+func (e *Error) Details() any {
 	return e.details
 }
 
@@ -82,8 +107,7 @@ func (e *Error) Wrap(err error) *Error {
 	}
 }
 
-func (e *Error) WithDetails(details map[string]any) *Error {
-
+func (e *Error) WithDetails(details any) *Error {
 	return &Error{
 		bizCode:  e.bizCode,
 		httpCode: e.httpCode,
@@ -93,19 +117,7 @@ func (e *Error) WithDetails(details map[string]any) *Error {
 	}
 }
 
-func (e *Error) AddDetail(key string, value any) *Error {
-
-	details := make(map[string]any, len(e.details)+1)
-
-	maps.Copy(details, e.details)
-
-	details[key] = value
-
-	return &Error{
-		bizCode:  e.bizCode,
-		httpCode: e.httpCode,
-		message:  e.message,
-		details:  details,
-		internal: e.internal,
-	}
+func (e *Error) WithHttpCode(code int) *Error {
+	e.httpCode = code
+	return e
 }

@@ -5,15 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MirrorChyan/resource-backend/internal/config"
-	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/repo"
-	"github.com/bytedance/sonic"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"github.com/bytedance/sonic"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 type StorageLogic struct {
@@ -46,8 +50,17 @@ func NewStorageLogic(
 	}
 }
 
-func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, verID int, os, arch, fullUpdatePath, packageSHA256 string, fileHashes map[string]string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.CreateFullUpdateStorage(ctx, verID, os, arch, fullUpdatePath, packageSHA256, fileHashes)
+func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context,
+	verID int, os, arch, path string,
+	fileType types.FileType, hash string,
+	size int64,
+	fileHashes map[string]string,
+) (*ent.Storage, error) {
+	storage, err := l.storageRepo.CreateFullUpdateStorage(ctx, verID,
+		os, arch, path, hash,
+		fileType, size,
+		fileHashes,
+	)
 	if err != nil {
 		l.logger.Error("create full update storage failed",
 			zap.Error(err),
@@ -58,8 +71,14 @@ func (l *StorageLogic) CreateFullUpdateStorage(ctx context.Context, verID int, o
 	return storage, nil
 }
 
-func (l *StorageLogic) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx, target, current int, os, arch, path, hashes string) (*ent.Storage, error) {
-	storage, err := l.storageRepo.CreateIncrementalUpdateStorage(ctx, tx, target, current, os, arch, path, hashes)
+func (l *StorageLogic) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx,
+	target, current int, filetype string, filesize int64,
+	os, arch, path, hashes string,
+) (*ent.Storage, error) {
+	storage, err := l.storageRepo.CreateIncrementalUpdateStorage(ctx, tx, target, current,
+		filetype, filesize,
+		os, arch, path, hashes,
+	)
 	if err != nil {
 		l.logger.Error("create incremental update storage failed",
 			zap.Error(err),
@@ -121,11 +140,6 @@ func (l *StorageLogic) BuildVersionPatchStorageDirPath(resID string, verID int, 
 	return filepath.Join(l.BuildVersionStorageDirPath(resID, verID, os, arch), "patch")
 }
 
-func (l *StorageLogic) BuildVersionPatchStoragePath(resID string, verID, oldVerID int, os, arch string) string {
-	patchName := fmt.Sprintf("%d.zip", oldVerID)
-	return filepath.Join(l.BuildVersionPatchStorageDirPath(resID, verID, os, arch), patchName)
-}
-
 func (l *StorageLogic) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {
 	return l.storageRepo.UpdateStoragePackageHash(ctx, id, hash)
 }
@@ -138,17 +152,31 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 		)
 		return err
 	}
+	var wg errgroup.Group
 	for _, val := range resource {
-		if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
-			je := errors.Join(err...)
-			l.logger.Error("failed to purge resource",
-				zap.String("resource id", val.ID),
-				zap.Error(je),
-			)
-			go doErrorNotify(l.logger, je.Error())
-		}
+		wg.Go(func() error {
+			defer func() {
+				if e := recover(); e != nil {
+					l.logger.Error("failed to purge resource",
+						zap.String("resource id", val.ID),
+						zap.Any("panic error", e),
+					)
+				}
+			}()
+			if err := l.doPurgeResource(ctx, val.ID); len(err) > 0 {
+				je := errors.Join(err...)
+				l.logger.Error("failed to purge resource",
+					zap.String("resource id", val.ID),
+					zap.Error(je),
+				)
+				doErrorNotify(l.logger, strings.Join([]string{val.ID, je.Error()}, ","))
+				return je
+			}
+			return nil
+		})
 	}
-	return nil
+
+	return wg.Wait()
 }
 
 func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) []error {
