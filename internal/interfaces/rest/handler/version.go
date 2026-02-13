@@ -328,6 +328,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Channel:       channel,
 		OS:            system,
 		Arch:          arch,
+    CreatedAt:     latest.CreatedAt,
 	}
 
 	h.collect(resourceId, currentVersion, ip)
