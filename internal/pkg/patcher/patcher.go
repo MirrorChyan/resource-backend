@@ -147,9 +147,15 @@ func extractTgzFile(origin string, pending map[string]string) error {
 
 				buf := bufpool.GetBuffer()
 				_, err = io.CopyBuffer(out, reader, *buf)
+				if err != nil {
+					return err
+				}
 
 				bufpool.PutBuffer(buf)
-				_ = out.Close()
+
+				if err = out.Close(); err != nil {
+					return err
+				}
 			}
 
 		}
