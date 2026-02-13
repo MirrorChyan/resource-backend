@@ -61,30 +61,27 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 
 	go func() {
 		var ctx = context.Background()
-		for {
-			select {
-			case val := <-ch:
-				viewKey := strings.Join([]string{
-					"sort:resources:request",
-					time.Now().Format("20060102"),
-				}, ":")
+		for val := range ch {
+			viewKey := strings.Join([]string{
+				"sort:resources:request",
+				time.Now().Format("20060102"),
+			}, ":")
 
-				incr := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
-					Members: []redis.Z{
-						{
-							Score:  1,
-							Member: val.rid,
-						},
+			incr := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
+				Members: []redis.Z{
+					{
+						Score:  1,
+						Member: val.rid,
 					},
-				})
-				result, err := incr.Result()
-				if err != nil {
-					h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid), zap.Error(err))
-				} else {
-					// first incr / float 1 no need use epsilon
-					if result == 1 {
-						rdb.Expire(ctx, viewKey, time.Hour*24*9)
-					}
+				},
+			})
+			result, err := incr.Result()
+			if err != nil {
+				h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid), zap.Error(err))
+			} else {
+				// first incr / float 1 no need use epsilon
+				if result == 1 {
+					rdb.Expire(ctx, viewKey, time.Hour*24*9)
 				}
 			}
 		}

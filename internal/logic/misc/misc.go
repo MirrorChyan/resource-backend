@@ -83,7 +83,8 @@ var (
 
 	ArchMap = map[string]string{
 		// any
-		"": "",
+		"":    "",
+		"any": "",
 
 		// 386
 		"386":    "386",

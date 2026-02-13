@@ -103,7 +103,7 @@ func (t transferInfo) transfer() error {
 
 	buf := bufpool.GetBuffer()
 	defer bufpool.PutBuffer(buf)
-	_, err = io.CopyBuffer(dst, src, buf)
+	_, err = io.CopyBuffer(dst, src, *buf)
 
 	return err
 }
@@ -135,10 +135,7 @@ func extractTgzFile(origin string, pending map[string]string) error {
 			return err
 		}
 		if header.Typeflag == tar.TypeReg {
-			key := header.Name
-			if strings.HasPrefix(key, "./") {
-				key = key[2:]
-			}
+			key := strings.TrimPrefix(header.Name, "./")
 			if dest, ok := pending[key]; key != "" && ok {
 				out, err := os.OpenFile(dest, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 				if err != nil {
@@ -146,10 +143,16 @@ func extractTgzFile(origin string, pending map[string]string) error {
 				}
 
 				buf := bufpool.GetBuffer()
-				_, err = io.CopyBuffer(out, reader, buf)
+				_, err = io.CopyBuffer(out, reader, *buf)
+				if err != nil {
+					return err
+				}
 
 				bufpool.PutBuffer(buf)
-				_ = out.Close()
+
+				if err = out.Close(); err != nil {
+					return err
+				}
 			}
 
 		}

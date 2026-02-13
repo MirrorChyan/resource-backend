@@ -6,14 +6,15 @@ const blockSize = 64 * 1024
 
 var bufferPool = sync.Pool{
 	New: func() any {
-		return make([]byte, blockSize)
+		val := make([]byte, blockSize)
+		return &val
 	},
 }
 
-func GetBuffer() []byte {
-	return bufferPool.Get().([]byte)
+func GetBuffer() *[]byte {
+	return bufferPool.Get().(*[]byte)
 }
 
-func PutBuffer(b []byte) {
+func PutBuffer(b *[]byte) {
 	bufferPool.Put(b)
 }

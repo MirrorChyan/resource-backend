@@ -25,7 +25,7 @@ func Calculate(filePath string) (string, error) {
 	h := sha256.New()
 	buf := bufpool.GetBuffer()
 	defer bufpool.PutBuffer(buf)
-	if _, err := io.CopyBuffer(h, file, buf); err != nil {
+	if _, err := io.CopyBuffer(h, file, *buf); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
