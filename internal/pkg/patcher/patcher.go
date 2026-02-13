@@ -135,10 +135,7 @@ func extractTgzFile(origin string, pending map[string]string) error {
 			return err
 		}
 		if header.Typeflag == tar.TypeReg {
-			key := header.Name
-			if strings.HasPrefix(key, "./") {
-				key = key[2:]
-			}
+			key := strings.TrimPrefix(header.Name, "./")
 			if dest, ok := pending[key]; key != "" && ok {
 				out, err := os.OpenFile(dest, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 				if err != nil {
