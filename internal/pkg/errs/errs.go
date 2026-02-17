@@ -17,6 +17,7 @@ var (
 	ErrResourceVersionNameConflict      = New(BizCodeResourceVersionNameConflict, http.StatusConflict, "version name under the current platform architecture already exists", nil)
 	ErrResourceVersionStorageProcessing = New(BizCodeResourceVersionStorageProcessing, http.StatusConflict, "current version storage in process", nil)
 	ErrResourceVersionNameUnparsable    = New(BizResourceVersionNameUnparsable, http.StatusBadRequest, "version name is not supported for parsing, please use the stable channel", nil)
+	ErrResourceDeleteConflict           = New(BizCodeResourceDeleteConflict, http.StatusConflict, "resource still has versions, cannot delete", nil)
 )
 
 type Error struct {
