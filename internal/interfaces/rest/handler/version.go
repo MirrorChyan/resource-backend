@@ -19,6 +19,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -107,6 +108,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	dau := middleware.NewDailyActiveUserRecorder(h.versionLogic.GetRedisClient())
 
 	r.Get("/resources/:rid/latest", dau, h.GetLatest)
+	r.Get("/resources/:rid/versions", h.List)
 	r.Head("/resources/download/:key", h.HeadDownloadInfo)
 	r.Get("/resources/download/:key", h.RedirectToDownload)
 
@@ -118,6 +120,50 @@ func (h *VersionHandler) Register(r fiber.Router) {
 
 	versions.Put("/release-note", h.UpdateReleaseNote)
 	versions.Put("/custom-data", h.UpdateCustomData)
+}
+
+func (h *VersionHandler) List(c *fiber.Ctx) error {
+	resourceID := c.Params(ResourceKey)
+
+	var req ListVersionRequest
+	if err := validator.ValidateQuery(c, &req); err != nil {
+		return err
+	}
+
+	order := sortorder.Parse(req.Sort)
+	if req.Limit == 0 {
+		req.Limit = 20
+	}
+
+	result, err := h.versionLogic.List(c.UserContext(), &ListVersionParam{
+		ResourceID: resourceID,
+		Offset:     req.Offset,
+		Limit:      req.Limit,
+		Order:      order,
+	})
+	if err != nil {
+		return err
+	}
+
+	list := make([]*VersionResponseItem, 0, len(result.List))
+	for _, item := range result.List {
+		list = append(list, &VersionResponseItem{
+			ID:        item.ID,
+			Name:      item.Name,
+			Number:    item.Number,
+			Channel:   string(item.Channel),
+			CreatedAt: item.CreatedAt,
+		})
+	}
+
+	resp := response.Success(ListVersionResponseData{
+		List:    list,
+		Offset:  req.Offset,
+		Limit:   req.Limit,
+		Total:   result.Total,
+		HasMore: result.HasMore,
+	})
+	return c.JSON(resp)
 }
 
 func (h *VersionHandler) bindRequiredParams(os, arch, channel *string) error {
@@ -328,7 +374,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Channel:       channel,
 		OS:            system,
 		Arch:          arch,
-    CreatedAt:     latest.CreatedAt,
+		CreatedAt:     latest.CreatedAt,
 	}
 
 	h.collect(resourceId, currentVersion, ip)

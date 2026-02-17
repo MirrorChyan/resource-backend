@@ -46,3 +46,19 @@ type QueryLatestResponseData struct {
 	CDKExpiredTime int64     `json:"cdk_expired_time,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 }
+
+type VersionResponseItem struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Number    uint64    `json:"number"`
+	Channel   string    `json:"channel"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ListVersionResponseData struct {
+	List    []*VersionResponseItem `json:"list"`
+	Offset  int                    `json:"offset"`
+	Limit   int                    `json:"limit"`
+	Total   int                    `json:"total"`
+	HasMore bool                   `json:"has_more"`
+}

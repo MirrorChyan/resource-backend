@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"entgo.io/ent/dialect/sql"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
@@ -51,4 +53,46 @@ func (r *Version) UpdateVersionCustomData(ctx context.Context, verID int, custom
 	return r.db.Version.UpdateOneID(verID).
 		SetCustomData(customData).
 		Exec(ctx)
+}
+
+func (r *Version) ListVersion(
+	ctx context.Context,
+	resourceID string,
+	offset int,
+	limit int,
+	order sortorder.Order,
+) ([]*ent.Version, int, bool, error) {
+	var hasMore bool
+
+	query := r.db.Version.Query().
+		Where(version.HasResourceWith(resource.ID(resourceID)))
+
+	total, err := query.Count(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	query = r.db.Version.Query().
+		Where(version.HasResourceWith(resource.ID(resourceID))).
+		Offset(offset).
+		Limit(limit + 1)
+
+	switch order {
+	case sortorder.Newest:
+		query = query.Order(version.ByCreatedAt(sql.OrderDesc()))
+	case sortorder.Oldest:
+		query = query.Order(version.ByCreatedAt(sql.OrderAsc()))
+	}
+
+	list, err := query.All(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	if len(list) > limit {
+		hasMore = true
+		list = list[:limit]
+	}
+
+	return list, total, hasMore, nil
 }

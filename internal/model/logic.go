@@ -33,6 +33,19 @@ type CreateVersionParam struct {
 	Filename   string
 }
 
+type ListVersionParam struct {
+	ResourceID string
+	Offset     int
+	Limit      int
+	Order      sortorder.Order
+}
+
+type ListVersionResult struct {
+	List    []*ent.Version
+	Total   int
+	HasMore bool
+}
+
 type CreateVersionCallBackParam struct {
 	ResourceID string `json:"resource_id"`
 	Name       string `json:"name"`
