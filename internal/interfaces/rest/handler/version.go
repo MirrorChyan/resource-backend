@@ -108,7 +108,6 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	dau := middleware.NewDailyActiveUserRecorder(h.versionLogic.GetRedisClient())
 
 	r.Get("/resources/:rid/latest", dau, h.GetLatest)
-	r.Get("/resources/:rid/versions", h.List)
 	r.Head("/resources/download/:key", h.HeadDownloadInfo)
 	r.Get("/resources/download/:key", h.RedirectToDownload)
 
@@ -120,6 +119,10 @@ func (h *VersionHandler) Register(r fiber.Router) {
 
 	versions.Put("/release-note", h.UpdateReleaseNote)
 	versions.Put("/custom-data", h.UpdateCustomData)
+
+	// for admin
+	admin := r.Group("/admin")
+	admin.Get("/resources/:rid/versions", h.List)
 }
 
 func (h *VersionHandler) List(c *fiber.Ctx) error {
