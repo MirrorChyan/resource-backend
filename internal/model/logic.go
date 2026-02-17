@@ -2,9 +2,8 @@ package model
 
 import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/cursor"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 )
 
 type CreateResourceParam struct {
@@ -15,14 +14,14 @@ type CreateResourceParam struct {
 }
 
 type ListResourceParam struct {
-	Cursor *cursor.Cursor
+	Offset int
 	Limit  int
 	Order  sortorder.Order
 }
 
 type ListResourceResult struct {
 	List    []*ent.Resource
-	Cursor  *cursor.Cursor
+	Total   int
 	HasMore bool
 }
 type CreateVersionParam struct {

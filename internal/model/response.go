@@ -17,7 +17,9 @@ type ResourceResponseItem struct {
 
 type ListResourceResponseData struct {
 	List    []*ResourceResponseItem `json:"list"`
-	Cursor  string                  `json:"cursor"`
+	Offset  int                     `json:"offset"`
+	Limit   int                     `json:"limit"`
+	Total   int                     `json:"total"`
 	HasMore bool                    `json:"has_more"`
 }
 

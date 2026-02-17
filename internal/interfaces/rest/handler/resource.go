@@ -4,7 +4,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/cursor"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
@@ -67,20 +66,12 @@ func (h *ResourceHandler) List(c *fiber.Ctx) error {
 
 	order := sortorder.Parse(req.Sort)
 
-	var lastCursor *cursor.Cursor
-	if req.Cursor != "" {
-		cursorData, err := cursor.Decode(req.Cursor)
-		if err == nil {
-			lastCursor = cursorData
-		}
-	}
-
 	if req.Limit == 0 {
 		req.Limit = 20
 	}
 
 	result, err := h.resourceLogic.List(c.UserContext(), &ListResourceParam{
-		Cursor: lastCursor,
+		Offset: req.Offset,
 		Limit:  req.Limit,
 		Order:  order,
 	})
@@ -98,18 +89,11 @@ func (h *ResourceHandler) List(c *fiber.Ctx) error {
 		})
 	}
 
-	var currentCursorStr string
-	if lastCursor != nil {
-		str, err := lastCursor.Encode()
-		if err != nil {
-			return err
-		}
-		currentCursorStr = str
-	}
-
 	resp := response.Success(ListResourceResponseData{
 		List:    list,
-		Cursor:  currentCursorStr,
+		Offset:  req.Offset,
+		Limit:   req.Limit,
+		Total:   result.Total,
 		HasMore: result.HasMore,
 	})
 	return c.JSON(resp)

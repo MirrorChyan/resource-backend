@@ -9,8 +9,8 @@ type CreateResourceRequest struct {
 
 type ListResourceRequest struct {
 	Sort   string `query:"sort"`
-	Cursor string `query:"cursor"`
-	Limit  int    `query:"limit"`
+	Offset int    `query:"offset" validate:"min=0"`
+	Limit  int    `query:"limit" validate:"omitempty,min=1,max=100"`
 }
 
 type CreateVersionRequest struct {

@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"entgo.io/ent/dialect/sql"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/cursor"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -48,16 +47,22 @@ func (r *Resource) GetFullResource(ctx context.Context) ([]*ent.Resource, error)
 
 func (r *Resource) ListResource(
 	ctx context.Context,
-	lastCursor *cursor.Cursor,
+	offset int,
 	limit int,
 	order sortorder.Order,
-) ([]*ent.Resource, *cursor.Cursor, bool, error) {
+) ([]*ent.Resource, int, bool, error) {
 
 	var (
 		hasMore bool
 	)
 
+	total, err := r.db.Resource.Query().Count(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	query := r.db.Resource.Query().
+		Offset(offset).
 		Limit(limit + 1)
 
 	switch order {
@@ -67,33 +72,9 @@ func (r *Resource) ListResource(
 		query = query.Order(resource.ByCreatedAt(sql.OrderAsc()))
 	}
 
-	if lastCursor != nil {
-		switch order {
-		case sortorder.Newest:
-			query = query.Where(
-				resource.Or(
-					resource.CreatedAtLT(lastCursor.CreatedAt),
-					resource.And(
-						resource.CreatedAtEQ(lastCursor.CreatedAt),
-						resource.IDGT(lastCursor.ID),
-					)),
-			)
-		case sortorder.Oldest:
-			query = query.Where(
-				resource.Or(
-					resource.CreatedAtGT(lastCursor.CreatedAt),
-					resource.And(
-						resource.CreatedAtEQ(lastCursor.CreatedAt),
-						resource.IDGT(lastCursor.ID),
-					),
-				),
-			)
-		}
-	}
-
 	list, err := query.All(ctx)
 	if err != nil {
-		return nil, nil, false, err
+		return nil, 0, false, err
 	}
 
 	if len(list) > limit {
@@ -101,14 +82,5 @@ func (r *Resource) ListResource(
 		list = list[:limit]
 	}
 
-	var currentCursor *cursor.Cursor
-	if len(list) > 0 {
-		lastItem := list[len(list)-1]
-		currentCursor = &cursor.Cursor{
-			ID:        lastItem.ID,
-			CreatedAt: lastItem.CreatedAt,
-		}
-	}
-
-	return list, currentCursor, hasMore, nil
+	return list, total, hasMore, nil
 }
