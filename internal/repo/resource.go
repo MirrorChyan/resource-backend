@@ -103,28 +103,27 @@ func (r *Resource) ListResource(
 	limit int,
 	order sortorder.Order,
 ) ([]*ent.Resource, int, bool, error) {
+	var hasMore bool
 
-	var (
-		hasMore bool
-	)
+	baseQuery := r.db.Resource.Query()
 
-	total, err := r.db.Resource.Query().Count(ctx)
+	total, err := baseQuery.Clone().Count(ctx)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
-	query := r.db.Resource.Query().
+	listQuery := baseQuery.Clone().
 		Offset(offset).
 		Limit(limit + 1)
 
 	switch order {
 	case sortorder.Newest:
-		query = query.Order(resource.ByCreatedAt(sql.OrderDesc()))
+		listQuery = listQuery.Order(resource.ByCreatedAt(sql.OrderDesc()))
 	case sortorder.Oldest:
-		query = query.Order(resource.ByCreatedAt(sql.OrderAsc()))
+		listQuery = listQuery.Order(resource.ByCreatedAt(sql.OrderAsc()))
 	}
 
-	list, err := query.All(ctx)
+	list, err := listQuery.All(ctx)
 	if err != nil {
 		return nil, 0, false, err
 	}

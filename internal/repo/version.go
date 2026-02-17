@@ -71,27 +71,26 @@ func (r *Version) ListVersion(
 ) ([]*ent.Version, int, bool, error) {
 	var hasMore bool
 
-	query := r.db.Version.Query().
+	baseQuery := r.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(resourceID)))
 
-	total, err := query.Count(ctx)
+	total, err := baseQuery.Clone().Count(ctx)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
-	query = r.db.Version.Query().
-		Where(version.HasResourceWith(resource.ID(resourceID))).
+	listQuery := baseQuery.Clone().
 		Offset(offset).
 		Limit(limit + 1)
 
 	switch order {
 	case sortorder.Newest:
-		query = query.Order(version.ByCreatedAt(sql.OrderDesc()))
+		listQuery = listQuery.Order(version.ByCreatedAt(sql.OrderDesc()))
 	case sortorder.Oldest:
-		query = query.Order(version.ByCreatedAt(sql.OrderAsc()))
+		listQuery = listQuery.Order(version.ByCreatedAt(sql.OrderAsc()))
 	}
 
-	list, err := query.All(ctx)
+	list, err := listQuery.All(ctx)
 	if err != nil {
 		return nil, 0, false, err
 	}
