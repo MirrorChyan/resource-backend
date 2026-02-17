@@ -3,14 +3,13 @@ package logic
 import (
 	"context"
 
+	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
-
-	"github.com/MirrorChyan/resource-backend/internal/ent"
 
 	"go.uber.org/zap"
 )
@@ -77,4 +76,60 @@ func (l *ResourceLogic) List(ctx context.Context, param *ListResourceParam) (*Li
 		Total:   total,
 		HasMore: hasMore,
 	}, nil
+}
+
+func (l *ResourceLogic) GetByID(ctx context.Context, id string) (*ent.Resource, error) {
+	res, err := l.resourceRepo.GetResourceByID(ctx, id)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errs.ErrResourceNotFound
+		}
+		return nil, err
+	}
+	return res, nil
+}
+
+func (l *ResourceLogic) Update(ctx context.Context, param UpdateResourceParam) (*ent.Resource, error) {
+	updated, err := l.resourceRepo.UpdateResource(
+		ctx,
+		param.ID,
+		param.Name,
+		param.Description,
+		param.UpdateType,
+	)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errs.ErrResourceNotFound
+		}
+		return nil, err
+	}
+
+	// Keep update-type lookup cache consistent with latest resource data.
+	l.cg.ResourceInfoCache.Delete(l.cg.GetCacheKey(param.ID))
+	return updated, nil
+}
+
+func (l *ResourceLogic) Delete(ctx context.Context, id string, force bool) error {
+	hasVersions, err := l.resourceRepo.HasVersions(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasVersions && !force {
+		return errs.ErrResourceDeleteConflict
+	}
+
+	if force {
+		err = l.resourceRepo.ForceDeleteResourceByID(ctx, id)
+	} else {
+		err = l.resourceRepo.DeleteResourceByID(ctx, id)
+	}
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return errs.ErrResourceNotFound
+		}
+		return err
+	}
+
+	l.cg.ResourceInfoCache.Delete(l.cg.GetCacheKey(id))
+	return nil
 }

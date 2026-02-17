@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -123,6 +124,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	// for admin
 	admin := r.Group("/admin")
 	admin.Get("/resources/:rid/versions", h.List)
+	admin.Get("/resources/:rid/versions/:vid", h.Get)
 }
 
 func (h *VersionHandler) List(c *fiber.Ctx) error {
@@ -165,6 +167,32 @@ func (h *VersionHandler) List(c *fiber.Ctx) error {
 		Limit:   req.Limit,
 		Total:   result.Total,
 		HasMore: result.HasMore,
+	})
+	return c.JSON(resp)
+}
+
+func (h *VersionHandler) Get(c *fiber.Ctx) error {
+	resourceID := c.Params(ResourceKey)
+	verIDText := c.Params("vid")
+
+	verID, err := strconv.Atoi(verIDText)
+	if err != nil || verID <= 0 {
+		return errs.ErrInvalidParams
+	}
+
+	ver, err := h.versionLogic.GetVersionByID(c.UserContext(), resourceID, verID)
+	if err != nil {
+		return err
+	}
+
+	resp := response.Success(VersionDetailResponseData{
+		ID:          ver.ID,
+		Name:        ver.Name,
+		Number:      ver.Number,
+		Channel:     string(ver.Channel),
+		ReleaseNote: ver.ReleaseNote,
+		CustomData:  ver.CustomData,
+		CreatedAt:   ver.CreatedAt,
 	})
 	return c.JSON(resp)
 }

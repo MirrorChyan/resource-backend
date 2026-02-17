@@ -115,6 +115,17 @@ func (l *VersionLogic) GetVersionByName(ctx context.Context, param GetVersionByN
 
 }
 
+func (l *VersionLogic) GetVersionByID(ctx context.Context, resourceID string, versionID int) (*ent.Version, error) {
+	ver, err := l.versionRepo.GetVersionByID(ctx, resourceID, versionID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errs.ErrResourceNotFound
+		}
+		return nil, err
+	}
+	return ver, nil
+}
+
 func (l *VersionLogic) List(ctx context.Context, param *ListVersionParam) (*ListVersionResult, error) {
 	list, total, hasMore, err := l.versionRepo.ListVersion(
 		ctx,

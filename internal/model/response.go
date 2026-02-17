@@ -12,6 +12,7 @@ type ResourceResponseItem struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	UpdateType  string    `json:"update_type"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -61,4 +62,14 @@ type ListVersionResponseData struct {
 	Limit   int                    `json:"limit"`
 	Total   int                    `json:"total"`
 	HasMore bool                   `json:"has_more"`
+}
+
+type VersionDetailResponseData struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	Number      uint64    `json:"number"`
+	Channel     string    `json:"channel"`
+	ReleaseNote string    `json:"release_note"`
+	CustomData  string    `json:"custom_data"`
+	CreatedAt   time.Time `json:"created_at"`
 }

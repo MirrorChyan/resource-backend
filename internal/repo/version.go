@@ -27,6 +27,13 @@ func (r *Version) GetVersionByName(ctx context.Context, resID, name string) (*en
 		First(ctx)
 }
 
+func (r *Version) GetVersionByID(ctx context.Context, resID string, verID int) (*ent.Version, error) {
+	return r.db.Version.Query().
+		Where(version.ID(verID)).
+		Where(version.HasResourceWith(resource.ID(resID))).
+		First(ctx)
+}
+
 func (r *Version) GetMaxNumberVersion(ctx context.Context, resID string) (*ent.Version, error) {
 	return r.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(resID))).

@@ -24,6 +24,13 @@ type ListResourceResult struct {
 	Total   int
 	HasMore bool
 }
+
+type UpdateResourceParam struct {
+	ID          string
+	Name        string
+	Description string
+	UpdateType  string
+}
 type CreateVersionParam struct {
 	ResourceID string
 	Name       string

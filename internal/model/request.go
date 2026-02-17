@@ -13,6 +13,12 @@ type ListResourceRequest struct {
 	Limit  int    `query:"limit" validate:"omitempty,min=1,max=100"`
 }
 
+type UpdateResourceRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"max=255"`
+	UpdateType  string `json:"update_type" validate:"required,oneof=full incremental"`
+}
+
 type CreateVersionRequest struct {
 	Name     string `json:"name" form:"name" validate:"required"`
 	OS       string `json:"os" form:"os"`

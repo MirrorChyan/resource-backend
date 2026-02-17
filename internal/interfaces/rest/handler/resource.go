@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
@@ -26,7 +29,11 @@ func (h *ResourceHandler) Register(r fiber.Router) {
 
 	// for admin
 	admin := r.Group("/admin")
+	admin.Post("/resources", h.Create)
 	admin.Get("/resources", h.List)
+	admin.Get("/resources/:rid", h.Get)
+	admin.Put("/resources/:rid", h.Update)
+	admin.Delete("/resources/:rid", h.Delete)
 }
 
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {
@@ -88,6 +95,7 @@ func (h *ResourceHandler) List(c *fiber.Ctx) error {
 			ID:          item.ID,
 			Name:        item.Name,
 			Description: item.Description,
+			UpdateType:  item.UpdateType,
 			CreatedAt:   item.CreatedAt,
 		})
 	}
@@ -100,4 +108,68 @@ func (h *ResourceHandler) List(c *fiber.Ctx) error {
 		HasMore: result.HasMore,
 	})
 	return c.JSON(resp)
+}
+
+func (h *ResourceHandler) Get(c *fiber.Ctx) error {
+	rid := c.Params("rid")
+
+	res, err := h.resourceLogic.GetByID(c.UserContext(), rid)
+	if err != nil {
+		return err
+	}
+
+	resp := response.Success(ResourceResponseItem{
+		ID:          res.ID,
+		Name:        res.Name,
+		Description: res.Description,
+		UpdateType:  res.UpdateType,
+		CreatedAt:   res.CreatedAt,
+	})
+	return c.JSON(resp)
+}
+
+func (h *ResourceHandler) Update(c *fiber.Ctx) error {
+	rid := c.Params("rid")
+
+	var req UpdateResourceRequest
+	if err := validator.ValidateBody(c, &req); err != nil {
+		return err
+	}
+
+	res, err := h.resourceLogic.Update(c.UserContext(), UpdateResourceParam{
+		ID:          rid,
+		Name:        req.Name,
+		Description: req.Description,
+		UpdateType:  req.UpdateType,
+	})
+	if err != nil {
+		return err
+	}
+
+	resp := response.Success(ResourceResponseItem{
+		ID:          res.ID,
+		Name:        res.Name,
+		Description: res.Description,
+		UpdateType:  res.UpdateType,
+		CreatedAt:   res.CreatedAt,
+	})
+	return c.JSON(resp)
+}
+
+func (h *ResourceHandler) Delete(c *fiber.Ctx) error {
+	rid := c.Params("rid")
+	force := false
+	if s := c.Query("force"); s != "" {
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			return errs.ErrInvalidParams
+		}
+		force = v
+	}
+
+	if err := h.resourceLogic.Delete(c.UserContext(), rid, force); err != nil {
+		return err
+	}
+
+	return c.JSON(response.Success(nil))
 }
