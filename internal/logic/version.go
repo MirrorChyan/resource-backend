@@ -530,10 +530,12 @@ func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arc
 		l.logger.Warn("Failed to marshal CreateNewVersion callback")
 		return
 	}
-	_, err := http.Post(webhook, "application/json", bytes.NewBuffer(buf))
+	resp, err := http.Post(webhook, "application/json", bytes.NewBuffer(buf))
 	if err != nil {
 		l.logger.Warn("Failed to send CreateNewVersion callback")
+		return
 	}
+	_ = resp.Body.Close()
 }
 
 func (l *VersionLogic) doPostCreateResources(resourceId string) {
