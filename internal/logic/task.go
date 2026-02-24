@@ -122,7 +122,7 @@ func doHandlePurge(l *zap.Logger, v *VersionLogic) func(context.Context, *asynq.
 }
 
 func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx context.Context, task *asynq.Task) error {
-	return func(ctx context.Context, task *asynq.Task) error {
+	return func(ctx context.Context, task *asynq.Task) (retErr error) {
 		c, ok := asynq.GetRetryCount(ctx)
 		if ok {
 			l.Info("retry count", zap.Int("count", c))
@@ -132,6 +132,17 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 		if err := sonic.Unmarshal(task.Payload(), &payload); err != nil {
 			return err
 		}
+
+		statusKey := payload.StatusKey
+		defer func() {
+			if retErr != nil && statusKey != "" {
+				maxRetry, _ := asynq.GetMaxRetry(ctx)
+				retryCount, _ := asynq.GetRetryCount(ctx)
+				if retryCount >= maxRetry {
+					v.rdb.Set(ctx, statusKey, int(misc.StatusFailed), time.Minute*30)
+				}
+			}
+		}()
 
 		var (
 			source      = payload.Source
@@ -230,7 +241,7 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 		v.rdb.Del(ctx, mk)
 
 		// Update status polling key to completed
-		if statusKey := payload.StatusKey; statusKey != "" {
+		if statusKey != "" {
 			v.rdb.Set(ctx, statusKey, int(misc.StatusCompleted), time.Minute*30)
 		}
 

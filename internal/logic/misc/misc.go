@@ -40,8 +40,9 @@ const StatusPollingPrefix = "status:polling"
 type PollingStatus int
 
 const (
-	StatusPending PollingStatus = iota
+	StatusPending PollingStatus = iota + 1
 	StatusCompleted
+	StatusFailed
 	StatusNotFound
 )
 
@@ -52,7 +53,7 @@ func ParsePollingStatus(s string) (PollingStatus, bool) {
 	}
 	status := PollingStatus(n)
 	switch status {
-	case StatusPending, StatusCompleted, StatusNotFound:
+	case StatusPending, StatusCompleted, StatusFailed, StatusNotFound:
 		return status, true
 	default:
 		return 0, false
