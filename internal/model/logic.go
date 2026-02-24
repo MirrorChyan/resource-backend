@@ -73,14 +73,13 @@ type PatchTaskPayload struct {
 
 type StorageInfoCreatePayload struct {
 	ResourceId  string
-	Dest        string
+	Source      string
 	VersionId   int
 	VersionName string
-
-	OS         string
-	Arch       string
-	Channel    string
-	FileHashes map[string]string
+	OS          string
+	Arch        string
+	Channel     string
+	StatusKey   string
 
 	IncrementalType types.FileType
 }

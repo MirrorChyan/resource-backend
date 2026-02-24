@@ -241,8 +241,10 @@ func doErrorNotify(l *zap.Logger, msg string) {
 		l.Warn("Failed to marshal CreateNewVersion callback")
 		return
 	}
-	_, err := http.Post(webhook, "application/json", bytes.NewBuffer(buf))
+	resp, err := http.Post(webhook, "application/json", bytes.NewBuffer(buf))
 	if err != nil {
 		l.Warn("Failed to send CreateNewVersion callback")
+		return
 	}
+	_ = resp.Body.Close()
 }

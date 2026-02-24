@@ -28,3 +28,11 @@ type QueryLatestResponseData struct {
 	Filesize       int64  `json:"filesize,omitempty"`
 	CDKExpiredTime int64  `json:"cdk_expired_time,omitempty"`
 }
+
+type GetVersionStatusResponseData struct {
+	Status int `json:"status"`
+}
+
+type CreateVersionCallBackResponseData struct {
+	StatusKey string `json:"status_key"`
+}

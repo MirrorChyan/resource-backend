@@ -197,9 +197,9 @@ func extractZipFile(origin string, pending map[string]string) error {
 			if flag.Load() {
 				return nil
 			}
-			if err = t.transfer(); err != nil {
+			if e := t.transfer(); e != nil {
 				flag.Store(true)
-				return fmt.Errorf("failed to transfer file: %w", err)
+				return fmt.Errorf("failed to transfer file: %w", e)
 			}
 			return nil
 		})

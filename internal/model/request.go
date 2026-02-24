@@ -44,3 +44,7 @@ type UpdateCustomDataRequest struct {
 	Channel     string `json:"channel"`
 	Content     string `json:"content"`
 }
+
+type GetVersionStatusRequest struct {
+	Key string `query:"key" validate:"required"`
+}
