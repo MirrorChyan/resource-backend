@@ -7,12 +7,30 @@ type CreateResourceRequest struct {
 	UpdateType  string `json:"update_type" validate:"omitempty,oneof=full incremental"`
 }
 
+type ListResourceRequest struct {
+	Sort   string `query:"sort"`
+	Offset int    `query:"offset" validate:"min=0"`
+	Limit  int    `query:"limit" validate:"omitempty,min=1,max=100"`
+}
+
+type UpdateResourceRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"max=255"`
+	UpdateType  string `json:"update_type" validate:"required,oneof=full incremental"`
+}
+
 type CreateVersionRequest struct {
 	Name     string `json:"name" form:"name" validate:"required"`
 	OS       string `json:"os" form:"os"`
 	Arch     string `json:"arch" form:"arch"`
 	Channel  string `json:"channel" form:"channel"`
 	Filename string `json:"filename" form:"filename" validate:"required"`
+}
+
+type ListVersionRequest struct {
+	Sort   string `query:"sort"`
+	Offset int    `query:"offset" validate:"min=0"`
+	Limit  int    `query:"limit" validate:"omitempty,min=1,max=100"`
 }
 
 type CreateVersionCallBackRequest struct {

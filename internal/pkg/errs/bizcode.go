@@ -11,4 +11,5 @@ const (
 	BizCodeResourceVersionNameConflict      = 8006
 	BizCodeResourceVersionStorageProcessing = 8007
 	BizResourceVersionNameUnparsable        = 8008
+	BizCodeResourceDeleteConflict           = 8009
 )
