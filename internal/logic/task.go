@@ -180,7 +180,19 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			}
 
 			extractDir := v.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
-
+			// clear storage directory
+			defer func() {
+				go func() {
+					l.Warn("clean storage directory",
+						zap.String("path", extractDir),
+					)
+					if e := os.RemoveAll(extractDir); e != nil {
+						l.Error("Failed to remove storage directory",
+							zap.Error(e),
+						)
+					}
+				}()
+			}()
 			switch fileType {
 			case types.Zip:
 				if err := archiver.UnpackZip(dest, extractDir); err != nil {
