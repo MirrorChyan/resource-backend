@@ -1,6 +1,8 @@
 package misc
 
 import (
+	"strconv"
+
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/gofiber/fiber/v2"
 )
@@ -31,6 +33,31 @@ const (
 const (
 	ProcessFlag = "1"
 )
+
+// status polling
+const StatusPollingPrefix = "status:polling"
+
+type PollingStatus int
+
+const (
+	StatusPending PollingStatus = iota
+	StatusCompleted
+	StatusNotFound
+)
+
+func ParsePollingStatus(s string) (PollingStatus, bool) {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, false
+	}
+	status := PollingStatus(n)
+	switch status {
+	case StatusPending, StatusCompleted, StatusNotFound:
+		return status, true
+	default:
+		return 0, false
+	}
+}
 
 // used by task
 const (

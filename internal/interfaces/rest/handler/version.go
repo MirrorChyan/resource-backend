@@ -115,6 +115,7 @@ func (h *VersionHandler) Register(r fiber.Router) {
 	versions.Use("/", middleware.NewValidateUploader())
 	versions.Post("/", h.Create)
 	versions.Post("/callback", h.CreateVersionCallBack)
+	versions.Get("/status", h.GetVersionStatus)
 
 	versions.Put("/release-note", h.UpdateReleaseNote)
 	versions.Put("/custom-data", h.UpdateCustomData)
@@ -185,7 +186,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 		return err
 	}
 
-	err := h.versionLogic.ProcessCreateVersionCallback(c.UserContext(), CreateVersionCallBackParam{
+	statusKey, err := h.versionLogic.ProcessCreateVersionCallback(c.UserContext(), CreateVersionCallBackParam{
 		ResourceID: resourceId,
 		Name:       req.Name,
 		OS:         req.OS,
@@ -197,7 +198,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(response.Success(nil))
+	return c.JSON(response.Success(&CreateVersionCallBackResponseData{StatusKey: statusKey}))
 }
 
 func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId, ip string) (int64, error) {
@@ -579,6 +580,24 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 
 	resp := response.Success(nil)
 	return c.Status(fiber.StatusOK).JSON(resp)
+}
+
+func (h *VersionHandler) GetVersionStatus(c *fiber.Ctx) error {
+	var req GetVersionStatusRequest
+	if err := validator.ValidateQuery(c, &req); err != nil {
+		return err
+	}
+
+	ctx := c.UserContext()
+
+	status, err := h.versionLogic.GetProcessingStatus(ctx, req.Key)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(response.Success(&GetVersionStatusResponseData{
+		Status: int(status),
+	}))
 }
 
 func (h *VersionHandler) doEvictCache(resourceId string) {

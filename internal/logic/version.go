@@ -28,7 +28,6 @@ import (
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/oss"
-	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/patcher"
@@ -267,7 +266,7 @@ func (l *VersionLogic) doVerifyRequiredFileType(dest string) FileDetectResult {
 	}
 }
 
-func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param CreateVersionCallBackParam) error {
+func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param CreateVersionCallBackParam) (string, error) {
 	var (
 		resourceId = param.ResourceID
 		// version name is unique in all channels
@@ -279,7 +278,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	)
 	ver, err := l.versionRepo.GetVersionByName(ctx, resourceId, versionName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var (
@@ -293,7 +292,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			zap.String("archive path", source),
 			zap.Error(err),
 		)
-		return err
+		return "", err
 	}
 
 	exist, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
@@ -301,7 +300,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		l.logger.Error("Failed to check storage exist",
 			zap.Error(err),
 		)
-		return err
+		return "", err
 	}
 	if exist {
 		l.logger.Warn("version storage already exists",
@@ -310,7 +309,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			zap.String("resource os", system),
 			zap.String("resource arch", arch),
 		)
-		return nil
+		return "", nil
 	}
 
 	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
@@ -319,7 +318,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			zap.String("resource id", resourceId),
 			zap.Error(err),
 		)
-		return err
+		return "", err
 	}
 
 	mk := strings.Join([]string{misc.ProcessStoragePendingKey,
@@ -327,10 +326,10 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}, ":")
 	result := l.rdb.SetNX(ctx, mk, misc.ProcessFlag, time.Hour*5)
 	if err := result.Err(); err != nil {
-		return err
+		return "", err
 	}
 	if !result.Val() {
-		return nil
+		return "", nil
 	}
 
 	rollback := func() {
@@ -339,122 +338,41 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 	var (
 		isIncremental = ut == types.UpdateIncremental
-		dest          = source
-		hashes        = make(map[string]string)
+		fileType      types.FileType
 	)
-	var fileType types.FileType
 
 	if isIncremental {
-
-		var aspect = func() error {
-			// make sure the storage dir exists
-			dest = filepath.Join(l.storageLogic.RootDir, key)
-			_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
-
-			l.logger.Debug("start CopyFile")
-
-			if err = fileops.CopyFile(source, dest); err != nil {
-				l.logger.Error("failed to copy oss to local storage file",
-					zap.String("source", source),
-					zap.String("destination", dest),
-					zap.Error(err),
-				)
-				return err
-			}
-
-			l.logger.Debug("end CopyFile")
-
-			val := l.doVerifyRequiredFileType(dest)
-			if !val.Valid {
-				return misc.NotAllowedFileTypeError
-			}
-			flat := l.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
-
-			// clear storage directory
-			defer func() {
-				go func() {
-					l.logger.Warn("clean storage directory",
-						zap.String("path", flat),
-					)
-					if e := os.RemoveAll(flat); e != nil {
-						l.logger.Error("Failed to remove storage directory",
-							zap.Error(e),
-						)
-					}
-				}()
-			}()
-
-			l.logger.Debug("start unpack resource",
-				zap.String("save dir", flat),
-				zap.String("filetype", string(val.FileType)),
-			)
-
-			fileType = val.FileType
-
-			switch val.FileType {
-			case types.Zip:
-				if err = archiver.UnpackZip(dest, flat); err != nil {
-					l.logger.Error("Failed to unpack file",
-						zap.String("version name", versionName),
-						zap.Error(err),
-					)
-					return err
-				}
-			case types.Tgz:
-				if err = archiver.UnpackTarGz(dest, flat); err != nil {
-					l.logger.Error("Failed to unpack file",
-						zap.String("version name", versionName),
-						zap.Error(err),
-					)
-					return err
-				}
-			}
-
-			l.logger.Debug("end unpack resource",
-				zap.String("save dir", flat),
-			)
-
-			l.logger.Debug("start calculate total file hash",
-				zap.String("flat dir", flat),
-			)
-
-			hashes, err = filehash.GetAll(flat)
-			if err != nil {
-				l.logger.Error("Failed to get file hashes",
-					zap.String("version name", versionName),
-					zap.Error(err),
-				)
-				return err
-			}
-
-			l.logger.Debug("end calculate total file hash",
-				zap.String("flat dir", flat),
-			)
-			return nil
-		}
-
-		if err = aspect(); err != nil {
+		val := l.doVerifyRequiredFileType(source)
+		if !val.Valid {
 			rollback()
-			return err
+			return "", misc.NotAllowedFileTypeError
 		}
+		fileType = val.FileType
+	}
+
+	// Generate a random status polling key
+	statusKey := strings.Join([]string{misc.StatusPollingPrefix, ksuid.New().String()}, ":")
+	if err := l.rdb.Set(ctx, statusKey, int(misc.StatusPending), time.Hour*5).Err(); err != nil {
+		rollback()
+		return "", err
 	}
 
 	var payload = StorageInfoCreatePayload{
 		ResourceId:      resourceId,
-		Dest:            dest,
+		Source:          source,
 		VersionId:       versionId,
 		VersionName:     versionName,
 		OS:              system,
 		Arch:            arch,
 		Channel:         channel,
-		FileHashes:      hashes,
+		StatusKey:       statusKey,
 		IncrementalType: fileType,
 	}
 
 	buf, err := sonic.Marshal(payload)
 	if err != nil {
 		rollback()
-		return err
+		return "", err
 	}
 
 	task := asynq.NewTask(misc.ProcessStorageTask, buf, asynq.MaxRetry(5))
@@ -471,7 +389,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			zap.String("os", system),
 			zap.String("arch", arch),
 		)
-		return err
+		return "", err
 	}
 	l.logger.Info("submit CreateFullUpdateStorage task success",
 		zap.String("task id", submitted.ID),
@@ -483,7 +401,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		zap.String("arch", arch),
 	)
 
-	return nil
+	return statusKey, nil
 }
 
 func (l *VersionLogic) DoProcessStorage(ctx context.Context,
@@ -628,6 +546,20 @@ func (l *VersionLogic) doPostCreateResources(resourceId string) {
 			}
 		}
 	}
+}
+
+func (l *VersionLogic) GetProcessingStatus(ctx context.Context, key string) (misc.PollingStatus, error) {
+	val, err := l.rdb.Get(ctx, key).Result()
+	if errors.Is(err, redis.Nil) {
+		return misc.StatusNotFound, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	if status, ok := misc.ParsePollingStatus(val); ok {
+		return status, nil
+	}
+	return misc.StatusNotFound, nil
 }
 
 func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceId string, target, current int, system, arch string) error {

@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +11,10 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -128,16 +134,74 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 		}
 
 		var (
-			dest        = payload.Dest
+			source      = payload.Source
 			system      = payload.OS
 			arch        = payload.Arch
 			resourceId  = payload.ResourceId
 			versionId   = payload.VersionId
 			channel     = payload.Channel
-			hashes      = payload.FileHashes
 			versionName = payload.VersionName
 			fileType    = payload.IncrementalType
 		)
+
+		var (
+			dest   string
+			hashes map[string]string
+		)
+
+		if fileType != "" {
+			// Incremental: copy source to local storage, unpack, compute file hashes
+			destDir := v.storageLogic.BuildVersionStorageDirPath(resourceId, versionId, system, arch)
+			if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
+				return err
+			}
+
+			filename := misc.DefaultResourceName + types.GetFileSuffix(fileType)
+			dest = filepath.Join(destDir, filename)
+
+			if err := fileops.CopyFile(source, dest); err != nil {
+				l.Error("failed to copy source to local storage",
+					zap.String("source", source),
+					zap.String("dest", dest),
+					zap.Error(err),
+				)
+				return err
+			}
+
+			extractDir := v.storageLogic.BuildVersionResourceStorageDirPath(resourceId, versionId, system, arch)
+
+			switch fileType {
+			case types.Zip:
+				if err := archiver.UnpackZip(dest, extractDir); err != nil {
+					l.Error("failed to unpack zip",
+						zap.String("dest", dest),
+						zap.Error(err),
+					)
+					return err
+				}
+			case types.Tgz:
+				if err := archiver.UnpackTarGz(dest, extractDir); err != nil {
+					l.Error("failed to unpack tgz",
+						zap.String("dest", dest),
+						zap.Error(err),
+					)
+					return err
+				}
+			}
+
+			var err error
+			hashes, err = filehash.GetAll(extractDir)
+			if err != nil {
+				l.Error("failed to calculate file hashes",
+					zap.String("extract dir", extractDir),
+					zap.Error(err),
+				)
+				return err
+			}
+		} else {
+			// Full update: use source directly
+			dest = source
+		}
 
 		err := v.DoProcessStorage(ctx,
 			resourceId,
@@ -159,11 +223,16 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			return err
 		}
 
-		// delete pending key
+		// Delete the process pending key
 		mk := strings.Join([]string{misc.ProcessStoragePendingKey,
 			resourceId, strconv.Itoa(versionId), channel, system, arch,
 		}, ":")
 		v.rdb.Del(ctx, mk)
+
+		// Update status polling key to completed
+		if statusKey := payload.StatusKey; statusKey != "" {
+			v.rdb.Set(ctx, statusKey, int(misc.StatusCompleted), time.Minute*30)
+		}
 
 		return nil
 	}
