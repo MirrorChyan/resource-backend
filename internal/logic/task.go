@@ -139,7 +139,7 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 				maxRetry, _ := asynq.GetMaxRetry(ctx)
 				retryCount, _ := asynq.GetRetryCount(ctx)
 				if retryCount >= maxRetry {
-					v.rdb.Set(ctx, statusKey, int(misc.StatusFailed), time.Minute*30)
+					v.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusFailed), time.Minute*30)
 				}
 			}
 		}()
@@ -242,7 +242,7 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 
 		// Update status polling key to completed
 		if statusKey != "" {
-			v.rdb.Set(ctx, statusKey, int(misc.StatusCompleted), time.Minute*30)
+			v.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusCompleted), time.Minute*30)
 		}
 
 		return nil

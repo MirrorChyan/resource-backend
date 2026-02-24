@@ -34,8 +34,12 @@ const (
 	ProcessFlag = "1"
 )
 
-// status polling
+// StatusPollingPrefix status polling
 const StatusPollingPrefix = "status:polling"
+
+func StatusPollingKey(id string) string {
+	return StatusPollingPrefix + ":" + id
+}
 
 type PollingStatus int
 

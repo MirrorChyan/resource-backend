@@ -351,8 +351,8 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}
 
 	// Generate a random status polling key
-	statusKey := strings.Join([]string{misc.StatusPollingPrefix, ksuid.New().String()}, ":")
-	if err := l.rdb.Set(ctx, statusKey, int(misc.StatusPending), time.Hour*5).Err(); err != nil {
+	statusKey := ksuid.New().String()
+	if err := l.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusPending), 30*time.Minute).Err(); err != nil {
 		rollback()
 		return "", err
 	}
@@ -381,7 +381,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		rollback()
 		l.logger.Error("failed to CreateFullUpdateStorage",
 			zap.Error(err),
-			zap.String("task id", submitted.ID),
 			zap.String("resource id", resourceId),
 			zap.Int("version id", versionId),
 			zap.String("version name", versionName),
@@ -551,7 +550,7 @@ func (l *VersionLogic) doPostCreateResources(resourceId string) {
 }
 
 func (l *VersionLogic) GetProcessingStatus(ctx context.Context, key string) (misc.PollingStatus, error) {
-	val, err := l.rdb.Get(ctx, key).Result()
+	val, err := l.rdb.Get(ctx, misc.StatusPollingKey(key)).Result()
 	if errors.Is(err, redis.Nil) {
 		return misc.StatusNotFound, nil
 	}
