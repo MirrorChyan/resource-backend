@@ -28,6 +28,7 @@ with latest as (select v.id                                                     
                        s.arch                                                                       as arch,
                        s.package_hash_sha256                                                        as package_hash_sha256,
                        s.package_path                                                               as package_path,
+                       s.file_size                                                                  as file_size,
                        v.created_at                                                                 as created_at,
                        row_number() over (partition by channel,os,arch order by s.created_at desc ) as version_serial
                 from versions v

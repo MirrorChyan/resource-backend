@@ -62,6 +62,7 @@ type UpdateInfoTuple struct {
 	PackageHash string
 	PackagePath string
 	UpdateType  string
+	Filesize    int64
 }
 type PatchTaskPayload struct {
 	ResourceId       string
