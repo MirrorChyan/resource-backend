@@ -645,48 +645,76 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		DestPackage: destPackage,
 		FileType:    param.TargetFileType,
 	}
+	cleanupLocal := func() {
+		if err := os.Remove(destPackage); err != nil && !errors.Is(err, os.ErrNotExist) {
+			l.logger.Warn("failed to remove local patch package",
+				zap.String("path", destPackage),
+				zap.Error(err),
+			)
+		}
+	}
 
 	err = patcher.GenerateV2(tuple, changes)
 	if err != nil {
+		cleanupLocal()
 		l.logger.Error("Failed to generate patch package",
+			zap.Error(err),
+		)
+		return err
+	}
+	cleanupOSS := func(path string) {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			l.logger.Warn("failed to remove oss patch package",
+				zap.String("path", path),
+				zap.Error(err),
+			)
+		}
+	}
+
+	hashes, err := filehash.Calculate(destPackage)
+	if err != nil {
+		cleanupLocal()
+		l.logger.Error("Failed to calculate incremental update package hash",
+			zap.String("resource id", resourceId),
+			zap.Int("target version id", target),
+			zap.Int("current version id", current),
+			zap.String("os", system),
+			zap.String("arch", arch),
+			zap.Error(err),
+		)
+		return err
+	}
+	stat, err := os.Stat(destPackage)
+	if err != nil {
+		cleanupLocal()
+		l.logger.Error("Failed to stat incremental update package",
+			zap.String("path", destPackage),
+			zap.Error(err),
+		)
+		return err
+	}
+	ossPackage := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(destPackage))
+	_, statErr := os.Stat(ossPackage)
+	ossExisted := statErr == nil
+	if err := os.MkdirAll(filepath.Dir(ossPackage), os.ModePerm); err != nil {
+		cleanupLocal()
+		return err
+	}
+	err = fileops.CopyFile(destPackage, ossPackage)
+	if err != nil {
+		cleanupLocal()
+		l.logger.Error("failed to copy local to oss",
+			zap.String("source", destPackage),
+			zap.String("destination", ossPackage),
 			zap.Error(err),
 		)
 		return err
 	}
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) (err error) {
-
-		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
-			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
-				// Code before the actual rollback.
-				if err := os.RemoveAll(destPackage); err != nil {
-					l.logger.Error("Failed to remove patch package",
-						zap.Error(err),
-					)
-				}
-				err := next.Rollback(ctx, tx)
-				// Code after the transaction was rolled back.
-				return err
-			})
-		})
-
-		hashes, err := filehash.Calculate(destPackage)
-		if err != nil {
-			l.logger.Error("Failed to calculate incremental update package hash",
-				zap.String("resource id", resourceId),
-				zap.Int("target version id", target),
-				zap.Int("current version id", current),
-				zap.String("os", system),
-				zap.String("arch", arch),
-				zap.Error(err),
-			)
-			return err
-		}
-		stat, _ := os.Stat(destPackage)
-
 		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx,
 			target, current, tuple.FileType, stat.Size(),
-			system, arch, destPackage, hashes,
+			system, arch, ossPackage, hashes,
 		)
 		if err != nil {
 			l.logger.Error("Failed to create incremental update storage",
@@ -699,23 +727,16 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	})
 
 	if err != nil {
+		if !ossExisted {
+			cleanupOSS(ossPackage)
+		}
+		cleanupLocal()
 		l.logger.Error("Failed to commit transaction",
 			zap.Error(err),
 		)
 		return err
 	}
-
-	dest := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(destPackage))
-	_ = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
-	err = fileops.CopyFile(destPackage, dest)
-	if err != nil {
-		l.logger.Error("failed to copy local to oss",
-			zap.String("source", destPackage),
-			zap.String("destination", dest),
-			zap.Error(err),
-		)
-		return err
-	}
+	cleanupLocal()
 	return nil
 }
 

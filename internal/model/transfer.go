@@ -20,6 +20,7 @@ type LatestVersionInfo struct {
 	Channel            string         `db:"channel"`
 	PackageHash        sql.NullString `db:"package_hash_sha256"`
 	PackagePath        sql.NullString `db:"package_path"`
+	FileSize           int64          `db:"file_size"`
 	CreatedAt          time.Time      `db:"created_at"`
 	VersionSerial      int            `db:"version_serial"`
 }
