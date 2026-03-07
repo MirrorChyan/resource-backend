@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"entgo.io/ent/dialect/sql"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
@@ -22,6 +24,13 @@ func (r *Version) GetVersionByName(ctx context.Context, resID, name string) (*en
 	return r.db.Version.Query().
 		Where(version.HasResourceWith(resource.ID(resID))).
 		Where(version.Name(name)).
+		First(ctx)
+}
+
+func (r *Version) GetVersionByID(ctx context.Context, resID string, verID int) (*ent.Version, error) {
+	return r.db.Version.Query().
+		Where(version.ID(verID)).
+		Where(version.HasResourceWith(resource.ID(resID))).
 		First(ctx)
 }
 
@@ -51,4 +60,45 @@ func (r *Version) UpdateVersionCustomData(ctx context.Context, verID int, custom
 	return r.db.Version.UpdateOneID(verID).
 		SetCustomData(customData).
 		Exec(ctx)
+}
+
+func (r *Version) ListVersion(
+	ctx context.Context,
+	resourceID string,
+	offset int,
+	limit int,
+	order sortorder.Order,
+) ([]*ent.Version, int, bool, error) {
+	var hasMore bool
+
+	baseQuery := r.db.Version.Query().
+		Where(version.HasResourceWith(resource.ID(resourceID)))
+
+	total, err := baseQuery.Clone().Count(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	listQuery := baseQuery.Clone().
+		Offset(offset).
+		Limit(limit + 1)
+
+	switch order {
+	case sortorder.Newest:
+		listQuery = listQuery.Order(version.ByCreatedAt(sql.OrderDesc()))
+	case sortorder.Oldest:
+		listQuery = listQuery.Order(version.ByCreatedAt(sql.OrderAsc()))
+	}
+
+	list, err := listQuery.All(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	if len(list) > limit {
+		hasMore = true
+		list = list[:limit]
+	}
+
+	return list, total, hasMore, nil
 }
