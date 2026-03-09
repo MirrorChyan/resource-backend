@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -468,8 +469,8 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 
-	if len(req.Content) > 30000 {
-		req.Content = req.Content[:30000]
+	if utf8.RuneCountInString(req.Content) > 20000 {
+		req.Content = truncateUTF8Runes(req.Content, 20000)
 	}
 
 	if ch, ok := ChannelMap[req.Channel]; ok {
@@ -611,4 +612,15 @@ func (h *VersionHandler) doEvictCache(resourceId string) {
 			}
 		}
 	}
+}
+
+func truncateUTF8Runes(s string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s
+	}
+	return string(runes[:limit])
 }
