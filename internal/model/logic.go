@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/sortorder"
 )
 
 type CreateResourceParam struct {
@@ -12,6 +13,24 @@ type CreateResourceParam struct {
 	UpdateType  string
 }
 
+type ListResourceParam struct {
+	Offset int
+	Limit  int
+	Order  sortorder.Order
+}
+
+type ListResourceResult struct {
+	List    []*ent.Resource
+	Total   int
+	HasMore bool
+}
+
+type UpdateResourceParam struct {
+	ID          string
+	Name        string
+	Description string
+	UpdateType  string
+}
 type CreateVersionParam struct {
 	ResourceID string
 	Name       string
@@ -19,6 +38,19 @@ type CreateVersionParam struct {
 	Arch       string
 	Channel    string
 	Filename   string
+}
+
+type ListVersionParam struct {
+	ResourceID string
+	Offset     int
+	Limit      int
+	Order      sortorder.Order
+}
+
+type ListVersionResult struct {
+	List    []*ent.Version
+	Total   int
+	HasMore bool
 }
 
 type CreateVersionCallBackParam struct {

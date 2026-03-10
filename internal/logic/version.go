@@ -114,6 +114,36 @@ func (l *VersionLogic) GetVersionByName(ctx context.Context, param GetVersionByN
 
 }
 
+func (l *VersionLogic) GetVersionByID(ctx context.Context, resourceID string, versionID int) (*ent.Version, error) {
+	ver, err := l.versionRepo.GetVersionByID(ctx, resourceID, versionID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errs.ErrResourceNotFound
+		}
+		return nil, err
+	}
+	return ver, nil
+}
+
+func (l *VersionLogic) List(ctx context.Context, param *ListVersionParam) (*ListVersionResult, error) {
+	list, total, hasMore, err := l.versionRepo.ListVersion(
+		ctx,
+		param.ResourceID,
+		param.Offset,
+		param.Limit,
+		param.Order,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListVersionResult{
+		List:    list,
+		Total:   total,
+		HasMore: hasMore,
+	}, nil
+}
+
 func (l *VersionLogic) ExistNameWithOSAndArch(ctx context.Context, param ExistVersionNameWithOSAndArchParam) (bool, error) {
 	ver, err := l.versionRepo.GetVersionByName(ctx, param.ResourceId, param.VersionName)
 	if err != nil {
