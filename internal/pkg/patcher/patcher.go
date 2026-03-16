@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -66,13 +67,14 @@ func getChangesInfo(changes []Change, addedDirs, deletedDirs []string) map[strin
 func extractDirs(hashes map[string]string) map[string]struct{} {
 	dirs := make(map[string]struct{})
 	for filePath := range hashes {
-		dir := filepath.Dir(filePath)
+		// normalize to forward slashes for consistent cross-platform output
+		dir := path.Dir(filepath.ToSlash(filePath))
 		for dir != "." && dir != "" {
 			if _, exists := dirs[dir]; exists {
 				break
 			}
 			dirs[dir] = struct{}{}
-			dir = filepath.Dir(dir)
+			dir = path.Dir(dir)
 		}
 	}
 	return dirs

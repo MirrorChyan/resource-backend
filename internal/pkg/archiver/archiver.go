@@ -155,6 +155,8 @@ func CompressToZip(srcDir, destZip string) error {
 		if err != nil {
 			return err
 		}
+		// normalize to forward slashes for standard zip entry names
+		relPath = filepath.ToSlash(relPath)
 
 		if info.IsDir() {
 			if relPath == "." {
@@ -219,6 +221,8 @@ func CompressToTarGz(srcDir, destTarGz string) error {
 		if err != nil {
 			return err
 		}
+		// normalize to forward slashes for standard tar entry names
+		relPath = filepath.ToSlash(relPath)
 
 		if info.IsDir() {
 			if relPath == "." {
