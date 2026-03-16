@@ -629,6 +629,8 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 
+	addedDirs, deletedDirs := patcher.CalculateDirDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
+
 	dir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch)
 
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
@@ -654,7 +656,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		}
 	}
 
-	err = patcher.GenerateV2(tuple, changes)
+	err = patcher.GenerateV2(tuple, changes, addedDirs, deletedDirs)
 	if err != nil {
 		cleanupLocal()
 		l.logger.Error("Failed to generate patch package",

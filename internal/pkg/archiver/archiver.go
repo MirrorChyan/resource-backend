@@ -147,12 +147,20 @@ func CompressToZip(srcDir, destZip string) error {
 	}(writer)
 
 	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		if err != nil {
 			return err
 		}
 
 		relPath, err := filepath.Rel(srcDir, path)
 		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			if relPath == "." {
+				return nil
+			}
+			_, err := writer.Create(relPath + "/")
 			return err
 		}
 
@@ -213,7 +221,15 @@ func CompressToTarGz(srcDir, destTarGz string) error {
 		}
 
 		if info.IsDir() {
-			return nil
+			if relPath == "." {
+				return nil
+			}
+			header, err := tar.FileInfoHeader(info, "")
+			if err != nil {
+				return err
+			}
+			header.Name = relPath + "/"
+			return tarWriter.WriteHeader(header)
 		}
 
 		file, err := os.Open(path)
