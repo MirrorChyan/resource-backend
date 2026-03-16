@@ -13,7 +13,7 @@ require (
 	github.com/go-redsync/redsync/v4 v4.14.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gofiber/contrib/fiberzap/v2 v2.1.6
-	github.com/gofiber/fiber/v2 v2.52.11
+	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/wire v0.7.0
 	github.com/hashicorp/consul/api v1.33.0
