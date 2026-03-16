@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -35,7 +36,7 @@ type Change struct {
 	ChangeType ChangeType `json:"change_type"`
 }
 
-func getChangesInfo(changes []Change) map[string][]string {
+func getChangesInfo(changes []Change, addedDirs, deletedDirs []string) map[string][]string {
 	changesMap := make(map[string][]string)
 
 	for _, change := range changes {
@@ -53,7 +54,47 @@ func getChangesInfo(changes []Change) map[string][]string {
 		}
 	}
 
+	if len(addedDirs) > 0 {
+		changesMap["added_dir"] = addedDirs
+	}
+	if len(deletedDirs) > 0 {
+		changesMap["deleted_dir"] = deletedDirs
+	}
+
 	return changesMap
+}
+
+func extractDirs(hashes map[string]string) map[string]struct{} {
+	dirs := make(map[string]struct{})
+	for filePath := range hashes {
+		// normalize to forward slashes for consistent cross-platform output
+		dir := path.Dir(filepath.ToSlash(filePath))
+		for dir != "." && dir != "" {
+			if _, exists := dirs[dir]; exists {
+				break
+			}
+			dirs[dir] = struct{}{}
+			dir = path.Dir(dir)
+		}
+	}
+	return dirs
+}
+
+func CalculateDirDiff(newHashes, oldHashes map[string]string) (addedDirs, deletedDirs []string) {
+	newDirs := extractDirs(newHashes)
+	oldDirs := extractDirs(oldHashes)
+
+	for d := range newDirs {
+		if _, exists := oldDirs[d]; !exists {
+			addedDirs = append(addedDirs, d)
+		}
+	}
+	for d := range oldDirs {
+		if _, exists := newDirs[d]; !exists {
+			deletedDirs = append(deletedDirs, d)
+		}
+	}
+	return
 }
 
 func CalculateDiff(newVersionFileHashes, oldVersionFileHashes map[string]string) ([]Change, error) {
@@ -208,9 +249,9 @@ func extractZipFile(origin string, pending map[string]string) error {
 	return wg.Wait()
 }
 
-func appendChangesRecord(root string, changes []Change) error {
+func appendChangesRecord(root string, changes []Change, addedDirs, deletedDirs []string) error {
 	path := filepath.Join(root, "changes.json")
-	data := getChangesInfo(changes)
+	data := getChangesInfo(changes, addedDirs, deletedDirs)
 
 	f, err := os.Create(path)
 	if err != nil {
@@ -231,7 +272,7 @@ func appendChangesRecord(root string, changes []Change) error {
 	return nil
 }
 
-func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
+func GenerateV2(info model.PatchInfoTuple, changes []Change, addedDirs, deletedDirs []string) error {
 
 	var (
 		origin = info.SrcPackage
@@ -281,6 +322,14 @@ func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
 		}
 	}
 
+	// create added directories in temp root so they appear in the archive
+	for _, d := range addedDirs {
+		dirPath := filepath.Join(root, d)
+		if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to create added dir: %w", err)
+		}
+	}
+
 	switch info.FileType {
 	case string(types.Zip):
 		err := extractZipFile(origin, pending)
@@ -294,7 +343,7 @@ func GenerateV2(info model.PatchInfoTuple, changes []Change) error {
 		}
 	}
 
-	err = appendChangesRecord(root, changes)
+	err = appendChangesRecord(root, changes, addedDirs, deletedDirs)
 	if err != nil {
 		return err
 	}
