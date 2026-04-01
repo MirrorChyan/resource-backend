@@ -98,9 +98,9 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 			ip = arr[0]
 		}
 		ch <- tuple{
-			rid:     rid,
-			version: version,
-			ip:      ip,
+			rid:     strings.Clone(rid),
+			version: strings.Clone(version),
+			ip:      strings.Clone(ip),
 		}
 	}
 
