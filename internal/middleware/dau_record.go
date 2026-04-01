@@ -36,7 +36,7 @@ func NewDailyActiveUserRecorder(rdb *redis.Client) fiber.Handler {
 	}()
 
 	return func(c *fiber.Ctx) error {
-		ch <- c.IP()
+		ch <- strings.Clone(c.IP())
 		return c.Next()
 	}
 }
