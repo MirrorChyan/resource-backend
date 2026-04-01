@@ -54,41 +54,73 @@ type tuple struct {
 	ip      string
 }
 
+const (
+	hllKeyPrefix    = "hll:resource:"
+	activeSetPrefix = "active:resources:"
+	viewKeyPrefix   = "sort:resources:request:"
+	keyTTL          = time.Hour * 24 * 9
+	syncInterval    = 15 * time.Minute
+)
+
 func (h *VersionHandler) getCollector() func(string, string, string) {
 	rdb := h.versionLogic.GetRedisClient()
 
 	var ch = make(chan tuple, 1000)
 
 	go func() {
-		var ctx = context.Background()
+		var (
+			ctx           = context.Background()
+			expiredHLL    = make(map[string]struct{})
+			expiredActive = make(map[string]struct{})
+			lastDate      string
+		)
 		for val := range ch {
 			date := time.Now().Format("20060102")
+			if date != lastDate {
+				clear(expiredHLL)
+				clear(expiredActive)
+				lastDate = date
+			}
 
-			hllKey := "hll:resource:" + val.rid + ":" + date
-			added, err := rdb.PFAdd(ctx, hllKey, val.ip).Result()
-			if err != nil {
+			hllKey := hllKeyPrefix + val.rid + ":" + date
+			if _, err := rdb.PFAdd(ctx, hllKey, val.ip).Result(); err != nil {
 				h.logger.Warn("collector PFAdd error", zap.String("rid", val.rid), zap.Error(err))
 				continue
 			}
-			if added == 0 {
-				continue
+			if _, ok := expiredHLL[val.rid]; !ok {
+				rdb.Expire(ctx, hllKey, keyTTL)
+				expiredHLL[val.rid] = struct{}{}
 			}
 
-			viewKey := "sort:resources:request:" + date
-			result, err := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
-				Members: []redis.Z{
-					{
-						Score:  1,
-						Member: val.rid,
-					},
-				},
-			}).Result()
+			activeKey := activeSetPrefix + date
+			added, err := rdb.SAdd(ctx, activeKey, val.rid).Result()
 			if err != nil {
-				h.logger.Warn("collector ZAddArgsIncr error", zap.String("rid", val.rid), zap.Error(err))
-			} else if result == 1 {
-				rdb.Expire(ctx, viewKey, time.Hour*24*9)
+				h.logger.Warn("collector SAdd error", zap.String("rid", val.rid), zap.Error(err))
+				continue
 			}
-			rdb.Expire(ctx, hllKey, time.Hour*24*9)
+			if added > 0 {
+				if _, ok := expiredActive[date]; !ok {
+					rdb.Expire(ctx, activeKey, keyTTL)
+					expiredActive[date] = struct{}{}
+				}
+			}
+		}
+	}()
+
+	go func() {
+		var (
+			ctx      = context.Background()
+			ticker   = time.NewTicker(syncInterval)
+			lastDate = time.Now().Format("20060102")
+		)
+		defer ticker.Stop()
+		for range ticker.C {
+			currentDate := time.Now().Format("20060102")
+			if currentDate != lastDate {
+				h.doSyncDAU(ctx, lastDate)
+				lastDate = currentDate
+			}
+			h.doSyncDAU(ctx, currentDate)
 		}
 	}()
 
@@ -103,7 +135,36 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 			ip:      strings.Clone(ip),
 		}
 	}
+}
 
+func (h *VersionHandler) doSyncDAU(ctx context.Context, date string) {
+	rdb := h.versionLogic.GetRedisClient()
+	activeKey := activeSetPrefix + date
+	rids, err := rdb.SMembers(ctx, activeKey).Result()
+	if err != nil {
+		h.logger.Warn("doSyncDAU SMembers error", zap.String("date", date), zap.Error(err))
+		return
+	}
+	if len(rids) == 0 {
+		return
+	}
+
+	viewKey := viewKeyPrefix + date
+	for _, rid := range rids {
+		hllKey := hllKeyPrefix + rid + ":" + date
+		count, err := rdb.PFCount(ctx, hllKey).Result()
+		if err != nil {
+			h.logger.Warn("doSyncDAU PFCount error", zap.String("rid", rid), zap.Error(err))
+			continue
+		}
+		if _, err := rdb.ZAdd(ctx, viewKey, redis.Z{
+			Score:  float64(count),
+			Member: rid,
+		}).Result(); err != nil {
+			h.logger.Warn("doSyncDAU ZAdd error", zap.String("rid", rid), zap.Error(err))
+		}
+	}
+	rdb.Expire(ctx, viewKey, keyTTL)
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
