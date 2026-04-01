@@ -62,28 +62,33 @@ func (h *VersionHandler) getCollector() func(string, string, string) {
 	go func() {
 		var ctx = context.Background()
 		for val := range ch {
-			viewKey := strings.Join([]string{
-				"sort:resources:request",
-				time.Now().Format("20060102"),
-			}, ":")
+			date := time.Now().Format("20060102")
 
-			incr := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
+			hllKey := "hll:resource:" + val.rid + ":" + date
+			added, err := rdb.PFAdd(ctx, hllKey, val.ip).Result()
+			if err != nil {
+				h.logger.Warn("collector PFAdd error", zap.String("rid", val.rid), zap.Error(err))
+				continue
+			}
+			if added == 0 {
+				continue
+			}
+
+			viewKey := "sort:resources:request:" + date
+			result, err := rdb.ZAddArgsIncr(ctx, viewKey, redis.ZAddArgs{
 				Members: []redis.Z{
 					{
 						Score:  1,
 						Member: val.rid,
 					},
 				},
-			})
-			result, err := incr.Result()
+			}).Result()
 			if err != nil {
-				h.logger.Warn("collector error ZAddArgsIncr", zap.String("rid", val.rid), zap.Error(err))
-			} else {
-				// first incr / float 1 no need use epsilon
-				if result == 1 {
-					rdb.Expire(ctx, viewKey, time.Hour*24*9)
-				}
+				h.logger.Warn("collector ZAddArgsIncr error", zap.String("rid", val.rid), zap.Error(err))
+			} else if result == 1 {
+				rdb.Expire(ctx, viewKey, time.Hour*24*9)
 			}
+			rdb.Expire(ctx, hllKey, time.Hour*24*9)
 		}
 	}()
 
