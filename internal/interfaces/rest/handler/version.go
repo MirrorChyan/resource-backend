@@ -59,6 +59,7 @@ const (
 	activeSetPrefix = "active:resources:"
 	viewKeyPrefix   = "sort:resources:request:"
 	keyTTL          = time.Hour * 24 * 9
+	longKeyTTL      = time.Hour * 24 * 32
 	syncInterval    = 15 * time.Minute
 )
 
@@ -164,7 +165,7 @@ func (h *VersionHandler) doSyncDAU(ctx context.Context, date string) {
 			h.logger.Warn("doSyncDAU ZAdd error", zap.String("rid", rid), zap.Error(err))
 		}
 	}
-	rdb.Expire(ctx, viewKey, keyTTL)
+	rdb.Expire(ctx, viewKey, longKeyTTL)
 }
 
 func (h *VersionHandler) Register(r fiber.Router) {
