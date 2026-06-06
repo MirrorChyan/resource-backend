@@ -4,9 +4,9 @@ go 1.25.3
 
 require (
 	entgo.io/ent v0.14.5
-	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/bytedance/sonic v1.14.2
-	github.com/dgraph-io/ristretto/v2 v2.3.0
+	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/bytedance/sonic v1.15.1
+	github.com/dgraph-io/ristretto/v2 v2.4.0
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.28.0
@@ -41,7 +41,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic/loader v0.4.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
