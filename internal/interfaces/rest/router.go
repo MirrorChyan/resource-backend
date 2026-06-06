@@ -43,6 +43,8 @@ func InitRoutes(router *fiber.App, handlerSet *wire.HandlerSet) {
 
 	handlerSet.VersionHandler.Register(r)
 
+	handlerSet.AdminHandler.Register(r)
+
 	handlerSet.StorageHandler.Register(r)
 
 	handlerSet.MetricsHandler.Register(r)
