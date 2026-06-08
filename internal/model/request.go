@@ -48,3 +48,18 @@ type UpdateCustomDataRequest struct {
 type GetVersionStatusRequest struct {
 	Key string `query:"key" validate:"required"`
 }
+
+// ListResourcesRequest is the query for the admin resource list endpoint.
+type ListResourcesRequest struct {
+	Page     int    `query:"page"`
+	PageSize int    `query:"page_size"`
+	ID       string `query:"id"`
+	Name     string `query:"name"`
+}
+
+// ListVersionsRequest is the query for the admin version list endpoint.
+type ListVersionsRequest struct {
+	Page     int    `query:"page"`
+	PageSize int    `query:"page_size"`
+	Channel  string `query:"channel"`
+}

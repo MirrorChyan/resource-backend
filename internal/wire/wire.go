@@ -24,6 +24,7 @@ type HandlerSet struct {
 	StorageHandler    *handler.StorageHandler
 	MetricsHandler    *handler.MetricsHandler
 	HeathCheckHandler *handler.HeathCheckHandler
+	AdminHandler      *handler.AdminHandler
 }
 
 var GlobalSet = wire.NewSet(

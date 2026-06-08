@@ -39,12 +39,14 @@ func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisCli
 	storageHandler := handler.NewStorageHandler(logger, storageLogic)
 	metricsHandler := handler.NewMetricsHandler()
 	heathCheckHandler := handler.NewHeathCheckHandlerHandler()
+	adminHandler := handler.NewAdminHandler(logger, resourceLogic, versionLogic)
 	handlerSet := &HandlerSet{
 		ResourceHandler:   resourceHandler,
 		VersionHandler:    versionHandler,
 		StorageHandler:    storageHandler,
 		MetricsHandler:    metricsHandler,
 		HeathCheckHandler: heathCheckHandler,
+		AdminHandler:      adminHandler,
 	}
 	return handlerSet
 }
@@ -57,6 +59,7 @@ type HandlerSet struct {
 	StorageHandler    *handler.StorageHandler
 	MetricsHandler    *handler.MetricsHandler
 	HeathCheckHandler *handler.HeathCheckHandler
+	AdminHandler      *handler.AdminHandler
 }
 
 var GlobalSet = wire.NewSet(repo.Provider, logic.Provider)

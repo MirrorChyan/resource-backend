@@ -8,4 +8,5 @@ var Provider = wire.NewSet(
 	NewStorageHandler,
 	NewMetricsHandler,
 	NewHeathCheckHandlerHandler,
+	NewAdminHandler,
 )
