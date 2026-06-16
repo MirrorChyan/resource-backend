@@ -517,6 +517,15 @@ func (l *VersionLogic) doWebhookNotify(resourceId, versionName, channel, os, arc
 		return
 	}
 
+	throttleKey := misc.WebhookNotifyThrottlePrefix + ":" + resourceId
+	ok, err := l.rdb.SetNX(context.Background(), throttleKey, 1, 2*time.Minute).Result()
+	if err != nil {
+		l.logger.Warn("Failed to check webhook throttle", zap.Error(err))
+	}
+	if !ok {
+		return
+	}
+
 	buf, e := sonic.Marshal(map[string]string{
 		"resource_id":  resourceId,
 		"version_name": versionName,
