@@ -34,6 +34,8 @@ const (
 	ProcessFlag = "1"
 )
 
+const WebhookNotifyThrottlePrefix = "webhook:notify:throttle"
+
 // StatusPollingPrefix status polling
 const StatusPollingPrefix = "status:polling"
 
