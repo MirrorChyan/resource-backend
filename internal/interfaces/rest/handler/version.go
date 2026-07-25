@@ -10,6 +10,7 @@ import (
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/publiccdk"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
 	"github.com/bytedance/sonic"
@@ -408,13 +409,25 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		return c.JSON(resp)
 	}
 
-	ts, err := h.doValidateCDK(param, resourceId, ip)
-	if err != nil {
-		var biz *errs.Error
-		if errors.As(err, &biz) {
-			return biz.WithDetails(data)
+	var (
+		ts   int64
+		mode string
+	)
+	if exp, ok := publiccdk.Match(cdk, resourceId); ok {
+		ts, mode = exp, CDKModePublic
+		h.logger.Info("public cdk hit",
+			zap.String("rid", resourceId),
+			zap.String("ip", ip),
+		)
+	} else {
+		ts, err = h.doValidateCDK(param, resourceId, ip)
+		if err != nil {
+			var biz *errs.Error
+			if errors.As(err, &biz) {
+				return biz.WithDetails(data)
+			}
+			return err
 		}
-		return err
 	}
 
 	if latest.VersionName == currentVersion {
@@ -441,6 +454,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 		Version:  latest.VersionName,
 		Filesize: result.Filesize,
 		RelPath:  result.RelPath,
+		Mode:     mode,
 	})
 	if err != nil {
 		return err

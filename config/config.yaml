@@ -30,6 +30,19 @@ auth:
   uploader_validation_url: "https://uploader.validation.example"
   cdk_validation_url: "https://cdk.validation.example"
   download_validation_url: "https://download.validation.example"
+  # open-access cdk: same response as a normal cdk, but the url is not downloadable
+  public_cdk:
+    enabled: true
+    # 2100-01-01, keeps the documented sample stable
+    expired_time: 4102416000
+    keys:
+      # official doc sample / sdk integration
+      - key: "MIRRORC-PUBLIC-TRIAL-0001"
+        resources: [ "*" ]
+      # MAA only
+      - key: "MIRRORC-PUBLIC-MAA-0002"
+        resources: [ "MAA", "MFAAvalonia" ]
+        expired_time: 1790000000
 
 oss:
   endpoint: "https://oss-cn-hangzhou.aliyuncs.com"

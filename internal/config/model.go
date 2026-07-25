@@ -65,11 +65,24 @@ type (
 	}
 
 	AuthConfig struct {
-		SignSecret            string `mapstructure:"sign_secret"`
-		PrivateKey            string `mapstructure:"private_key"`
-		UploaderValidationURL string `mapstructure:"uploader_validation_url"`
-		CDKValidationURL      string `mapstructure:"cdk_validation_url"`
-		DownloadValidationURL string `mapstructure:"download_validation_url"`
+		SignSecret            string          `mapstructure:"sign_secret"`
+		PrivateKey            string          `mapstructure:"private_key"`
+		UploaderValidationURL string          `mapstructure:"uploader_validation_url"`
+		CDKValidationURL      string          `mapstructure:"cdk_validation_url"`
+		DownloadValidationURL string          `mapstructure:"download_validation_url"`
+		PublicCDK             PublicCDKConfig `mapstructure:"public_cdk"`
+	}
+
+	PublicCDKConfig struct {
+		Enabled     bool             `mapstructure:"enabled"`
+		ExpiredTime int64            `mapstructure:"expired_time"`
+		Keys        []PublicCDKEntry `mapstructure:"keys"`
+	}
+
+	PublicCDKEntry struct {
+		Key         string   `mapstructure:"key"`
+		Resources   []string `mapstructure:"resources"` // empty or ["*"] means every resource
+		ExpiredTime int64    `mapstructure:"expired_time"`
 	}
 	OSSConfig struct {
 		ExternalHost string `mapstructure:"external_host"`

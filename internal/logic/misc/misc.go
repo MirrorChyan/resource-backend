@@ -18,6 +18,13 @@ const (
 	DispensePrefix = "dispense"
 )
 
+// cdk mode carried by DistributeInfo
+const (
+	// CDKModeNormal keeps the zero value so the legacy payload in redis stays valid
+	CDKModeNormal = ""
+	CDKModePublic = "public"
+)
+
 const (
 	ContentTypeZip   = "application/zip"
 	ContentTypeTarGz = "application/x-gtar"
@@ -90,6 +97,13 @@ var (
 	NotAllowedFileTypeError = errs.NewUnchecked("not allowed file type")
 
 	ResourceLimitError = errs.NewUnchecked("your cdkey has reached the most downloads today").WithHttpCode(fiber.StatusForbidden)
+
+	PublicCDKNotDownloadableError = errs.New(
+		errs.BizCodePublicCDKNotDownloadable,
+		fiber.StatusForbidden,
+		"this is an open-access cdk for evaluation only, please get a valid cdk to download",
+		nil,
+	)
 )
 
 var (
