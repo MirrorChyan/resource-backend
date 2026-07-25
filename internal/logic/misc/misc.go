@@ -101,7 +101,7 @@ var (
 	PublicCDKNotDownloadableError = errs.New(
 		errs.BizCodePublicCDKNotDownloadable,
 		fiber.StatusForbidden,
-		"this is an open-access cdk for evaluation only, please get a valid cdk to download",
+		"流程测试 CDK 不支持下载，请获取正式 CDK / this is an open-access cdk for evaluation only, please get a valid cdk to download",
 		nil,
 	)
 )
