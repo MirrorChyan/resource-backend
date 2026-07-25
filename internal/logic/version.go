@@ -937,6 +937,15 @@ func (l *VersionLogic) GetDistributeLocation(ctx context.Context, rk string) (st
 		return "", err
 	}
 
+	// an open-access cdk never reaches the download validation service
+	if info.Mode == misc.CDKModePublic {
+		l.logger.Info("public cdk download rejected",
+			zap.String("rid", info.Resource),
+			zap.String("ip", info.IP),
+		)
+		return "", misc.PublicCDKNotDownloadableError
+	}
+
 	body, err := sonic.Marshal(DownloadValidateCDKRequest{
 		CDK:      info.CDK,
 		Resource: info.Resource,

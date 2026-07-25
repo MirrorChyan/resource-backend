@@ -13,6 +13,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	_ "github.com/MirrorChyan/resource-backend/internal/pkg/banner"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/logger"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/publiccdk"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/vercomp"
 	"github.com/MirrorChyan/resource-backend/internal/tasks"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
@@ -72,4 +73,5 @@ func setUpConfigAndLog() {
 	// in the full life cycle
 	config.InitGlobalConfig()
 	zap.ReplaceGlobals(logger.New())
+	publiccdk.Reload()
 }

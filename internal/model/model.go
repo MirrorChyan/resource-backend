@@ -49,6 +49,7 @@ type DistributeInfo struct {
 	Version  string `json:"version,omitempty"`
 	Filesize int64  `json:"filesize,omitempty"`
 	RelPath  string `json:"rel_path"`
+	Mode     string `json:"mode,omitempty"`
 }
 
 type FileDetectResult struct {
