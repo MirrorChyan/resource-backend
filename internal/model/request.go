@@ -33,13 +33,9 @@ type GetLatestVersionRequest struct {
 	UserAgent      string `query:"user_agent"`
 }
 
-type UpdateReleaseNoteRequest struct {
-	VersionName string `json:"version_name"`
-	Channel     string `json:"channel"`
-	Content     string `json:"content"`
-}
-
-type UpdateCustomDataRequest struct {
+// UpdateVersionMetaRequest is the shared body of the version metadata update
+// endpoints (release note, custom data).
+type UpdateVersionMetaRequest struct {
 	VersionName string `json:"version_name"`
 	Channel     string `json:"channel"`
 	Content     string `json:"content"`
