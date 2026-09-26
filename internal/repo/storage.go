@@ -92,6 +92,10 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 		Only(ctx)
 }
 
+// PurgeStorageInfo clears package_path of the storages (full and incremental)
+// that share the version and platform of storageId. Other platforms of the same
+// version are left untouched: their files are not removed by this purge, and
+// clearing them would orphan those files and hide still-retained packages.
 func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
 	val, err := r.db.Storage.Query().
 		Where(storage.IDEQ(storageId)).
@@ -99,12 +103,12 @@ func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
 	if err != nil {
 		return err
 	}
-	vid := val.VersionStorages
-	err = r.db.Storage.Update().Where(storage.VersionStorages(vid)).
+	return r.db.Storage.Update().
+		Where(
+			storage.VersionStorages(val.VersionStorages),
+			storage.Os(val.Os),
+			storage.Arch(val.Arch),
+		).
 		ClearPackagePath().
 		Exec(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
 }
