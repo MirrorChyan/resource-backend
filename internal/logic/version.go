@@ -598,6 +598,7 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 		TargetVersionId:      target,
 		CurrentVersionId:     current,
 		TargetFileType:       targetInfo.FileType,
+		TargetFileSize:       targetInfo.FileSize,
 		CurrentFileType:      currentInfo.FileType,
 		TargetStorageHashes:  targetInfo.FileHashes,
 		CurrentStorageHashes: currentInfo.FileHashes,
@@ -619,6 +620,18 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 	return nil
 }
 
+// maxPatchSizeRatio caps an incremental package relative to the full package of its target
+// version: a larger patch saves the client little over the full package, so it is not kept.
+const maxPatchSizeRatio = 0.8
+
+// patchSkipTTL keeps a skip decision; it never changes for a pair, the expiry only
+// drops the flags of target versions that are long gone
+const patchSkipTTL = 30 * 24 * time.Hour
+
+func patchTooLarge(patchSize, fullSize int64) bool {
+	return fullSize > 0 && float64(patchSize) >= maxPatchSizeRatio*float64(fullSize)
+}
+
 func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, param PatchTaskExecuteParam) error {
 
 	var (
@@ -628,7 +641,34 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		system        = param.OS
 		arch          = param.Arch
 		originPackage = param.TargetOriginPackage
+		skip          = func(reason string, fields ...zap.Field) {
+			l.logger.Info("skip incremental update package, full package is served instead",
+				append([]zap.Field{
+					zap.String("reason", reason),
+					zap.String("resource id", resourceId),
+					zap.Int("target version id", target),
+					zap.Int("current version id", current),
+					zap.String("os", system),
+					zap.String("arch", arch),
+				}, fields...)...,
+			)
+			key := misc.PatchSkipKey(target, current, system, arch)
+			if err := l.rdb.Set(ctx, key, misc.ProcessFlag, patchSkipTTL).Err(); err != nil {
+				// without the flag the pair is just judged again once its generate tag expires
+				l.logger.Warn("failed to record skipped incremental update package",
+					zap.String("key", key),
+					zap.Error(err),
+				)
+			}
+		}
 	)
+
+	// without the file hashes of both versions the diff would put every file
+	// into the patch and lose the deletions
+	if len(param.TargetStorageHashes) == 0 || len(param.CurrentStorageHashes) == 0 {
+		skip("missing file hashes")
+		return nil
+	}
 
 	changes, err := patcher.CalculateDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
 	if err != nil {
@@ -639,6 +679,25 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	}
 
 	addedDirs, deletedDirs := patcher.CalculateDirDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
+
+	// a zip patch is estimated from the entries it would copy, so an oversized one is not even built
+	if param.TargetFileType == string(types.Zip) {
+		estimated, err := patcher.EstimateZipPatchSize(originPackage, changes)
+		if err != nil {
+			l.logger.Error("Failed to estimate incremental update package size",
+				zap.String("package", originPackage),
+				zap.Error(err),
+			)
+			return err
+		}
+		if patchTooLarge(estimated, param.TargetFileSize) {
+			skip("estimated patch too large",
+				zap.Int64("estimated size", estimated),
+				zap.Int64("full size", param.TargetFileSize),
+			)
+			return nil
+		}
+	}
 
 	dir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch)
 
@@ -703,6 +762,14 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			zap.Error(err),
 		)
 		return err
+	}
+	if patchTooLarge(stat.Size(), param.TargetFileSize) {
+		cleanupLocal()
+		skip("patch too large",
+			zap.Int64("patch size", stat.Size()),
+			zap.Int64("full size", param.TargetFileSize),
+		)
+		return nil
 	}
 	ossPackage := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(destPackage))
 	_, statErr := os.Stat(ossPackage)

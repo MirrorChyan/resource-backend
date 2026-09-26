@@ -98,6 +98,7 @@ type PatchTaskExecuteParam struct {
 	TargetVersionId      int
 	CurrentVersionId     int
 	TargetFileType       string
+	TargetFileSize       int64
 	CurrentFileType      string
 	TargetStorageHashes  map[string]string
 	CurrentStorageHashes map[string]string

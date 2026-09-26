@@ -545,6 +545,39 @@ func TestFullPipeline_AllFilesNew(t *testing.T) {
 	assert.Nil(t, deletedDirs)
 }
 
+func TestEstimateZipPatchSize(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "modified.txt", "modified content modified content")
+	writeFile(t, dir, "added.txt", "added content")
+	writeFile(t, dir, "unchanged.txt", "unchanged content unchanged content unchanged content")
+	origin := buildZip(t, dir, "v2.zip")
+
+	changes := []Change{
+		{Filename: "modified.txt", ChangeType: Modified},
+		{Filename: "added.txt", ChangeType: Added},
+		{Filename: "unchanged.txt", ChangeType: Unchanged},
+		{Filename: "deleted.txt", ChangeType: Deleted},
+	}
+
+	reader, err := zip.OpenReader(origin)
+	require.NoError(t, err)
+	defer func() { _ = reader.Close() }()
+	var want int64
+	for _, f := range reader.File {
+		if f.Name == "modified.txt" || f.Name == "added.txt" {
+			want += int64(f.CompressedSize64)
+		}
+	}
+	require.Positive(t, want)
+
+	got, err := EstimateZipPatchSize(origin, changes)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+
+	_, err = EstimateZipPatchSize(filepath.Join(t.TempDir(), "missing.zip"), changes)
+	assert.Error(t, err)
+}
+
 func TestFullPipeline_AllFilesDeleted(t *testing.T) {
 	v1Dir := t.TempDir()
 	writeFile(t, v1Dir, "a/b/1.txt", "content")
