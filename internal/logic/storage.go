@@ -199,12 +199,14 @@ func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) [
 			zap.String("oss dir", od),
 			zap.String("local dir", ld),
 		)
+		removed := true
 		if err := os.RemoveAll(od); err != nil {
 			l.logger.Error("failed to remove old storage",
 				zap.String("oss dir", od),
 				zap.Error(err),
 			)
 			el = append(el, err)
+			removed = false
 		}
 		if err := os.RemoveAll(ld); err != nil {
 			l.logger.Error("failed to remove local storage",
@@ -212,7 +214,16 @@ func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) [
 				zap.Error(err),
 			)
 			el = append(el, err)
+			removed = false
 		}
+		if !removed {
+			// keep package_path so the next purge retries; clearing it now would orphan the files
+			continue
+		}
+
+		// drop the local version directory once its last platform is gone
+		// (the OSS mount collapses empty prefixes by itself)
+		removeDirIfEmpty(filepath.Dir(ld))
 
 		err := l.storageRepo.PurgeStorageInfo(ctx, val.StorageId)
 		if err != nil {
@@ -224,6 +235,15 @@ func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) [
 		}
 	}
 	return el
+}
+
+// removeDirIfEmpty removes dir only when it is empty; a non-empty or missing dir is left as is.
+func removeDirIfEmpty(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) > 0 {
+		return
+	}
+	_ = os.Remove(dir)
 }
 
 func doErrorNotify(l *zap.Logger, msg string) {

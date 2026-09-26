@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
+	"github.com/MirrorChyan/resource-backend/internal/ent"
 	. "github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/middleware"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
@@ -422,8 +424,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	} else {
 		ts, err = h.doValidateCDK(param, resourceId, ip)
 		if err != nil {
-			var biz *errs.Error
-			if errors.As(err, &biz) {
+			if biz, ok := errors.AsType[*errs.Error](err); ok {
 				return biz.WithDetails(data)
 			}
 			return err
@@ -479,7 +480,7 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 	url, err := h.versionLogic.GetDistributeLocation(ctx, rk)
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
+			return errResourceNotFound
 		}
 		return err
 	}
@@ -499,7 +500,7 @@ func (h *VersionHandler) HeadDownloadInfo(c *fiber.Ctx) error {
 	info, err := h.versionLogic.GetDownloadInfo(ctx, rk)
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return c.Status(fiber.StatusNotFound).JSON(response.BusinessError("resource not found"))
+			return errResourceNotFound
 		}
 		h.logger.Error("Failed to get download info",
 			zap.String("distribute key", rk),
@@ -514,6 +515,88 @@ func (h *VersionHandler) HeadDownloadInfo(c *fiber.Ctx) error {
 	return nil
 }
 
+const (
+	releaseNoteMaxRunes = 25000
+	customDataMaxBytes  = 25000
+)
+
+// These mirror what response.BusinessError renders: a plain business response
+// carrying no biz code. Deliberately not errs.ErrResourceNotFound & co., whose
+// biz codes (8001 ...) are client-visible and would change these responses.
+// Note errs.Error.Is compares the biz code only, so all three compare equal to
+// each other -- never use them as errors.Is targets.
+var (
+	errResourceNotFound  = errs.New(response.CodeBusiness, fiber.StatusNotFound, "resource not found", nil)
+	errInvalidParam      = errs.New(response.CodeBusiness, fiber.StatusBadRequest, "invalid param", nil)
+	errCustomDataTooLong = errs.New(response.CodeBusiness, fiber.StatusBadRequest, fmt.Sprintf("custom data too long, max length is %d", customDataMaxBytes), nil)
+)
+
+// doPrepareVersionMetaUpdate runs the prelude shared by UpdateReleaseNote and
+// UpdateCustomData: the resource existence check and the request body parse.
+func (h *VersionHandler) doPrepareVersionMetaUpdate(c *fiber.Ctx, resourceId string) (*UpdateVersionMetaRequest, error) {
+
+	resExist, err := h.resourceLogic.Exists(c.UserContext(), resourceId)
+	switch {
+	case err != nil:
+		h.logger.Error("Failed to check if resource exists",
+			zap.Error(err),
+		)
+		return nil, errs.NewUnexpected("internal server error", err)
+
+	case !resExist:
+		h.logger.Info("Resource not found",
+			zap.String("resource id", resourceId),
+		)
+		return nil, errResourceNotFound
+
+	}
+
+	req := &UpdateVersionMetaRequest{}
+	if err := c.BodyParser(req); err != nil {
+		h.logger.Error("failed to parse request body",
+			zap.Error(err),
+			zap.String("input", string(c.Body())),
+		)
+		return nil, errInvalidParam
+	}
+
+	return req, nil
+}
+
+// doLoadVersionForMetaUpdate normalizes the channel and resolves (creating it
+// when missing) the version the metadata update targets.
+func (h *VersionHandler) doLoadVersionForMetaUpdate(ctx context.Context, resourceId string, req *UpdateVersionMetaRequest) (*ent.Version, error) {
+
+	ch, ok := ChannelMap[req.Channel]
+	if !ok {
+		return nil, errors.New("invalid channel")
+	}
+	req.Channel = ch
+
+	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
+	if err != nil {
+		h.logger.Error("failed to load store version",
+			zap.String("resource id", resourceId),
+			zap.String("version name", req.VersionName),
+			zap.Error(err),
+		)
+		return nil, errs.NewUnexpected("internal server error", err)
+	}
+
+	return ver, nil
+}
+
+// doReportVersionMetaUpdateErr logs a failed metadata write and reports it as an
+// internal error.
+func (h *VersionHandler) doReportVersionMetaUpdateErr(what, resourceId, versionName string, err error) error {
+	h.logger.Error("failed to update version "+what,
+		zap.String("resource id", resourceId),
+		zap.String("version name", versionName),
+		zap.Error(err),
+	)
+	return errs.NewUnexpected("internal server error", err)
+}
+
 func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 
 	var (
@@ -521,144 +604,61 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 		resourceId = c.Params(ResourceKey)
 	)
 
-	resExist, err := h.resourceLogic.Exists(ctx, resourceId)
-	switch {
-	case err != nil:
-		h.logger.Error("Failed to check if resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
-
-	case !resExist:
-		h.logger.Info("Resource not found",
-			zap.String("resource id", resourceId),
-		)
-		resp := response.BusinessError("resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-
-	}
-
-	req := &UpdateReleaseNoteRequest{}
-	if err := c.BodyParser(req); err != nil {
-		h.logger.Error("failed to parse request body",
-			zap.Error(err),
-			zap.String("input", string(c.Body())),
-		)
-		resp := response.BusinessError("invalid param")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	req.Content = truncateUTF8Runes(req.Content, 20000)
-
-	if ch, ok := ChannelMap[req.Channel]; ok {
-		req.Channel = ch
-	} else {
-		return errors.New("invalid channel")
-	}
-
-	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
+	req, err := h.doPrepareVersionMetaUpdate(c, resourceId)
 	if err != nil {
-		h.logger.Error("failed to load store version",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
-	err = h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteDetailParam{
+
+	req.Content = truncateUTF8Runes(req.Content, releaseNoteMaxRunes)
+
+	ver, err := h.doLoadVersionForMetaUpdate(ctx, resourceId, req)
+	if err != nil {
+		return err
+	}
+
+	if err := h.versionLogic.UpdateReleaseNote(ctx, UpdateReleaseNoteDetailParam{
 		VersionID:         ver.ID,
 		ReleaseNoteDetail: req.Content,
-	})
-	if err != nil {
-		h.logger.Error("failed to update version release note",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}); err != nil {
+		return h.doReportVersionMetaUpdateErr("release note", resourceId, req.VersionName, err)
 	}
 
 	h.doEvictCache(resourceId)
 
-	resp := response.Success(nil)
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.JSON(response.Success(nil))
 }
 
 func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
+
 	var (
 		ctx        = c.UserContext()
 		resourceId = c.Params(ResourceKey)
 	)
-	resExist, err := h.resourceLogic.Exists(ctx, resourceId)
-	switch {
-	case err != nil:
-		h.logger.Error("Failed to check if resource exists",
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 
-	case !resExist:
-		h.logger.Info("Resource not found",
-			zap.String("resource id", resourceId),
-		)
-		resp := response.BusinessError("resource not found")
-		return c.Status(fiber.StatusNotFound).JSON(resp)
-
-	}
-
-	req := &UpdateCustomDataRequest{}
-	if err := c.BodyParser(req); err != nil {
-		h.logger.Error("failed to parse request body",
-			zap.Error(err),
-		)
-		resp := response.BusinessError("invalid param")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if len(req.Content) > 10000 {
-		resp := response.BusinessError("cumstom data too long, max length is 10000")
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if ch, ok := ChannelMap[req.Channel]; ok {
-		req.Channel = ch
-	} else {
-		return errors.New("invalid channel")
-	}
-
-	ver, err := h.versionLogic.LoadStoreNewVersionTx(ctx, resourceId, req.VersionName, req.Channel)
+	req, err := h.doPrepareVersionMetaUpdate(c, resourceId)
 	if err != nil {
-		h.logger.Error("failed to load store version",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		return err
 	}
 
-	err = h.versionLogic.UpdateCustomData(ctx, UpdateReleaseNoteSummaryParam{
+	if len(req.Content) > customDataMaxBytes {
+		return errCustomDataTooLong
+	}
+
+	ver, err := h.doLoadVersionForMetaUpdate(ctx, resourceId, req)
+	if err != nil {
+		return err
+	}
+
+	if err := h.versionLogic.UpdateCustomData(ctx, UpdateReleaseNoteSummaryParam{
 		VersionID:          ver.ID,
 		ReleaseNoteSummary: req.Content,
-	})
-	if err != nil {
-		h.logger.Error("failed to update version custom data",
-			zap.String("resource id", resourceId),
-			zap.String("version name", req.VersionName),
-			zap.Error(err),
-		)
-		resp := response.UnexpectedError()
-		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}); err != nil {
+		return h.doReportVersionMetaUpdateErr("custom data", resourceId, req.VersionName, err)
 	}
 
 	h.doEvictCache(resourceId)
 
-	resp := response.Success(nil)
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.JSON(response.Success(nil))
 }
 
 func (h *VersionHandler) GetVersionStatus(c *fiber.Ctx) error {
