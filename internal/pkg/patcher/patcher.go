@@ -121,6 +121,9 @@ func CalculateDiff(newVersionFileHashes, oldVersionFileHashes map[string]string)
 
 // EstimateZipPatchSize sums the compressed sizes of the added and modified files in the
 // origin zip, which approximates the size of the patch GenerateV2 builds from it.
+// GenerateV2 deflates every file, so only deflated entries tell their size in the patch;
+// stored entries are left out, as they may shrink a lot there. The estimate thus tends
+// to be low: it only rejects a patch early, the size of the built one decides.
 func EstimateZipPatchSize(origin string, changes []Change) (int64, error) {
 	pending := make(map[string]struct{}, len(changes))
 	for _, change := range changes {
@@ -139,7 +142,7 @@ func EstimateZipPatchSize(origin string, changes []Change) (int64, error) {
 
 	var size int64
 	for _, f := range reader.File {
-		if _, ok := pending[f.Name]; ok {
+		if _, ok := pending[f.Name]; ok && f.Method == zip.Deflate {
 			size += int64(f.CompressedSize64)
 		}
 	}

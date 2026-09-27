@@ -680,7 +680,8 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 
 	addedDirs, deletedDirs := patcher.CalculateDirDiff(param.TargetStorageHashes, param.CurrentStorageHashes)
 
-	// a zip patch is estimated from the entries it would copy, so an oversized one is not even built
+	// a zip patch is estimated from the entries it would copy, so an oversized one is not even
+	// built; the estimate tends to be low, the size check of the built patch below is the one that counts
 	if param.TargetFileType == string(types.Zip) {
 		estimated, err := patcher.EstimateZipPatchSize(originPackage, changes)
 		if err != nil {

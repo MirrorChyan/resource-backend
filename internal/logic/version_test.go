@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -233,6 +235,39 @@ func TestPatchKeptWhenSmall(t *testing.T) {
 			require.False(t, f.skipFlagged(t))
 		})
 	}
+}
+
+// A stored zip gets deflated in the patch, so its entry sizes must not reject the patch early.
+func TestPatchKeptWhenTargetZipIsStored(t *testing.T) {
+	files := map[string][]byte{
+		"a.txt": bytes.Repeat([]byte("a"), 64<<10),
+		"b.txt": bytes.Repeat([]byte("b"), 64<<10),
+	}
+	f := newPatchFixture(t, types.Zip, files, map[string]string{"a.txt": "old-a", "b.txt": "old-b"})
+
+	// replace the target package by one storing its entries uncompressed
+	out, err := os.Create(f.param.TargetOriginPackage)
+	require.NoError(t, err)
+	w := zip.NewWriter(out)
+	for name, content := range files {
+		fw, err := w.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
+		require.NoError(t, err)
+		_, err = fw.Write(content)
+		require.NoError(t, err)
+	}
+	require.NoError(t, w.Close())
+	require.NoError(t, out.Close())
+	stat, err := os.Stat(f.param.TargetOriginPackage)
+	require.NoError(t, err)
+	f.param.TargetFileSize = stat.Size()
+
+	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
+
+	// every file changed, yet deflating them makes the patch far smaller than the stored package
+	f.requireNoLocalPatch(t)
+	require.FileExists(t, f.ossPatch)
+	require.Len(t, f.incrementalStorages(t), 1)
+	require.False(t, f.skipFlagged(t))
 }
 
 func TestUpdateRequestHonorsSkipFlag(t *testing.T) {
