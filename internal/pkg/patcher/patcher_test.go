@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/MirrorChyan/resource-backend/internal/model"
@@ -543,6 +544,73 @@ func TestFullPipeline_AllFilesNew(t *testing.T) {
 	addedDirs, deletedDirs := CalculateDirDiff(v2Hashes, oldHashes)
 	assert.Equal(t, []string{"x", "x/y", "x/y/z"}, sortedSlice(toSlashSlice(addedDirs)))
 	assert.Nil(t, deletedDirs)
+}
+
+func TestEstimateZipPatchSize(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "modified.txt", "modified content modified content")
+	writeFile(t, dir, "added.txt", "added content")
+	writeFile(t, dir, "unchanged.txt", "unchanged content unchanged content unchanged content")
+	origin := buildZip(t, dir, "v2.zip")
+
+	changes := []Change{
+		{Filename: "modified.txt", ChangeType: Modified},
+		{Filename: "added.txt", ChangeType: Added},
+		{Filename: "unchanged.txt", ChangeType: Unchanged},
+		{Filename: "deleted.txt", ChangeType: Deleted},
+	}
+
+	reader, err := zip.OpenReader(origin)
+	require.NoError(t, err)
+	defer func() { _ = reader.Close() }()
+	var want int64
+	for _, f := range reader.File {
+		if f.Name == "modified.txt" || f.Name == "added.txt" {
+			want += int64(f.CompressedSize64)
+		}
+	}
+	require.Positive(t, want)
+
+	got, err := EstimateZipPatchSize(origin, changes)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+
+	_, err = EstimateZipPatchSize(filepath.Join(t.TempDir(), "missing.zip"), changes)
+	assert.Error(t, err)
+}
+
+// GenerateV2 deflates every file, so a stored entry says nothing about its size in the patch
+func TestEstimateZipPatchSize_SkipsStoredEntries(t *testing.T) {
+	origin := filepath.Join(t.TempDir(), "v2.zip")
+	out, err := os.Create(origin)
+	require.NoError(t, err)
+	w := zip.NewWriter(out)
+	for name, method := range map[string]uint16{"stored.txt": zip.Store, "deflated.txt": zip.Deflate} {
+		fw, err := w.CreateHeader(&zip.FileHeader{Name: name, Method: method})
+		require.NoError(t, err)
+		_, err = fw.Write([]byte(strings.Repeat(name, 1000)))
+		require.NoError(t, err)
+	}
+	require.NoError(t, w.Close())
+	require.NoError(t, out.Close())
+
+	reader, err := zip.OpenReader(origin)
+	require.NoError(t, err)
+	defer func() { _ = reader.Close() }()
+	var deflated int64
+	for _, f := range reader.File {
+		if f.Name == "deflated.txt" {
+			deflated = int64(f.CompressedSize64)
+		}
+	}
+	require.Positive(t, deflated)
+
+	got, err := EstimateZipPatchSize(origin, []Change{
+		{Filename: "stored.txt", ChangeType: Modified},
+		{Filename: "deflated.txt", ChangeType: Modified},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, deflated, got)
 }
 
 func TestFullPipeline_AllFilesDeleted(t *testing.T) {

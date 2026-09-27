@@ -78,6 +78,16 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		}, nil
 	}
 
+	skipped, err := l.rdb.Exists(ctx,
+		misc.PatchSkipKey(targetInfo.VersionId, currentVersionId, targetInfo.OS, targetInfo.Arch),
+	).Result()
+	if err != nil {
+		return nil, err
+	}
+	if skipped > 0 {
+		return full, nil
+	}
+
 	var (
 		targetVersion  = strconv.Itoa(targetInfo.VersionId)
 		currentVersion = strconv.Itoa(currentVersionId)

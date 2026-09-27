@@ -2,6 +2,7 @@ package misc
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/gofiber/fiber/v2"
@@ -42,6 +43,14 @@ const (
 )
 
 const WebhookNotifyThrottlePrefix = "webhook:notify:throttle"
+
+// PatchSkipPrefix records a target/current version pair whose incremental package is not
+// worth building, so the full package is served without enqueuing the diff task again
+const PatchSkipPrefix = "patch:skip"
+
+func PatchSkipKey(target, current int, os, arch string) string {
+	return strings.Join([]string{PatchSkipPrefix, strconv.Itoa(target), strconv.Itoa(current), os, arch}, ":")
+}
 
 // StatusPollingPrefix status polling
 const StatusPollingPrefix = "status:polling"

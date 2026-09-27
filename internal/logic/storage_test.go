@@ -21,7 +21,8 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 )
 
-func newPurgeTestLogic(t *testing.T) (*StorageLogic, *ent.Client) {
+// newTestRepo opens a fresh in-memory sqlite database with the ent schema applied.
+func newTestRepo(t *testing.T) (*repo.Repo, *ent.Client) {
 	t.Helper()
 	db, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
@@ -32,7 +33,12 @@ func newPurgeTestLogic(t *testing.T) (*StorageLogic, *ent.Client) {
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, db)))
 	require.NoError(t, client.Schema.Create(context.Background()))
 
-	r := repo.NewRepo(client, sqlx.NewDb(db, "sqlite"))
+	return repo.NewRepo(client, sqlx.NewDb(db, "sqlite")), client
+}
+
+func newPurgeTestLogic(t *testing.T) (*StorageLogic, *ent.Client) {
+	t.Helper()
+	r, client := newTestRepo(t)
 	dir := t.TempDir()
 	return &StorageLogic{
 		logger:      zap.NewNop(),
