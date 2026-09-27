@@ -60,12 +60,12 @@ func newPatchTestLogic(t *testing.T) (*VersionLogic, *ent.Client) {
 }
 
 type patchFixture struct {
-	l          *VersionLogic
-	client     *ent.Client
-	param      model.PatchTaskExecuteParam
-	patchDir   string
-	localPatch string
-	ossPatch   string
+	l        *VersionLogic
+	client   *ent.Client
+	param    model.PatchTaskExecuteParam
+	patchDir string
+	ossPatch string
+	tmpDir   string
 }
 
 // newPatchFixture stores the package of a target version built from files and returns
@@ -100,7 +100,11 @@ func newPatchFixture(t *testing.T, fileType types.FileType, files map[string][]b
 	require.NoError(t, err)
 
 	patchDir := l.storageLogic.BuildVersionPatchStorageDirPath(res.ID, tgt.ID, "", "")
-	localPatch := filepath.Join(patchDir, strconv.Itoa(cur.ID)+suffix)
+	// patches are built under the OS temp dir; point it at a dir the test can inspect
+	tmpDir := t.TempDir()
+	for _, env := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(env, tmpDir)
+	}
 	return patchFixture{
 		l:      l,
 		client: client,
@@ -115,10 +119,20 @@ func newPatchFixture(t *testing.T, fileType types.FileType, files map[string][]b
 			TargetStorageHashes:  hashes,
 			CurrentStorageHashes: current,
 		},
-		patchDir:   patchDir,
-		localPatch: localPatch,
-		ossPatch:   filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(localPatch)),
+		patchDir: patchDir,
+		ossPatch: filepath.Join(l.storageLogic.OSSDir,
+			l.cleanRootStoragePath(filepath.Join(patchDir, strconv.Itoa(cur.ID)+suffix))),
+		tmpDir: tmpDir,
 	}
+}
+
+// requireNoLocalPatch checks that nothing of the patch is left on local disk.
+func (f patchFixture) requireNoLocalPatch(t *testing.T) {
+	t.Helper()
+	require.NoDirExists(t, f.patchDir)
+	left, err := filepath.Glob(filepath.Join(f.tmpDir, "patch-*"))
+	require.NoError(t, err)
+	require.Empty(t, left)
 }
 
 func (f patchFixture) incrementalStorages(t *testing.T) []*ent.Storage {
@@ -162,7 +176,7 @@ func TestPatchSkippedWithoutCurrentFileHashes(t *testing.T) {
 
 	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
 
-	require.NoDirExists(t, f.patchDir)
+	f.requireNoLocalPatch(t)
 	require.NoFileExists(t, f.ossPatch)
 	require.Empty(t, f.incrementalStorages(t))
 	require.True(t, f.skipFlagged(t))
@@ -175,7 +189,7 @@ func TestPatchSkippedWhenEstimatedTooLarge(t *testing.T) {
 	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
 
 	// the zip estimate rejects it before anything is built
-	require.NoDirExists(t, f.patchDir)
+	f.requireNoLocalPatch(t)
 	require.NoFileExists(t, f.ossPatch)
 	require.Empty(t, f.incrementalStorages(t))
 	require.True(t, f.skipFlagged(t))
@@ -188,7 +202,7 @@ func TestPatchDiscardedWhenTooLarge(t *testing.T) {
 	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
 
 	// a tgz cannot be estimated, so the built patch is measured and dropped
-	require.NoFileExists(t, f.localPatch)
+	f.requireNoLocalPatch(t)
 	require.NoFileExists(t, f.ossPatch)
 	require.Empty(t, f.incrementalStorages(t))
 	require.True(t, f.skipFlagged(t))
@@ -206,7 +220,7 @@ func TestPatchKeptWhenSmall(t *testing.T) {
 
 			require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
 
-			require.NoFileExists(t, f.localPatch)
+			f.requireNoLocalPatch(t)
 			require.FileExists(t, f.ossPatch)
 			stat, err := os.Stat(f.ossPatch)
 			require.NoError(t, err)

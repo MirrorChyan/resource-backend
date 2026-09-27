@@ -699,16 +699,19 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		}
 	}
 
-	dir := l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch)
-
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
-	}
-
-	destPackage := filepath.Join(dir, strings.Join([]string{
+	name := strings.Join([]string{
 		strconv.Itoa(current),
 		types.GetFileSuffix(types.FileType(param.TargetFileType)),
-	}, ""))
+	}, "")
+	patchPath := filepath.Join(l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch), name)
+
+	// only the OSS copy is kept, so the patch is built in a private temp dir: no local
+	// patch dir is left behind, and concurrent patch tasks of one target never share one
+	tmp, err := os.MkdirTemp("", "patch-")
+	if err != nil {
+		return fmt.Errorf("failed to create patch temp directory: %w", err)
+	}
+	destPackage := filepath.Join(tmp, name)
 
 	tuple := PatchInfoTuple{
 		SrcPackage:  originPackage,
@@ -716,9 +719,9 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		FileType:    param.TargetFileType,
 	}
 	cleanupLocal := func() {
-		if err := os.Remove(destPackage); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err := os.RemoveAll(tmp); err != nil {
 			l.logger.Warn("failed to remove local patch package",
-				zap.String("path", destPackage),
+				zap.String("path", tmp),
 				zap.Error(err),
 			)
 		}
@@ -771,7 +774,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		)
 		return nil
 	}
-	ossPackage := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(destPackage))
+	ossPackage := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(patchPath))
 	_, statErr := os.Stat(ossPackage)
 	ossExisted := statErr == nil
 	if err := os.MkdirAll(filepath.Dir(ossPackage), os.ModePerm); err != nil {
