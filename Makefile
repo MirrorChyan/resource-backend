@@ -1,7 +1,7 @@
 .PHONY: entgen wiregen build
 
 entgen:
-	@go run -mod=mod entgo.io/ent/cmd/ent generate  ./internal/ent/schema
+	@go generate ./internal/ent
 
 wiregen:
 	@wire gen ./internal/wire
