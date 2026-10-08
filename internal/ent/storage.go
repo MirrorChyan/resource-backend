@@ -103,7 +103,7 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Storage fields.
-func (s *Storage) assignValues(columns []string, values []any) error {
+func (_m *Storage) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -114,54 +114,54 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			s.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case storage.FieldUpdateType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field update_type", values[i])
 			} else if value.Valid {
-				s.UpdateType = storage.UpdateType(value.String)
+				_m.UpdateType = storage.UpdateType(value.String)
 			}
 		case storage.FieldOs:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field os", values[i])
 			} else if value.Valid {
-				s.Os = value.String
+				_m.Os = value.String
 			}
 		case storage.FieldArch:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field arch", values[i])
 			} else if value.Valid {
-				s.Arch = value.String
+				_m.Arch = value.String
 			}
 		case storage.FieldPackagePath:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field package_path", values[i])
 			} else if value.Valid {
-				s.PackagePath = value.String
+				_m.PackagePath = value.String
 			}
 		case storage.FieldPackageHashSha256:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field package_hash_sha256", values[i])
 			} else if value.Valid {
-				s.PackageHashSha256 = value.String
+				_m.PackageHashSha256 = value.String
 			}
 		case storage.FieldFileType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field file_type", values[i])
 			} else if value.Valid {
-				s.FileType = value.String
+				_m.FileType = value.String
 			}
 		case storage.FieldFileSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field file_size", values[i])
 			} else if value.Valid {
-				s.FileSize = value.Int64
+				_m.FileSize = value.Int64
 			}
 		case storage.FieldFileHashes:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field file_hashes", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &s.FileHashes); err != nil {
+				if err := json.Unmarshal(*value, &_m.FileHashes); err != nil {
 					return fmt.Errorf("unmarshal field file_hashes: %w", err)
 				}
 			}
@@ -169,23 +169,23 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				s.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case storage.FieldVersionStorages:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field version_storages", values[i])
 			} else if value.Valid {
-				s.VersionStorages = int(value.Int64)
+				_m.VersionStorages = int(value.Int64)
 			}
 		case storage.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field storage_old_version", value)
 			} else if value.Valid {
-				s.storage_old_version = new(int)
-				*s.storage_old_version = int(value.Int64)
+				_m.storage_old_version = new(int)
+				*_m.storage_old_version = int(value.Int64)
 			}
 		default:
-			s.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -193,72 +193,72 @@ func (s *Storage) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Storage.
 // This includes values selected through modifiers, order, etc.
-func (s *Storage) Value(name string) (ent.Value, error) {
-	return s.selectValues.Get(name)
+func (_m *Storage) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryVersion queries the "version" edge of the Storage entity.
-func (s *Storage) QueryVersion() *VersionQuery {
-	return NewStorageClient(s.config).QueryVersion(s)
+func (_m *Storage) QueryVersion() *VersionQuery {
+	return NewStorageClient(_m.config).QueryVersion(_m)
 }
 
 // QueryOldVersion queries the "old_version" edge of the Storage entity.
-func (s *Storage) QueryOldVersion() *VersionQuery {
-	return NewStorageClient(s.config).QueryOldVersion(s)
+func (_m *Storage) QueryOldVersion() *VersionQuery {
+	return NewStorageClient(_m.config).QueryOldVersion(_m)
 }
 
 // Update returns a builder for updating this Storage.
 // Note that you need to call Storage.Unwrap() before calling this method if this Storage
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (s *Storage) Update() *StorageUpdateOne {
-	return NewStorageClient(s.config).UpdateOne(s)
+func (_m *Storage) Update() *StorageUpdateOne {
+	return NewStorageClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Storage entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (s *Storage) Unwrap() *Storage {
-	_tx, ok := s.config.driver.(*txDriver)
+func (_m *Storage) Unwrap() *Storage {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Storage is not a transactional entity")
 	}
-	s.config.driver = _tx.drv
-	return s
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (s *Storage) String() string {
+func (_m *Storage) String() string {
 	var builder strings.Builder
 	builder.WriteString("Storage(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", s.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("update_type=")
-	builder.WriteString(fmt.Sprintf("%v", s.UpdateType))
+	builder.WriteString(fmt.Sprintf("%v", _m.UpdateType))
 	builder.WriteString(", ")
 	builder.WriteString("os=")
-	builder.WriteString(s.Os)
+	builder.WriteString(_m.Os)
 	builder.WriteString(", ")
 	builder.WriteString("arch=")
-	builder.WriteString(s.Arch)
+	builder.WriteString(_m.Arch)
 	builder.WriteString(", ")
 	builder.WriteString("package_path=")
-	builder.WriteString(s.PackagePath)
+	builder.WriteString(_m.PackagePath)
 	builder.WriteString(", ")
 	builder.WriteString("package_hash_sha256=")
-	builder.WriteString(s.PackageHashSha256)
+	builder.WriteString(_m.PackageHashSha256)
 	builder.WriteString(", ")
 	builder.WriteString("file_type=")
-	builder.WriteString(s.FileType)
+	builder.WriteString(_m.FileType)
 	builder.WriteString(", ")
 	builder.WriteString("file_size=")
-	builder.WriteString(fmt.Sprintf("%v", s.FileSize))
+	builder.WriteString(fmt.Sprintf("%v", _m.FileSize))
 	builder.WriteString(", ")
 	builder.WriteString("file_hashes=")
-	builder.WriteString(fmt.Sprintf("%v", s.FileHashes))
+	builder.WriteString(fmt.Sprintf("%v", _m.FileHashes))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
-	builder.WriteString(s.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("version_storages=")
-	builder.WriteString(fmt.Sprintf("%v", s.VersionStorages))
+	builder.WriteString(fmt.Sprintf("%v", _m.VersionStorages))
 	builder.WriteByte(')')
 	return builder.String()
 }

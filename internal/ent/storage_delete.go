@@ -20,56 +20,56 @@ type StorageDelete struct {
 }
 
 // Where appends a list predicates to the StorageDelete builder.
-func (sd *StorageDelete) Where(ps ...predicate.Storage) *StorageDelete {
-	sd.mutation.Where(ps...)
-	return sd
+func (_d *StorageDelete) Where(ps ...predicate.Storage) *StorageDelete {
+	_d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (sd *StorageDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks(ctx, sd.sqlExec, sd.mutation, sd.hooks)
+func (_d *StorageDelete) Exec(ctx context.Context) (int, error) {
+	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (sd *StorageDelete) ExecX(ctx context.Context) int {
-	n, err := sd.Exec(ctx)
+func (_d *StorageDelete) ExecX(ctx context.Context) int {
+	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
 	}
 	return n
 }
 
-func (sd *StorageDelete) sqlExec(ctx context.Context) (int, error) {
+func (_d *StorageDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(storage.Table, sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt))
-	if ps := sd.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	affected, err := sqlgraph.DeleteNodes(ctx, sd.driver, _spec)
+	affected, err := sqlgraph.DeleteNodes(ctx, _d.driver, _spec)
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
-	sd.mutation.done = true
+	_d.mutation.done = true
 	return affected, err
 }
 
 // StorageDeleteOne is the builder for deleting a single Storage entity.
 type StorageDeleteOne struct {
-	sd *StorageDelete
+	_d *StorageDelete
 }
 
 // Where appends a list predicates to the StorageDelete builder.
-func (sdo *StorageDeleteOne) Where(ps ...predicate.Storage) *StorageDeleteOne {
-	sdo.sd.mutation.Where(ps...)
-	return sdo
+func (_d *StorageDeleteOne) Where(ps ...predicate.Storage) *StorageDeleteOne {
+	_d._d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query.
-func (sdo *StorageDeleteOne) Exec(ctx context.Context) error {
-	n, err := sdo.sd.Exec(ctx)
+func (_d *StorageDeleteOne) Exec(ctx context.Context) error {
+	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
@@ -81,8 +81,8 @@ func (sdo *StorageDeleteOne) Exec(ctx context.Context) error {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (sdo *StorageDeleteOne) ExecX(ctx context.Context) {
-	if err := sdo.Exec(ctx); err != nil {
+func (_d *StorageDeleteOne) ExecX(ctx context.Context) {
+	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

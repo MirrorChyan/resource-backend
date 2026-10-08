@@ -24,229 +24,229 @@ type StorageUpdate struct {
 }
 
 // Where appends a list predicates to the StorageUpdate builder.
-func (su *StorageUpdate) Where(ps ...predicate.Storage) *StorageUpdate {
-	su.mutation.Where(ps...)
-	return su
+func (_u *StorageUpdate) Where(ps ...predicate.Storage) *StorageUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdateType sets the "update_type" field.
-func (su *StorageUpdate) SetUpdateType(st storage.UpdateType) *StorageUpdate {
-	su.mutation.SetUpdateType(st)
-	return su
+func (_u *StorageUpdate) SetUpdateType(v storage.UpdateType) *StorageUpdate {
+	_u.mutation.SetUpdateType(v)
+	return _u
 }
 
 // SetNillableUpdateType sets the "update_type" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableUpdateType(st *storage.UpdateType) *StorageUpdate {
-	if st != nil {
-		su.SetUpdateType(*st)
+func (_u *StorageUpdate) SetNillableUpdateType(v *storage.UpdateType) *StorageUpdate {
+	if v != nil {
+		_u.SetUpdateType(*v)
 	}
-	return su
+	return _u
 }
 
 // SetOs sets the "os" field.
-func (su *StorageUpdate) SetOs(s string) *StorageUpdate {
-	su.mutation.SetOs(s)
-	return su
+func (_u *StorageUpdate) SetOs(v string) *StorageUpdate {
+	_u.mutation.SetOs(v)
+	return _u
 }
 
 // SetNillableOs sets the "os" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableOs(s *string) *StorageUpdate {
-	if s != nil {
-		su.SetOs(*s)
+func (_u *StorageUpdate) SetNillableOs(v *string) *StorageUpdate {
+	if v != nil {
+		_u.SetOs(*v)
 	}
-	return su
+	return _u
 }
 
 // SetArch sets the "arch" field.
-func (su *StorageUpdate) SetArch(s string) *StorageUpdate {
-	su.mutation.SetArch(s)
-	return su
+func (_u *StorageUpdate) SetArch(v string) *StorageUpdate {
+	_u.mutation.SetArch(v)
+	return _u
 }
 
 // SetNillableArch sets the "arch" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableArch(s *string) *StorageUpdate {
-	if s != nil {
-		su.SetArch(*s)
+func (_u *StorageUpdate) SetNillableArch(v *string) *StorageUpdate {
+	if v != nil {
+		_u.SetArch(*v)
 	}
-	return su
+	return _u
 }
 
 // SetPackagePath sets the "package_path" field.
-func (su *StorageUpdate) SetPackagePath(s string) *StorageUpdate {
-	su.mutation.SetPackagePath(s)
-	return su
+func (_u *StorageUpdate) SetPackagePath(v string) *StorageUpdate {
+	_u.mutation.SetPackagePath(v)
+	return _u
 }
 
 // SetNillablePackagePath sets the "package_path" field if the given value is not nil.
-func (su *StorageUpdate) SetNillablePackagePath(s *string) *StorageUpdate {
-	if s != nil {
-		su.SetPackagePath(*s)
+func (_u *StorageUpdate) SetNillablePackagePath(v *string) *StorageUpdate {
+	if v != nil {
+		_u.SetPackagePath(*v)
 	}
-	return su
+	return _u
 }
 
 // ClearPackagePath clears the value of the "package_path" field.
-func (su *StorageUpdate) ClearPackagePath() *StorageUpdate {
-	su.mutation.ClearPackagePath()
-	return su
+func (_u *StorageUpdate) ClearPackagePath() *StorageUpdate {
+	_u.mutation.ClearPackagePath()
+	return _u
 }
 
 // SetPackageHashSha256 sets the "package_hash_sha256" field.
-func (su *StorageUpdate) SetPackageHashSha256(s string) *StorageUpdate {
-	su.mutation.SetPackageHashSha256(s)
-	return su
+func (_u *StorageUpdate) SetPackageHashSha256(v string) *StorageUpdate {
+	_u.mutation.SetPackageHashSha256(v)
+	return _u
 }
 
 // SetNillablePackageHashSha256 sets the "package_hash_sha256" field if the given value is not nil.
-func (su *StorageUpdate) SetNillablePackageHashSha256(s *string) *StorageUpdate {
-	if s != nil {
-		su.SetPackageHashSha256(*s)
+func (_u *StorageUpdate) SetNillablePackageHashSha256(v *string) *StorageUpdate {
+	if v != nil {
+		_u.SetPackageHashSha256(*v)
 	}
-	return su
+	return _u
 }
 
 // ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
-func (su *StorageUpdate) ClearPackageHashSha256() *StorageUpdate {
-	su.mutation.ClearPackageHashSha256()
-	return su
+func (_u *StorageUpdate) ClearPackageHashSha256() *StorageUpdate {
+	_u.mutation.ClearPackageHashSha256()
+	return _u
 }
 
 // SetFileType sets the "file_type" field.
-func (su *StorageUpdate) SetFileType(s string) *StorageUpdate {
-	su.mutation.SetFileType(s)
-	return su
+func (_u *StorageUpdate) SetFileType(v string) *StorageUpdate {
+	_u.mutation.SetFileType(v)
+	return _u
 }
 
 // SetNillableFileType sets the "file_type" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableFileType(s *string) *StorageUpdate {
-	if s != nil {
-		su.SetFileType(*s)
+func (_u *StorageUpdate) SetNillableFileType(v *string) *StorageUpdate {
+	if v != nil {
+		_u.SetFileType(*v)
 	}
-	return su
+	return _u
 }
 
 // ClearFileType clears the value of the "file_type" field.
-func (su *StorageUpdate) ClearFileType() *StorageUpdate {
-	su.mutation.ClearFileType()
-	return su
+func (_u *StorageUpdate) ClearFileType() *StorageUpdate {
+	_u.mutation.ClearFileType()
+	return _u
 }
 
 // SetFileSize sets the "file_size" field.
-func (su *StorageUpdate) SetFileSize(i int64) *StorageUpdate {
-	su.mutation.ResetFileSize()
-	su.mutation.SetFileSize(i)
-	return su
+func (_u *StorageUpdate) SetFileSize(v int64) *StorageUpdate {
+	_u.mutation.ResetFileSize()
+	_u.mutation.SetFileSize(v)
+	return _u
 }
 
 // SetNillableFileSize sets the "file_size" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableFileSize(i *int64) *StorageUpdate {
-	if i != nil {
-		su.SetFileSize(*i)
+func (_u *StorageUpdate) SetNillableFileSize(v *int64) *StorageUpdate {
+	if v != nil {
+		_u.SetFileSize(*v)
 	}
-	return su
+	return _u
 }
 
-// AddFileSize adds i to the "file_size" field.
-func (su *StorageUpdate) AddFileSize(i int64) *StorageUpdate {
-	su.mutation.AddFileSize(i)
-	return su
+// AddFileSize adds value to the "file_size" field.
+func (_u *StorageUpdate) AddFileSize(v int64) *StorageUpdate {
+	_u.mutation.AddFileSize(v)
+	return _u
 }
 
 // SetFileHashes sets the "file_hashes" field.
-func (su *StorageUpdate) SetFileHashes(m map[string]string) *StorageUpdate {
-	su.mutation.SetFileHashes(m)
-	return su
+func (_u *StorageUpdate) SetFileHashes(v map[string]string) *StorageUpdate {
+	_u.mutation.SetFileHashes(v)
+	return _u
 }
 
 // ClearFileHashes clears the value of the "file_hashes" field.
-func (su *StorageUpdate) ClearFileHashes() *StorageUpdate {
-	su.mutation.ClearFileHashes()
-	return su
+func (_u *StorageUpdate) ClearFileHashes() *StorageUpdate {
+	_u.mutation.ClearFileHashes()
+	return _u
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (su *StorageUpdate) SetCreatedAt(t time.Time) *StorageUpdate {
-	su.mutation.SetCreatedAt(t)
-	return su
+func (_u *StorageUpdate) SetCreatedAt(v time.Time) *StorageUpdate {
+	_u.mutation.SetCreatedAt(v)
+	return _u
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableCreatedAt(t *time.Time) *StorageUpdate {
-	if t != nil {
-		su.SetCreatedAt(*t)
+func (_u *StorageUpdate) SetNillableCreatedAt(v *time.Time) *StorageUpdate {
+	if v != nil {
+		_u.SetCreatedAt(*v)
 	}
-	return su
+	return _u
 }
 
 // SetVersionStorages sets the "version_storages" field.
-func (su *StorageUpdate) SetVersionStorages(i int) *StorageUpdate {
-	su.mutation.SetVersionStorages(i)
-	return su
+func (_u *StorageUpdate) SetVersionStorages(v int) *StorageUpdate {
+	_u.mutation.SetVersionStorages(v)
+	return _u
 }
 
 // SetNillableVersionStorages sets the "version_storages" field if the given value is not nil.
-func (su *StorageUpdate) SetNillableVersionStorages(i *int) *StorageUpdate {
-	if i != nil {
-		su.SetVersionStorages(*i)
+func (_u *StorageUpdate) SetNillableVersionStorages(v *int) *StorageUpdate {
+	if v != nil {
+		_u.SetVersionStorages(*v)
 	}
-	return su
+	return _u
 }
 
 // SetVersionID sets the "version" edge to the Version entity by ID.
-func (su *StorageUpdate) SetVersionID(id int) *StorageUpdate {
-	su.mutation.SetVersionID(id)
-	return su
+func (_u *StorageUpdate) SetVersionID(id int) *StorageUpdate {
+	_u.mutation.SetVersionID(id)
+	return _u
 }
 
 // SetVersion sets the "version" edge to the Version entity.
-func (su *StorageUpdate) SetVersion(v *Version) *StorageUpdate {
-	return su.SetVersionID(v.ID)
+func (_u *StorageUpdate) SetVersion(v *Version) *StorageUpdate {
+	return _u.SetVersionID(v.ID)
 }
 
 // SetOldVersionID sets the "old_version" edge to the Version entity by ID.
-func (su *StorageUpdate) SetOldVersionID(id int) *StorageUpdate {
-	su.mutation.SetOldVersionID(id)
-	return su
+func (_u *StorageUpdate) SetOldVersionID(id int) *StorageUpdate {
+	_u.mutation.SetOldVersionID(id)
+	return _u
 }
 
 // SetNillableOldVersionID sets the "old_version" edge to the Version entity by ID if the given value is not nil.
-func (su *StorageUpdate) SetNillableOldVersionID(id *int) *StorageUpdate {
+func (_u *StorageUpdate) SetNillableOldVersionID(id *int) *StorageUpdate {
 	if id != nil {
-		su = su.SetOldVersionID(*id)
+		_u = _u.SetOldVersionID(*id)
 	}
-	return su
+	return _u
 }
 
 // SetOldVersion sets the "old_version" edge to the Version entity.
-func (su *StorageUpdate) SetOldVersion(v *Version) *StorageUpdate {
-	return su.SetOldVersionID(v.ID)
+func (_u *StorageUpdate) SetOldVersion(v *Version) *StorageUpdate {
+	return _u.SetOldVersionID(v.ID)
 }
 
 // Mutation returns the StorageMutation object of the builder.
-func (su *StorageUpdate) Mutation() *StorageMutation {
-	return su.mutation
+func (_u *StorageUpdate) Mutation() *StorageMutation {
+	return _u.mutation
 }
 
 // ClearVersion clears the "version" edge to the Version entity.
-func (su *StorageUpdate) ClearVersion() *StorageUpdate {
-	su.mutation.ClearVersion()
-	return su
+func (_u *StorageUpdate) ClearVersion() *StorageUpdate {
+	_u.mutation.ClearVersion()
+	return _u
 }
 
 // ClearOldVersion clears the "old_version" edge to the Version entity.
-func (su *StorageUpdate) ClearOldVersion() *StorageUpdate {
-	su.mutation.ClearOldVersion()
-	return su
+func (_u *StorageUpdate) ClearOldVersion() *StorageUpdate {
+	_u.mutation.ClearOldVersion()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (su *StorageUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks(ctx, su.sqlSave, su.mutation, su.hooks)
+func (_u *StorageUpdate) Save(ctx context.Context) (int, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (su *StorageUpdate) SaveX(ctx context.Context) int {
-	affected, err := su.Save(ctx)
+func (_u *StorageUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -254,86 +254,86 @@ func (su *StorageUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (su *StorageUpdate) Exec(ctx context.Context) error {
-	_, err := su.Save(ctx)
+func (_u *StorageUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (su *StorageUpdate) ExecX(ctx context.Context) {
-	if err := su.Exec(ctx); err != nil {
+func (_u *StorageUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (su *StorageUpdate) check() error {
-	if v, ok := su.mutation.UpdateType(); ok {
+func (_u *StorageUpdate) check() error {
+	if v, ok := _u.mutation.UpdateType(); ok {
 		if err := storage.UpdateTypeValidator(v); err != nil {
 			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
 		}
 	}
-	if su.mutation.VersionCleared() && len(su.mutation.VersionIDs()) > 0 {
+	if _u.mutation.VersionCleared() && len(_u.mutation.VersionIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Storage.version"`)
 	}
 	return nil
 }
 
-func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := su.check(); err != nil {
-		return n, err
+func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(storage.Table, storage.Columns, sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt))
-	if ps := su.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := su.mutation.UpdateType(); ok {
+	if value, ok := _u.mutation.UpdateType(); ok {
 		_spec.SetField(storage.FieldUpdateType, field.TypeEnum, value)
 	}
-	if value, ok := su.mutation.Os(); ok {
+	if value, ok := _u.mutation.Os(); ok {
 		_spec.SetField(storage.FieldOs, field.TypeString, value)
 	}
-	if value, ok := su.mutation.Arch(); ok {
+	if value, ok := _u.mutation.Arch(); ok {
 		_spec.SetField(storage.FieldArch, field.TypeString, value)
 	}
-	if value, ok := su.mutation.PackagePath(); ok {
+	if value, ok := _u.mutation.PackagePath(); ok {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
 	}
-	if su.mutation.PackagePathCleared() {
+	if _u.mutation.PackagePathCleared() {
 		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
-	if value, ok := su.mutation.PackageHashSha256(); ok {
+	if value, ok := _u.mutation.PackageHashSha256(); ok {
 		_spec.SetField(storage.FieldPackageHashSha256, field.TypeString, value)
 	}
-	if su.mutation.PackageHashSha256Cleared() {
+	if _u.mutation.PackageHashSha256Cleared() {
 		_spec.ClearField(storage.FieldPackageHashSha256, field.TypeString)
 	}
-	if value, ok := su.mutation.FileType(); ok {
+	if value, ok := _u.mutation.FileType(); ok {
 		_spec.SetField(storage.FieldFileType, field.TypeString, value)
 	}
-	if su.mutation.FileTypeCleared() {
+	if _u.mutation.FileTypeCleared() {
 		_spec.ClearField(storage.FieldFileType, field.TypeString)
 	}
-	if value, ok := su.mutation.FileSize(); ok {
+	if value, ok := _u.mutation.FileSize(); ok {
 		_spec.SetField(storage.FieldFileSize, field.TypeInt64, value)
 	}
-	if value, ok := su.mutation.AddedFileSize(); ok {
+	if value, ok := _u.mutation.AddedFileSize(); ok {
 		_spec.AddField(storage.FieldFileSize, field.TypeInt64, value)
 	}
-	if value, ok := su.mutation.FileHashes(); ok {
+	if value, ok := _u.mutation.FileHashes(); ok {
 		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
 	}
-	if su.mutation.FileHashesCleared() {
+	if _u.mutation.FileHashesCleared() {
 		_spec.ClearField(storage.FieldFileHashes, field.TypeJSON)
 	}
-	if value, ok := su.mutation.CreatedAt(); ok {
+	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(storage.FieldCreatedAt, field.TypeTime, value)
 	}
-	if su.mutation.VersionCleared() {
+	if _u.mutation.VersionCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -346,7 +346,7 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := su.mutation.VersionIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.VersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -362,7 +362,7 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if su.mutation.OldVersionCleared() {
+	if _u.mutation.OldVersionCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -375,7 +375,7 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := su.mutation.OldVersionIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OldVersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -391,7 +391,7 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, su.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{storage.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -399,8 +399,8 @@ func (su *StorageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	su.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // StorageUpdateOne is the builder for updating a single Storage entity.
@@ -412,236 +412,236 @@ type StorageUpdateOne struct {
 }
 
 // SetUpdateType sets the "update_type" field.
-func (suo *StorageUpdateOne) SetUpdateType(st storage.UpdateType) *StorageUpdateOne {
-	suo.mutation.SetUpdateType(st)
-	return suo
+func (_u *StorageUpdateOne) SetUpdateType(v storage.UpdateType) *StorageUpdateOne {
+	_u.mutation.SetUpdateType(v)
+	return _u
 }
 
 // SetNillableUpdateType sets the "update_type" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableUpdateType(st *storage.UpdateType) *StorageUpdateOne {
-	if st != nil {
-		suo.SetUpdateType(*st)
+func (_u *StorageUpdateOne) SetNillableUpdateType(v *storage.UpdateType) *StorageUpdateOne {
+	if v != nil {
+		_u.SetUpdateType(*v)
 	}
-	return suo
+	return _u
 }
 
 // SetOs sets the "os" field.
-func (suo *StorageUpdateOne) SetOs(s string) *StorageUpdateOne {
-	suo.mutation.SetOs(s)
-	return suo
+func (_u *StorageUpdateOne) SetOs(v string) *StorageUpdateOne {
+	_u.mutation.SetOs(v)
+	return _u
 }
 
 // SetNillableOs sets the "os" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableOs(s *string) *StorageUpdateOne {
-	if s != nil {
-		suo.SetOs(*s)
+func (_u *StorageUpdateOne) SetNillableOs(v *string) *StorageUpdateOne {
+	if v != nil {
+		_u.SetOs(*v)
 	}
-	return suo
+	return _u
 }
 
 // SetArch sets the "arch" field.
-func (suo *StorageUpdateOne) SetArch(s string) *StorageUpdateOne {
-	suo.mutation.SetArch(s)
-	return suo
+func (_u *StorageUpdateOne) SetArch(v string) *StorageUpdateOne {
+	_u.mutation.SetArch(v)
+	return _u
 }
 
 // SetNillableArch sets the "arch" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableArch(s *string) *StorageUpdateOne {
-	if s != nil {
-		suo.SetArch(*s)
+func (_u *StorageUpdateOne) SetNillableArch(v *string) *StorageUpdateOne {
+	if v != nil {
+		_u.SetArch(*v)
 	}
-	return suo
+	return _u
 }
 
 // SetPackagePath sets the "package_path" field.
-func (suo *StorageUpdateOne) SetPackagePath(s string) *StorageUpdateOne {
-	suo.mutation.SetPackagePath(s)
-	return suo
+func (_u *StorageUpdateOne) SetPackagePath(v string) *StorageUpdateOne {
+	_u.mutation.SetPackagePath(v)
+	return _u
 }
 
 // SetNillablePackagePath sets the "package_path" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillablePackagePath(s *string) *StorageUpdateOne {
-	if s != nil {
-		suo.SetPackagePath(*s)
+func (_u *StorageUpdateOne) SetNillablePackagePath(v *string) *StorageUpdateOne {
+	if v != nil {
+		_u.SetPackagePath(*v)
 	}
-	return suo
+	return _u
 }
 
 // ClearPackagePath clears the value of the "package_path" field.
-func (suo *StorageUpdateOne) ClearPackagePath() *StorageUpdateOne {
-	suo.mutation.ClearPackagePath()
-	return suo
+func (_u *StorageUpdateOne) ClearPackagePath() *StorageUpdateOne {
+	_u.mutation.ClearPackagePath()
+	return _u
 }
 
 // SetPackageHashSha256 sets the "package_hash_sha256" field.
-func (suo *StorageUpdateOne) SetPackageHashSha256(s string) *StorageUpdateOne {
-	suo.mutation.SetPackageHashSha256(s)
-	return suo
+func (_u *StorageUpdateOne) SetPackageHashSha256(v string) *StorageUpdateOne {
+	_u.mutation.SetPackageHashSha256(v)
+	return _u
 }
 
 // SetNillablePackageHashSha256 sets the "package_hash_sha256" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillablePackageHashSha256(s *string) *StorageUpdateOne {
-	if s != nil {
-		suo.SetPackageHashSha256(*s)
+func (_u *StorageUpdateOne) SetNillablePackageHashSha256(v *string) *StorageUpdateOne {
+	if v != nil {
+		_u.SetPackageHashSha256(*v)
 	}
-	return suo
+	return _u
 }
 
 // ClearPackageHashSha256 clears the value of the "package_hash_sha256" field.
-func (suo *StorageUpdateOne) ClearPackageHashSha256() *StorageUpdateOne {
-	suo.mutation.ClearPackageHashSha256()
-	return suo
+func (_u *StorageUpdateOne) ClearPackageHashSha256() *StorageUpdateOne {
+	_u.mutation.ClearPackageHashSha256()
+	return _u
 }
 
 // SetFileType sets the "file_type" field.
-func (suo *StorageUpdateOne) SetFileType(s string) *StorageUpdateOne {
-	suo.mutation.SetFileType(s)
-	return suo
+func (_u *StorageUpdateOne) SetFileType(v string) *StorageUpdateOne {
+	_u.mutation.SetFileType(v)
+	return _u
 }
 
 // SetNillableFileType sets the "file_type" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableFileType(s *string) *StorageUpdateOne {
-	if s != nil {
-		suo.SetFileType(*s)
+func (_u *StorageUpdateOne) SetNillableFileType(v *string) *StorageUpdateOne {
+	if v != nil {
+		_u.SetFileType(*v)
 	}
-	return suo
+	return _u
 }
 
 // ClearFileType clears the value of the "file_type" field.
-func (suo *StorageUpdateOne) ClearFileType() *StorageUpdateOne {
-	suo.mutation.ClearFileType()
-	return suo
+func (_u *StorageUpdateOne) ClearFileType() *StorageUpdateOne {
+	_u.mutation.ClearFileType()
+	return _u
 }
 
 // SetFileSize sets the "file_size" field.
-func (suo *StorageUpdateOne) SetFileSize(i int64) *StorageUpdateOne {
-	suo.mutation.ResetFileSize()
-	suo.mutation.SetFileSize(i)
-	return suo
+func (_u *StorageUpdateOne) SetFileSize(v int64) *StorageUpdateOne {
+	_u.mutation.ResetFileSize()
+	_u.mutation.SetFileSize(v)
+	return _u
 }
 
 // SetNillableFileSize sets the "file_size" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableFileSize(i *int64) *StorageUpdateOne {
-	if i != nil {
-		suo.SetFileSize(*i)
+func (_u *StorageUpdateOne) SetNillableFileSize(v *int64) *StorageUpdateOne {
+	if v != nil {
+		_u.SetFileSize(*v)
 	}
-	return suo
+	return _u
 }
 
-// AddFileSize adds i to the "file_size" field.
-func (suo *StorageUpdateOne) AddFileSize(i int64) *StorageUpdateOne {
-	suo.mutation.AddFileSize(i)
-	return suo
+// AddFileSize adds value to the "file_size" field.
+func (_u *StorageUpdateOne) AddFileSize(v int64) *StorageUpdateOne {
+	_u.mutation.AddFileSize(v)
+	return _u
 }
 
 // SetFileHashes sets the "file_hashes" field.
-func (suo *StorageUpdateOne) SetFileHashes(m map[string]string) *StorageUpdateOne {
-	suo.mutation.SetFileHashes(m)
-	return suo
+func (_u *StorageUpdateOne) SetFileHashes(v map[string]string) *StorageUpdateOne {
+	_u.mutation.SetFileHashes(v)
+	return _u
 }
 
 // ClearFileHashes clears the value of the "file_hashes" field.
-func (suo *StorageUpdateOne) ClearFileHashes() *StorageUpdateOne {
-	suo.mutation.ClearFileHashes()
-	return suo
+func (_u *StorageUpdateOne) ClearFileHashes() *StorageUpdateOne {
+	_u.mutation.ClearFileHashes()
+	return _u
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (suo *StorageUpdateOne) SetCreatedAt(t time.Time) *StorageUpdateOne {
-	suo.mutation.SetCreatedAt(t)
-	return suo
+func (_u *StorageUpdateOne) SetCreatedAt(v time.Time) *StorageUpdateOne {
+	_u.mutation.SetCreatedAt(v)
+	return _u
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableCreatedAt(t *time.Time) *StorageUpdateOne {
-	if t != nil {
-		suo.SetCreatedAt(*t)
+func (_u *StorageUpdateOne) SetNillableCreatedAt(v *time.Time) *StorageUpdateOne {
+	if v != nil {
+		_u.SetCreatedAt(*v)
 	}
-	return suo
+	return _u
 }
 
 // SetVersionStorages sets the "version_storages" field.
-func (suo *StorageUpdateOne) SetVersionStorages(i int) *StorageUpdateOne {
-	suo.mutation.SetVersionStorages(i)
-	return suo
+func (_u *StorageUpdateOne) SetVersionStorages(v int) *StorageUpdateOne {
+	_u.mutation.SetVersionStorages(v)
+	return _u
 }
 
 // SetNillableVersionStorages sets the "version_storages" field if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableVersionStorages(i *int) *StorageUpdateOne {
-	if i != nil {
-		suo.SetVersionStorages(*i)
+func (_u *StorageUpdateOne) SetNillableVersionStorages(v *int) *StorageUpdateOne {
+	if v != nil {
+		_u.SetVersionStorages(*v)
 	}
-	return suo
+	return _u
 }
 
 // SetVersionID sets the "version" edge to the Version entity by ID.
-func (suo *StorageUpdateOne) SetVersionID(id int) *StorageUpdateOne {
-	suo.mutation.SetVersionID(id)
-	return suo
+func (_u *StorageUpdateOne) SetVersionID(id int) *StorageUpdateOne {
+	_u.mutation.SetVersionID(id)
+	return _u
 }
 
 // SetVersion sets the "version" edge to the Version entity.
-func (suo *StorageUpdateOne) SetVersion(v *Version) *StorageUpdateOne {
-	return suo.SetVersionID(v.ID)
+func (_u *StorageUpdateOne) SetVersion(v *Version) *StorageUpdateOne {
+	return _u.SetVersionID(v.ID)
 }
 
 // SetOldVersionID sets the "old_version" edge to the Version entity by ID.
-func (suo *StorageUpdateOne) SetOldVersionID(id int) *StorageUpdateOne {
-	suo.mutation.SetOldVersionID(id)
-	return suo
+func (_u *StorageUpdateOne) SetOldVersionID(id int) *StorageUpdateOne {
+	_u.mutation.SetOldVersionID(id)
+	return _u
 }
 
 // SetNillableOldVersionID sets the "old_version" edge to the Version entity by ID if the given value is not nil.
-func (suo *StorageUpdateOne) SetNillableOldVersionID(id *int) *StorageUpdateOne {
+func (_u *StorageUpdateOne) SetNillableOldVersionID(id *int) *StorageUpdateOne {
 	if id != nil {
-		suo = suo.SetOldVersionID(*id)
+		_u = _u.SetOldVersionID(*id)
 	}
-	return suo
+	return _u
 }
 
 // SetOldVersion sets the "old_version" edge to the Version entity.
-func (suo *StorageUpdateOne) SetOldVersion(v *Version) *StorageUpdateOne {
-	return suo.SetOldVersionID(v.ID)
+func (_u *StorageUpdateOne) SetOldVersion(v *Version) *StorageUpdateOne {
+	return _u.SetOldVersionID(v.ID)
 }
 
 // Mutation returns the StorageMutation object of the builder.
-func (suo *StorageUpdateOne) Mutation() *StorageMutation {
-	return suo.mutation
+func (_u *StorageUpdateOne) Mutation() *StorageMutation {
+	return _u.mutation
 }
 
 // ClearVersion clears the "version" edge to the Version entity.
-func (suo *StorageUpdateOne) ClearVersion() *StorageUpdateOne {
-	suo.mutation.ClearVersion()
-	return suo
+func (_u *StorageUpdateOne) ClearVersion() *StorageUpdateOne {
+	_u.mutation.ClearVersion()
+	return _u
 }
 
 // ClearOldVersion clears the "old_version" edge to the Version entity.
-func (suo *StorageUpdateOne) ClearOldVersion() *StorageUpdateOne {
-	suo.mutation.ClearOldVersion()
-	return suo
+func (_u *StorageUpdateOne) ClearOldVersion() *StorageUpdateOne {
+	_u.mutation.ClearOldVersion()
+	return _u
 }
 
 // Where appends a list predicates to the StorageUpdate builder.
-func (suo *StorageUpdateOne) Where(ps ...predicate.Storage) *StorageUpdateOne {
-	suo.mutation.Where(ps...)
-	return suo
+func (_u *StorageUpdateOne) Where(ps ...predicate.Storage) *StorageUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (suo *StorageUpdateOne) Select(field string, fields ...string) *StorageUpdateOne {
-	suo.fields = append([]string{field}, fields...)
-	return suo
+func (_u *StorageUpdateOne) Select(field string, fields ...string) *StorageUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Storage entity.
-func (suo *StorageUpdateOne) Save(ctx context.Context) (*Storage, error) {
-	return withHooks(ctx, suo.sqlSave, suo.mutation, suo.hooks)
+func (_u *StorageUpdateOne) Save(ctx context.Context) (*Storage, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (suo *StorageUpdateOne) SaveX(ctx context.Context) *Storage {
-	node, err := suo.Save(ctx)
+func (_u *StorageUpdateOne) SaveX(ctx context.Context) *Storage {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -649,42 +649,42 @@ func (suo *StorageUpdateOne) SaveX(ctx context.Context) *Storage {
 }
 
 // Exec executes the query on the entity.
-func (suo *StorageUpdateOne) Exec(ctx context.Context) error {
-	_, err := suo.Save(ctx)
+func (_u *StorageUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (suo *StorageUpdateOne) ExecX(ctx context.Context) {
-	if err := suo.Exec(ctx); err != nil {
+func (_u *StorageUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (suo *StorageUpdateOne) check() error {
-	if v, ok := suo.mutation.UpdateType(); ok {
+func (_u *StorageUpdateOne) check() error {
+	if v, ok := _u.mutation.UpdateType(); ok {
 		if err := storage.UpdateTypeValidator(v); err != nil {
 			return &ValidationError{Name: "update_type", err: fmt.Errorf(`ent: validator failed for field "Storage.update_type": %w`, err)}
 		}
 	}
-	if suo.mutation.VersionCleared() && len(suo.mutation.VersionIDs()) > 0 {
+	if _u.mutation.VersionCleared() && len(_u.mutation.VersionIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Storage.version"`)
 	}
 	return nil
 }
 
-func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err error) {
-	if err := suo.check(); err != nil {
+func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(storage.Table, storage.Columns, sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt))
-	id, ok := suo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Storage.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := suo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, storage.FieldID)
 		for _, f := range fields {
@@ -696,56 +696,56 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 			}
 		}
 	}
-	if ps := suo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := suo.mutation.UpdateType(); ok {
+	if value, ok := _u.mutation.UpdateType(); ok {
 		_spec.SetField(storage.FieldUpdateType, field.TypeEnum, value)
 	}
-	if value, ok := suo.mutation.Os(); ok {
+	if value, ok := _u.mutation.Os(); ok {
 		_spec.SetField(storage.FieldOs, field.TypeString, value)
 	}
-	if value, ok := suo.mutation.Arch(); ok {
+	if value, ok := _u.mutation.Arch(); ok {
 		_spec.SetField(storage.FieldArch, field.TypeString, value)
 	}
-	if value, ok := suo.mutation.PackagePath(); ok {
+	if value, ok := _u.mutation.PackagePath(); ok {
 		_spec.SetField(storage.FieldPackagePath, field.TypeString, value)
 	}
-	if suo.mutation.PackagePathCleared() {
+	if _u.mutation.PackagePathCleared() {
 		_spec.ClearField(storage.FieldPackagePath, field.TypeString)
 	}
-	if value, ok := suo.mutation.PackageHashSha256(); ok {
+	if value, ok := _u.mutation.PackageHashSha256(); ok {
 		_spec.SetField(storage.FieldPackageHashSha256, field.TypeString, value)
 	}
-	if suo.mutation.PackageHashSha256Cleared() {
+	if _u.mutation.PackageHashSha256Cleared() {
 		_spec.ClearField(storage.FieldPackageHashSha256, field.TypeString)
 	}
-	if value, ok := suo.mutation.FileType(); ok {
+	if value, ok := _u.mutation.FileType(); ok {
 		_spec.SetField(storage.FieldFileType, field.TypeString, value)
 	}
-	if suo.mutation.FileTypeCleared() {
+	if _u.mutation.FileTypeCleared() {
 		_spec.ClearField(storage.FieldFileType, field.TypeString)
 	}
-	if value, ok := suo.mutation.FileSize(); ok {
+	if value, ok := _u.mutation.FileSize(); ok {
 		_spec.SetField(storage.FieldFileSize, field.TypeInt64, value)
 	}
-	if value, ok := suo.mutation.AddedFileSize(); ok {
+	if value, ok := _u.mutation.AddedFileSize(); ok {
 		_spec.AddField(storage.FieldFileSize, field.TypeInt64, value)
 	}
-	if value, ok := suo.mutation.FileHashes(); ok {
+	if value, ok := _u.mutation.FileHashes(); ok {
 		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
 	}
-	if suo.mutation.FileHashesCleared() {
+	if _u.mutation.FileHashesCleared() {
 		_spec.ClearField(storage.FieldFileHashes, field.TypeJSON)
 	}
-	if value, ok := suo.mutation.CreatedAt(); ok {
+	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(storage.FieldCreatedAt, field.TypeTime, value)
 	}
-	if suo.mutation.VersionCleared() {
+	if _u.mutation.VersionCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -758,7 +758,7 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := suo.mutation.VersionIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.VersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -774,7 +774,7 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if suo.mutation.OldVersionCleared() {
+	if _u.mutation.OldVersionCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -787,7 +787,7 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := suo.mutation.OldVersionIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OldVersionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -803,10 +803,10 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Storage{config: suo.config}
+	_node = &Storage{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, suo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{storage.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -814,6 +814,6 @@ func (suo *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err e
 		}
 		return nil, err
 	}
-	suo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

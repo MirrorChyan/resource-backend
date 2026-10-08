@@ -90,7 +90,7 @@ func (*Version) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Version fields.
-func (v *Version) assignValues(columns []string, values []any) error {
+func (_m *Version) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -101,52 +101,52 @@ func (v *Version) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			v.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case version.FieldChannel:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field channel", values[i])
 			} else if value.Valid {
-				v.Channel = version.Channel(value.String)
+				_m.Channel = version.Channel(value.String)
 			}
 		case version.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				v.Name = value.String
+				_m.Name = value.String
 			}
 		case version.FieldNumber:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field number", values[i])
 			} else if value.Valid {
-				v.Number = uint64(value.Int64)
+				_m.Number = uint64(value.Int64)
 			}
 		case version.FieldReleaseNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field release_note", values[i])
 			} else if value.Valid {
-				v.ReleaseNote = value.String
+				_m.ReleaseNote = value.String
 			}
 		case version.FieldCustomData:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field custom_data", values[i])
 			} else if value.Valid {
-				v.CustomData = value.String
+				_m.CustomData = value.String
 			}
 		case version.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				v.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case version.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field resource_versions", values[i])
 			} else if value.Valid {
-				v.resource_versions = new(string)
-				*v.resource_versions = value.String
+				_m.resource_versions = new(string)
+				*_m.resource_versions = value.String
 			}
 		default:
-			v.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -154,60 +154,60 @@ func (v *Version) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Version.
 // This includes values selected through modifiers, order, etc.
-func (v *Version) Value(name string) (ent.Value, error) {
-	return v.selectValues.Get(name)
+func (_m *Version) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryStorages queries the "storages" edge of the Version entity.
-func (v *Version) QueryStorages() *StorageQuery {
-	return NewVersionClient(v.config).QueryStorages(v)
+func (_m *Version) QueryStorages() *StorageQuery {
+	return NewVersionClient(_m.config).QueryStorages(_m)
 }
 
 // QueryResource queries the "resource" edge of the Version entity.
-func (v *Version) QueryResource() *ResourceQuery {
-	return NewVersionClient(v.config).QueryResource(v)
+func (_m *Version) QueryResource() *ResourceQuery {
+	return NewVersionClient(_m.config).QueryResource(_m)
 }
 
 // Update returns a builder for updating this Version.
 // Note that you need to call Version.Unwrap() before calling this method if this Version
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (v *Version) Update() *VersionUpdateOne {
-	return NewVersionClient(v.config).UpdateOne(v)
+func (_m *Version) Update() *VersionUpdateOne {
+	return NewVersionClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Version entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (v *Version) Unwrap() *Version {
-	_tx, ok := v.config.driver.(*txDriver)
+func (_m *Version) Unwrap() *Version {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Version is not a transactional entity")
 	}
-	v.config.driver = _tx.drv
-	return v
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (v *Version) String() string {
+func (_m *Version) String() string {
 	var builder strings.Builder
 	builder.WriteString("Version(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", v.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("channel=")
-	builder.WriteString(fmt.Sprintf("%v", v.Channel))
+	builder.WriteString(fmt.Sprintf("%v", _m.Channel))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(v.Name)
+	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("number=")
-	builder.WriteString(fmt.Sprintf("%v", v.Number))
+	builder.WriteString(fmt.Sprintf("%v", _m.Number))
 	builder.WriteString(", ")
 	builder.WriteString("release_note=")
-	builder.WriteString(v.ReleaseNote)
+	builder.WriteString(_m.ReleaseNote)
 	builder.WriteString(", ")
 	builder.WriteString("custom_data=")
-	builder.WriteString(v.CustomData)
+	builder.WriteString(_m.CustomData)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
-	builder.WriteString(v.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

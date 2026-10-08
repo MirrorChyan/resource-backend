@@ -24,116 +24,116 @@ type ResourceUpdate struct {
 }
 
 // Where appends a list predicates to the ResourceUpdate builder.
-func (ru *ResourceUpdate) Where(ps ...predicate.Resource) *ResourceUpdate {
-	ru.mutation.Where(ps...)
-	return ru
+func (_u *ResourceUpdate) Where(ps ...predicate.Resource) *ResourceUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetName sets the "name" field.
-func (ru *ResourceUpdate) SetName(s string) *ResourceUpdate {
-	ru.mutation.SetName(s)
-	return ru
+func (_u *ResourceUpdate) SetName(v string) *ResourceUpdate {
+	_u.mutation.SetName(v)
+	return _u
 }
 
 // SetNillableName sets the "name" field if the given value is not nil.
-func (ru *ResourceUpdate) SetNillableName(s *string) *ResourceUpdate {
-	if s != nil {
-		ru.SetName(*s)
+func (_u *ResourceUpdate) SetNillableName(v *string) *ResourceUpdate {
+	if v != nil {
+		_u.SetName(*v)
 	}
-	return ru
+	return _u
 }
 
 // SetDescription sets the "description" field.
-func (ru *ResourceUpdate) SetDescription(s string) *ResourceUpdate {
-	ru.mutation.SetDescription(s)
-	return ru
+func (_u *ResourceUpdate) SetDescription(v string) *ResourceUpdate {
+	_u.mutation.SetDescription(v)
+	return _u
 }
 
 // SetNillableDescription sets the "description" field if the given value is not nil.
-func (ru *ResourceUpdate) SetNillableDescription(s *string) *ResourceUpdate {
-	if s != nil {
-		ru.SetDescription(*s)
+func (_u *ResourceUpdate) SetNillableDescription(v *string) *ResourceUpdate {
+	if v != nil {
+		_u.SetDescription(*v)
 	}
-	return ru
+	return _u
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (ru *ResourceUpdate) SetCreatedAt(t time.Time) *ResourceUpdate {
-	ru.mutation.SetCreatedAt(t)
-	return ru
+func (_u *ResourceUpdate) SetCreatedAt(v time.Time) *ResourceUpdate {
+	_u.mutation.SetCreatedAt(v)
+	return _u
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (ru *ResourceUpdate) SetNillableCreatedAt(t *time.Time) *ResourceUpdate {
-	if t != nil {
-		ru.SetCreatedAt(*t)
+func (_u *ResourceUpdate) SetNillableCreatedAt(v *time.Time) *ResourceUpdate {
+	if v != nil {
+		_u.SetCreatedAt(*v)
 	}
-	return ru
+	return _u
 }
 
 // SetUpdateType sets the "update_type" field.
-func (ru *ResourceUpdate) SetUpdateType(s string) *ResourceUpdate {
-	ru.mutation.SetUpdateType(s)
-	return ru
+func (_u *ResourceUpdate) SetUpdateType(v string) *ResourceUpdate {
+	_u.mutation.SetUpdateType(v)
+	return _u
 }
 
 // SetNillableUpdateType sets the "update_type" field if the given value is not nil.
-func (ru *ResourceUpdate) SetNillableUpdateType(s *string) *ResourceUpdate {
-	if s != nil {
-		ru.SetUpdateType(*s)
+func (_u *ResourceUpdate) SetNillableUpdateType(v *string) *ResourceUpdate {
+	if v != nil {
+		_u.SetUpdateType(*v)
 	}
-	return ru
+	return _u
 }
 
 // AddVersionIDs adds the "versions" edge to the Version entity by IDs.
-func (ru *ResourceUpdate) AddVersionIDs(ids ...int) *ResourceUpdate {
-	ru.mutation.AddVersionIDs(ids...)
-	return ru
+func (_u *ResourceUpdate) AddVersionIDs(ids ...int) *ResourceUpdate {
+	_u.mutation.AddVersionIDs(ids...)
+	return _u
 }
 
 // AddVersions adds the "versions" edges to the Version entity.
-func (ru *ResourceUpdate) AddVersions(v ...*Version) *ResourceUpdate {
+func (_u *ResourceUpdate) AddVersions(v ...*Version) *ResourceUpdate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return ru.AddVersionIDs(ids...)
+	return _u.AddVersionIDs(ids...)
 }
 
 // Mutation returns the ResourceMutation object of the builder.
-func (ru *ResourceUpdate) Mutation() *ResourceMutation {
-	return ru.mutation
+func (_u *ResourceUpdate) Mutation() *ResourceMutation {
+	return _u.mutation
 }
 
 // ClearVersions clears all "versions" edges to the Version entity.
-func (ru *ResourceUpdate) ClearVersions() *ResourceUpdate {
-	ru.mutation.ClearVersions()
-	return ru
+func (_u *ResourceUpdate) ClearVersions() *ResourceUpdate {
+	_u.mutation.ClearVersions()
+	return _u
 }
 
 // RemoveVersionIDs removes the "versions" edge to Version entities by IDs.
-func (ru *ResourceUpdate) RemoveVersionIDs(ids ...int) *ResourceUpdate {
-	ru.mutation.RemoveVersionIDs(ids...)
-	return ru
+func (_u *ResourceUpdate) RemoveVersionIDs(ids ...int) *ResourceUpdate {
+	_u.mutation.RemoveVersionIDs(ids...)
+	return _u
 }
 
 // RemoveVersions removes "versions" edges to Version entities.
-func (ru *ResourceUpdate) RemoveVersions(v ...*Version) *ResourceUpdate {
+func (_u *ResourceUpdate) RemoveVersions(v ...*Version) *ResourceUpdate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return ru.RemoveVersionIDs(ids...)
+	return _u.RemoveVersionIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (ru *ResourceUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks(ctx, ru.sqlSave, ru.mutation, ru.hooks)
+func (_u *ResourceUpdate) Save(ctx context.Context) (int, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ru *ResourceUpdate) SaveX(ctx context.Context) int {
-	affected, err := ru.Save(ctx)
+func (_u *ResourceUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -141,21 +141,21 @@ func (ru *ResourceUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (ru *ResourceUpdate) Exec(ctx context.Context) error {
-	_, err := ru.Save(ctx)
+func (_u *ResourceUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ru *ResourceUpdate) ExecX(ctx context.Context) {
-	if err := ru.Exec(ctx); err != nil {
+func (_u *ResourceUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ru *ResourceUpdate) check() error {
-	if v, ok := ru.mutation.Name(); ok {
+func (_u *ResourceUpdate) check() error {
+	if v, ok := _u.mutation.Name(); ok {
 		if err := resource.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Resource.name": %w`, err)}
 		}
@@ -163,31 +163,31 @@ func (ru *ResourceUpdate) check() error {
 	return nil
 }
 
-func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := ru.check(); err != nil {
-		return n, err
+func (_u *ResourceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(resource.Table, resource.Columns, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString))
-	if ps := ru.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ru.mutation.Name(); ok {
+	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(resource.FieldName, field.TypeString, value)
 	}
-	if value, ok := ru.mutation.Description(); ok {
+	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(resource.FieldDescription, field.TypeString, value)
 	}
-	if value, ok := ru.mutation.CreatedAt(); ok {
+	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)
 	}
-	if value, ok := ru.mutation.UpdateType(); ok {
+	if value, ok := _u.mutation.UpdateType(); ok {
 		_spec.SetField(resource.FieldUpdateType, field.TypeString, value)
 	}
-	if ru.mutation.VersionsCleared() {
+	if _u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -200,7 +200,7 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !ru.mutation.VersionsCleared() {
+	if nodes := _u.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !_u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -216,7 +216,7 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.VersionsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.VersionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -232,7 +232,7 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{resource.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -240,8 +240,8 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	ru.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // ResourceUpdateOne is the builder for updating a single Resource entity.
@@ -253,123 +253,123 @@ type ResourceUpdateOne struct {
 }
 
 // SetName sets the "name" field.
-func (ruo *ResourceUpdateOne) SetName(s string) *ResourceUpdateOne {
-	ruo.mutation.SetName(s)
-	return ruo
+func (_u *ResourceUpdateOne) SetName(v string) *ResourceUpdateOne {
+	_u.mutation.SetName(v)
+	return _u
 }
 
 // SetNillableName sets the "name" field if the given value is not nil.
-func (ruo *ResourceUpdateOne) SetNillableName(s *string) *ResourceUpdateOne {
-	if s != nil {
-		ruo.SetName(*s)
+func (_u *ResourceUpdateOne) SetNillableName(v *string) *ResourceUpdateOne {
+	if v != nil {
+		_u.SetName(*v)
 	}
-	return ruo
+	return _u
 }
 
 // SetDescription sets the "description" field.
-func (ruo *ResourceUpdateOne) SetDescription(s string) *ResourceUpdateOne {
-	ruo.mutation.SetDescription(s)
-	return ruo
+func (_u *ResourceUpdateOne) SetDescription(v string) *ResourceUpdateOne {
+	_u.mutation.SetDescription(v)
+	return _u
 }
 
 // SetNillableDescription sets the "description" field if the given value is not nil.
-func (ruo *ResourceUpdateOne) SetNillableDescription(s *string) *ResourceUpdateOne {
-	if s != nil {
-		ruo.SetDescription(*s)
+func (_u *ResourceUpdateOne) SetNillableDescription(v *string) *ResourceUpdateOne {
+	if v != nil {
+		_u.SetDescription(*v)
 	}
-	return ruo
+	return _u
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (ruo *ResourceUpdateOne) SetCreatedAt(t time.Time) *ResourceUpdateOne {
-	ruo.mutation.SetCreatedAt(t)
-	return ruo
+func (_u *ResourceUpdateOne) SetCreatedAt(v time.Time) *ResourceUpdateOne {
+	_u.mutation.SetCreatedAt(v)
+	return _u
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (ruo *ResourceUpdateOne) SetNillableCreatedAt(t *time.Time) *ResourceUpdateOne {
-	if t != nil {
-		ruo.SetCreatedAt(*t)
+func (_u *ResourceUpdateOne) SetNillableCreatedAt(v *time.Time) *ResourceUpdateOne {
+	if v != nil {
+		_u.SetCreatedAt(*v)
 	}
-	return ruo
+	return _u
 }
 
 // SetUpdateType sets the "update_type" field.
-func (ruo *ResourceUpdateOne) SetUpdateType(s string) *ResourceUpdateOne {
-	ruo.mutation.SetUpdateType(s)
-	return ruo
+func (_u *ResourceUpdateOne) SetUpdateType(v string) *ResourceUpdateOne {
+	_u.mutation.SetUpdateType(v)
+	return _u
 }
 
 // SetNillableUpdateType sets the "update_type" field if the given value is not nil.
-func (ruo *ResourceUpdateOne) SetNillableUpdateType(s *string) *ResourceUpdateOne {
-	if s != nil {
-		ruo.SetUpdateType(*s)
+func (_u *ResourceUpdateOne) SetNillableUpdateType(v *string) *ResourceUpdateOne {
+	if v != nil {
+		_u.SetUpdateType(*v)
 	}
-	return ruo
+	return _u
 }
 
 // AddVersionIDs adds the "versions" edge to the Version entity by IDs.
-func (ruo *ResourceUpdateOne) AddVersionIDs(ids ...int) *ResourceUpdateOne {
-	ruo.mutation.AddVersionIDs(ids...)
-	return ruo
+func (_u *ResourceUpdateOne) AddVersionIDs(ids ...int) *ResourceUpdateOne {
+	_u.mutation.AddVersionIDs(ids...)
+	return _u
 }
 
 // AddVersions adds the "versions" edges to the Version entity.
-func (ruo *ResourceUpdateOne) AddVersions(v ...*Version) *ResourceUpdateOne {
+func (_u *ResourceUpdateOne) AddVersions(v ...*Version) *ResourceUpdateOne {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return ruo.AddVersionIDs(ids...)
+	return _u.AddVersionIDs(ids...)
 }
 
 // Mutation returns the ResourceMutation object of the builder.
-func (ruo *ResourceUpdateOne) Mutation() *ResourceMutation {
-	return ruo.mutation
+func (_u *ResourceUpdateOne) Mutation() *ResourceMutation {
+	return _u.mutation
 }
 
 // ClearVersions clears all "versions" edges to the Version entity.
-func (ruo *ResourceUpdateOne) ClearVersions() *ResourceUpdateOne {
-	ruo.mutation.ClearVersions()
-	return ruo
+func (_u *ResourceUpdateOne) ClearVersions() *ResourceUpdateOne {
+	_u.mutation.ClearVersions()
+	return _u
 }
 
 // RemoveVersionIDs removes the "versions" edge to Version entities by IDs.
-func (ruo *ResourceUpdateOne) RemoveVersionIDs(ids ...int) *ResourceUpdateOne {
-	ruo.mutation.RemoveVersionIDs(ids...)
-	return ruo
+func (_u *ResourceUpdateOne) RemoveVersionIDs(ids ...int) *ResourceUpdateOne {
+	_u.mutation.RemoveVersionIDs(ids...)
+	return _u
 }
 
 // RemoveVersions removes "versions" edges to Version entities.
-func (ruo *ResourceUpdateOne) RemoveVersions(v ...*Version) *ResourceUpdateOne {
+func (_u *ResourceUpdateOne) RemoveVersions(v ...*Version) *ResourceUpdateOne {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return ruo.RemoveVersionIDs(ids...)
+	return _u.RemoveVersionIDs(ids...)
 }
 
 // Where appends a list predicates to the ResourceUpdate builder.
-func (ruo *ResourceUpdateOne) Where(ps ...predicate.Resource) *ResourceUpdateOne {
-	ruo.mutation.Where(ps...)
-	return ruo
+func (_u *ResourceUpdateOne) Where(ps ...predicate.Resource) *ResourceUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (ruo *ResourceUpdateOne) Select(field string, fields ...string) *ResourceUpdateOne {
-	ruo.fields = append([]string{field}, fields...)
-	return ruo
+func (_u *ResourceUpdateOne) Select(field string, fields ...string) *ResourceUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Resource entity.
-func (ruo *ResourceUpdateOne) Save(ctx context.Context) (*Resource, error) {
-	return withHooks(ctx, ruo.sqlSave, ruo.mutation, ruo.hooks)
+func (_u *ResourceUpdateOne) Save(ctx context.Context) (*Resource, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ruo *ResourceUpdateOne) SaveX(ctx context.Context) *Resource {
-	node, err := ruo.Save(ctx)
+func (_u *ResourceUpdateOne) SaveX(ctx context.Context) *Resource {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -377,21 +377,21 @@ func (ruo *ResourceUpdateOne) SaveX(ctx context.Context) *Resource {
 }
 
 // Exec executes the query on the entity.
-func (ruo *ResourceUpdateOne) Exec(ctx context.Context) error {
-	_, err := ruo.Save(ctx)
+func (_u *ResourceUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ruo *ResourceUpdateOne) ExecX(ctx context.Context) {
-	if err := ruo.Exec(ctx); err != nil {
+func (_u *ResourceUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ruo *ResourceUpdateOne) check() error {
-	if v, ok := ruo.mutation.Name(); ok {
+func (_u *ResourceUpdateOne) check() error {
+	if v, ok := _u.mutation.Name(); ok {
 		if err := resource.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Resource.name": %w`, err)}
 		}
@@ -399,17 +399,17 @@ func (ruo *ResourceUpdateOne) check() error {
 	return nil
 }
 
-func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err error) {
-	if err := ruo.check(); err != nil {
+func (_u *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(resource.Table, resource.Columns, sqlgraph.NewFieldSpec(resource.FieldID, field.TypeString))
-	id, ok := ruo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Resource.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := ruo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, resource.FieldID)
 		for _, f := range fields {
@@ -421,26 +421,26 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 			}
 		}
 	}
-	if ps := ruo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ruo.mutation.Name(); ok {
+	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(resource.FieldName, field.TypeString, value)
 	}
-	if value, ok := ruo.mutation.Description(); ok {
+	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(resource.FieldDescription, field.TypeString, value)
 	}
-	if value, ok := ruo.mutation.CreatedAt(); ok {
+	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(resource.FieldCreatedAt, field.TypeTime, value)
 	}
-	if value, ok := ruo.mutation.UpdateType(); ok {
+	if value, ok := _u.mutation.UpdateType(); ok {
 		_spec.SetField(resource.FieldUpdateType, field.TypeString, value)
 	}
-	if ruo.mutation.VersionsCleared() {
+	if _u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -453,7 +453,7 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !ruo.mutation.VersionsCleared() {
+	if nodes := _u.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !_u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -469,7 +469,7 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.VersionsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.VersionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -485,10 +485,10 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Resource{config: ruo.config}
+	_node = &Resource{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, ruo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{resource.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -496,6 +496,6 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 		}
 		return nil, err
 	}
-	ruo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

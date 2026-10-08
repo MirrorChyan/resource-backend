@@ -272,8 +272,8 @@ func (c *ResourceClient) Update() *ResourceUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *ResourceClient) UpdateOne(r *Resource) *ResourceUpdateOne {
-	mutation := newResourceMutation(c.config, OpUpdateOne, withResource(r))
+func (c *ResourceClient) UpdateOne(_m *Resource) *ResourceUpdateOne {
+	mutation := newResourceMutation(c.config, OpUpdateOne, withResource(_m))
 	return &ResourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -290,8 +290,8 @@ func (c *ResourceClient) Delete() *ResourceDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *ResourceClient) DeleteOne(r *Resource) *ResourceDeleteOne {
-	return c.DeleteOneID(r.ID)
+func (c *ResourceClient) DeleteOne(_m *Resource) *ResourceDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -326,16 +326,16 @@ func (c *ResourceClient) GetX(ctx context.Context, id string) *Resource {
 }
 
 // QueryVersions queries the versions edge of a Resource.
-func (c *ResourceClient) QueryVersions(r *Resource) *VersionQuery {
+func (c *ResourceClient) QueryVersions(_m *Resource) *VersionQuery {
 	query := (&VersionClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(resource.Table, resource.FieldID, id),
 			sqlgraph.To(version.Table, version.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, resource.VersionsTable, resource.VersionsColumn),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -421,8 +421,8 @@ func (c *StorageClient) Update() *StorageUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *StorageClient) UpdateOne(s *Storage) *StorageUpdateOne {
-	mutation := newStorageMutation(c.config, OpUpdateOne, withStorage(s))
+func (c *StorageClient) UpdateOne(_m *Storage) *StorageUpdateOne {
+	mutation := newStorageMutation(c.config, OpUpdateOne, withStorage(_m))
 	return &StorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -439,8 +439,8 @@ func (c *StorageClient) Delete() *StorageDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *StorageClient) DeleteOne(s *Storage) *StorageDeleteOne {
-	return c.DeleteOneID(s.ID)
+func (c *StorageClient) DeleteOne(_m *Storage) *StorageDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -475,32 +475,32 @@ func (c *StorageClient) GetX(ctx context.Context, id int) *Storage {
 }
 
 // QueryVersion queries the version edge of a Storage.
-func (c *StorageClient) QueryVersion(s *Storage) *VersionQuery {
+func (c *StorageClient) QueryVersion(_m *Storage) *VersionQuery {
 	query := (&VersionClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := s.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(storage.Table, storage.FieldID, id),
 			sqlgraph.To(version.Table, version.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, storage.VersionTable, storage.VersionColumn),
 		)
-		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryOldVersion queries the old_version edge of a Storage.
-func (c *StorageClient) QueryOldVersion(s *Storage) *VersionQuery {
+func (c *StorageClient) QueryOldVersion(_m *Storage) *VersionQuery {
 	query := (&VersionClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := s.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(storage.Table, storage.FieldID, id),
 			sqlgraph.To(version.Table, version.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, storage.OldVersionTable, storage.OldVersionColumn),
 		)
-		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -586,8 +586,8 @@ func (c *VersionClient) Update() *VersionUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *VersionClient) UpdateOne(v *Version) *VersionUpdateOne {
-	mutation := newVersionMutation(c.config, OpUpdateOne, withVersion(v))
+func (c *VersionClient) UpdateOne(_m *Version) *VersionUpdateOne {
+	mutation := newVersionMutation(c.config, OpUpdateOne, withVersion(_m))
 	return &VersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -604,8 +604,8 @@ func (c *VersionClient) Delete() *VersionDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *VersionClient) DeleteOne(v *Version) *VersionDeleteOne {
-	return c.DeleteOneID(v.ID)
+func (c *VersionClient) DeleteOne(_m *Version) *VersionDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -640,32 +640,32 @@ func (c *VersionClient) GetX(ctx context.Context, id int) *Version {
 }
 
 // QueryStorages queries the storages edge of a Version.
-func (c *VersionClient) QueryStorages(v *Version) *StorageQuery {
+func (c *VersionClient) QueryStorages(_m *Version) *StorageQuery {
 	query := (&StorageClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := v.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(version.Table, version.FieldID, id),
 			sqlgraph.To(storage.Table, storage.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, version.StoragesTable, version.StoragesColumn),
 		)
-		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryResource queries the resource edge of a Version.
-func (c *VersionClient) QueryResource(v *Version) *ResourceQuery {
+func (c *VersionClient) QueryResource(_m *Version) *ResourceQuery {
 	query := (&ResourceClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := v.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(version.Table, version.FieldID, id),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, version.ResourceTable, version.ResourceColumn),
 		)
-		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
