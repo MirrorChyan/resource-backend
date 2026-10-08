@@ -17,6 +17,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
 
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/hibiken/asynq"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
@@ -573,6 +574,31 @@ func (l *VersionLogic) GetProcessingStatus(ctx context.Context, key string) (mis
 }
 
 func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceId string, target, current int, system, arch string) error {
+	cacheKey := l.cacheGroup.GetCacheKey(
+		strconv.Itoa(target),
+		strconv.Itoa(current),
+		system,
+		arch,
+	)
+
+	// asynq runs a task at least once: a run that stored the package but died before the
+	// task was acked is run again, and must not build the package a second time
+	_, err := l.storageLogic.GetIncrementalUpdateStorage(ctx, target, current, system, arch)
+	switch {
+	case err == nil:
+		l.logger.Info("incremental update package already stored, skip generating",
+			zap.String("resource id", resourceId),
+			zap.Int("target version id", target),
+			zap.Int("current version id", current),
+			zap.String("os", system),
+			zap.String("arch", arch),
+		)
+		l.cacheGroup.IncrementalUpdateInfoCache.Delete(cacheKey)
+		return nil
+	case !ent.IsNotFound(err):
+		return err
+	}
+
 	// only use package hash and file hash
 	targetInfo, currentInfo, err := l.fetchStorageInfoTuple(ctx, target, current, system, arch)
 	if err != nil {
@@ -609,12 +635,6 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 		return err
 	}
 
-	cacheKey := l.cacheGroup.GetCacheKey(
-		strconv.Itoa(target),
-		strconv.Itoa(current),
-		system,
-		arch,
-	)
 	l.cacheGroup.IncrementalUpdateInfoCache.Delete(cacheKey)
 
 	return nil
@@ -700,11 +720,8 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		}
 	}
 
-	name := strings.Join([]string{
-		strconv.Itoa(current),
-		types.GetFileSuffix(types.FileType(param.TargetFileType)),
-	}, "")
-	patchPath := filepath.Join(l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch), name)
+	suffix := types.GetFileSuffix(types.FileType(param.TargetFileType))
+	name := strconv.Itoa(current) + suffix
 
 	// only the OSS copy is kept, so the patch is built in a private temp dir: no local
 	// patch dir is left behind, and concurrent patch tasks of one target never share one
@@ -775,6 +792,10 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		)
 		return nil
 	}
+	// a patch is not byte-identical across runs, so the content hash in its name keeps
+	// another run of the pair from overwriting the package a stored storage points to
+	stored := strings.Join([]string{strconv.Itoa(current), "-", hashes[:16], suffix}, "")
+	patchPath := filepath.Join(l.storageLogic.BuildVersionPatchStorageDirPath(resourceId, target, system, arch), stored)
 	ossPackage := filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(patchPath))
 	_, statErr := os.Stat(ossPackage)
 	ossExisted := statErr == nil
@@ -813,6 +834,17 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 			cleanupOSS(ossPackage)
 		}
 		cleanupLocal()
+		if sqlgraph.IsUniqueConstraintError(err) {
+			// another run stored the pair first, its package is the one served
+			l.logger.Info("incremental update package already stored by another run",
+				zap.String("resource id", resourceId),
+				zap.Int("target version id", target),
+				zap.Int("current version id", current),
+				zap.String("os", system),
+				zap.String("arch", arch),
+			)
+			return nil
+		}
 		l.logger.Error("Failed to commit transaction",
 			zap.Error(err),
 		)

@@ -66,7 +66,7 @@ type patchFixture struct {
 	client   *ent.Client
 	param    model.PatchTaskExecuteParam
 	patchDir string
-	ossPatch string
+	ossDir   string
 	tmpDir   string
 }
 
@@ -122,9 +122,8 @@ func newPatchFixture(t *testing.T, fileType types.FileType, files map[string][]b
 			CurrentStorageHashes: current,
 		},
 		patchDir: patchDir,
-		ossPatch: filepath.Join(l.storageLogic.OSSDir,
-			l.cleanRootStoragePath(filepath.Join(patchDir, strconv.Itoa(cur.ID)+suffix))),
-		tmpDir: tmpDir,
+		ossDir:   filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(patchDir)),
+		tmpDir:   tmpDir,
 	}
 }
 
@@ -135,6 +134,14 @@ func (f patchFixture) requireNoLocalPatch(t *testing.T) {
 	left, err := filepath.Glob(filepath.Join(f.tmpDir, "patch-*"))
 	require.NoError(t, err)
 	require.Empty(t, left)
+}
+
+// ossPatches lists the patch packages stored on OSS for the target version.
+func (f patchFixture) ossPatches(t *testing.T) []string {
+	t.Helper()
+	found, err := filepath.Glob(filepath.Join(f.ossDir, "*"))
+	require.NoError(t, err)
+	return found
 }
 
 func (f patchFixture) incrementalStorages(t *testing.T) []*ent.Storage {
@@ -179,7 +186,7 @@ func TestPatchSkippedWithoutCurrentFileHashes(t *testing.T) {
 	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
 
 	f.requireNoLocalPatch(t)
-	require.NoFileExists(t, f.ossPatch)
+	require.Empty(t, f.ossPatches(t))
 	require.Empty(t, f.incrementalStorages(t))
 	require.True(t, f.skipFlagged(t))
 }
@@ -192,7 +199,7 @@ func TestPatchSkippedWhenEstimatedTooLarge(t *testing.T) {
 
 	// the zip estimate rejects it before anything is built
 	f.requireNoLocalPatch(t)
-	require.NoFileExists(t, f.ossPatch)
+	require.Empty(t, f.ossPatches(t))
 	require.Empty(t, f.incrementalStorages(t))
 	require.True(t, f.skipFlagged(t))
 }
@@ -205,36 +212,85 @@ func TestPatchDiscardedWhenTooLarge(t *testing.T) {
 
 	// a tgz cannot be estimated, so the built patch is measured and dropped
 	f.requireNoLocalPatch(t)
-	require.NoFileExists(t, f.ossPatch)
+	require.Empty(t, f.ossPatches(t))
 	require.Empty(t, f.incrementalStorages(t))
 	require.True(t, f.skipFlagged(t))
+}
+
+// only a small file of the target changed, so a patch is worth keeping
+func smallChangeFiles(t *testing.T) (map[string][]byte, map[string]string) {
+	big := randomBytes(t, 64<<10)
+	sum := sha256.Sum256(big)
+	return map[string][]byte{"big.bin": big, "small.txt": []byte("v2")},
+		map[string]string{"big.bin": hex.EncodeToString(sum[:]), "small.txt": "old"}
 }
 
 func TestPatchKeptWhenSmall(t *testing.T) {
 	for _, fileType := range []types.FileType{types.Zip, types.Tgz} {
 		t.Run(string(fileType), func(t *testing.T) {
-			big := randomBytes(t, 64<<10)
-			sum := sha256.Sum256(big)
-			f := newPatchFixture(t, fileType,
-				map[string][]byte{"big.bin": big, "small.txt": []byte("v2")},
-				map[string]string{"big.bin": hex.EncodeToString(sum[:]), "small.txt": "old"},
-			)
+			files, current := smallChangeFiles(t)
+			f := newPatchFixture(t, fileType, files, current)
 
 			require.NoError(t, f.l.doCreateIncrementalUpdatePackage(context.Background(), f.param))
 
 			f.requireNoLocalPatch(t)
-			require.FileExists(t, f.ossPatch)
-			stat, err := os.Stat(f.ossPatch)
+			patches := f.ossPatches(t)
+			require.Len(t, patches, 1)
+			stat, err := os.Stat(patches[0])
 			require.NoError(t, err)
 			require.Less(t, stat.Size(), f.param.TargetFileSize/2)
 
 			rows := f.incrementalStorages(t)
 			require.Len(t, rows, 1)
-			require.Equal(t, f.ossPatch, rows[0].PackagePath)
+			require.Equal(t, patches[0], rows[0].PackagePath)
 			require.Equal(t, stat.Size(), rows[0].FileSize)
+			// the stored name carries the content hash, so no other run can overwrite it
+			require.Equal(t,
+				strconv.Itoa(f.param.CurrentVersionId)+"-"+rows[0].PackageHashSha256[:16]+types.GetFileSuffix(fileType),
+				filepath.Base(patches[0]),
+			)
 			require.False(t, f.skipFlagged(t))
 		})
 	}
+}
+
+// A run that loses the race to another run of the pair keeps the stored package and drops its own.
+func TestPatchConflictKeepsStoredPackage(t *testing.T) {
+	ctx := context.Background()
+	files, current := smallChangeFiles(t)
+	f := newPatchFixture(t, types.Zip, files, current)
+	stored := f.client.Storage.Create().
+		SetUpdateType(storage.UpdateTypeIncremental).
+		SetPackagePath("stored").
+		SetPackageHashSha256("stored").
+		SetVersionID(f.param.TargetVersionId).
+		SetOldVersionID(f.param.CurrentVersionId).
+		SaveX(ctx)
+
+	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(ctx, f.param))
+
+	f.requireNoLocalPatch(t)
+	require.Empty(t, f.ossPatches(t))
+	rows := f.incrementalStorages(t)
+	require.Len(t, rows, 1)
+	require.Equal(t, stored.ID, rows[0].ID)
+	require.False(t, f.skipFlagged(t))
+}
+
+// A redelivered task of a pair already stored returns before building anything.
+func TestPatchNotRebuiltWhenStored(t *testing.T) {
+	ctx := context.Background()
+	files, current := smallChangeFiles(t)
+	f := newPatchFixture(t, types.Zip, files, current)
+	p := f.param
+	require.NoError(t, f.l.doCreateIncrementalUpdatePackage(ctx, p))
+	before := f.ossPatches(t)
+	require.Len(t, before, 1)
+
+	require.NoError(t, f.l.GenerateIncrementalPackage(ctx, p.ResourceId, p.TargetVersionId, p.CurrentVersionId, p.OS, p.Arch))
+
+	require.Equal(t, before, f.ossPatches(t))
+	require.Len(t, f.incrementalStorages(t), 1)
 }
 
 // A stored zip gets deflated in the patch, so its entry sizes must not reject the patch early.
@@ -265,7 +321,7 @@ func TestPatchKeptWhenTargetZipIsStored(t *testing.T) {
 
 	// every file changed, yet deflating them makes the patch far smaller than the stored package
 	f.requireNoLocalPatch(t)
-	require.FileExists(t, f.ossPatch)
+	require.Len(t, f.ossPatches(t), 1)
 	require.Len(t, f.incrementalStorages(t), 1)
 	require.False(t, f.skipFlagged(t))
 }
