@@ -34,44 +34,44 @@ type VersionQuery struct {
 }
 
 // Where adds a new predicate for the VersionQuery builder.
-func (vq *VersionQuery) Where(ps ...predicate.Version) *VersionQuery {
-	vq.predicates = append(vq.predicates, ps...)
-	return vq
+func (_q *VersionQuery) Where(ps ...predicate.Version) *VersionQuery {
+	_q.predicates = append(_q.predicates, ps...)
+	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (vq *VersionQuery) Limit(limit int) *VersionQuery {
-	vq.ctx.Limit = &limit
-	return vq
+func (_q *VersionQuery) Limit(limit int) *VersionQuery {
+	_q.ctx.Limit = &limit
+	return _q
 }
 
 // Offset to start from.
-func (vq *VersionQuery) Offset(offset int) *VersionQuery {
-	vq.ctx.Offset = &offset
-	return vq
+func (_q *VersionQuery) Offset(offset int) *VersionQuery {
+	_q.ctx.Offset = &offset
+	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (vq *VersionQuery) Unique(unique bool) *VersionQuery {
-	vq.ctx.Unique = &unique
-	return vq
+func (_q *VersionQuery) Unique(unique bool) *VersionQuery {
+	_q.ctx.Unique = &unique
+	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (vq *VersionQuery) Order(o ...version.OrderOption) *VersionQuery {
-	vq.order = append(vq.order, o...)
-	return vq
+func (_q *VersionQuery) Order(o ...version.OrderOption) *VersionQuery {
+	_q.order = append(_q.order, o...)
+	return _q
 }
 
 // QueryStorages chains the current query on the "storages" edge.
-func (vq *VersionQuery) QueryStorages() *StorageQuery {
-	query := (&StorageClient{config: vq.config}).Query()
+func (_q *VersionQuery) QueryStorages() *StorageQuery {
+	query := (&StorageClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := vq.prepareQuery(ctx); err != nil {
+		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := vq.sqlQuery(ctx)
+		selector := _q.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -80,20 +80,20 @@ func (vq *VersionQuery) QueryStorages() *StorageQuery {
 			sqlgraph.To(storage.Table, storage.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, version.StoragesTable, version.StoragesColumn),
 		)
-		fromU = sqlgraph.SetNeighbors(vq.driver.Dialect(), step)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
 	}
 	return query
 }
 
 // QueryResource chains the current query on the "resource" edge.
-func (vq *VersionQuery) QueryResource() *ResourceQuery {
-	query := (&ResourceClient{config: vq.config}).Query()
+func (_q *VersionQuery) QueryResource() *ResourceQuery {
+	query := (&ResourceClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := vq.prepareQuery(ctx); err != nil {
+		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := vq.sqlQuery(ctx)
+		selector := _q.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func (vq *VersionQuery) QueryResource() *ResourceQuery {
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, version.ResourceTable, version.ResourceColumn),
 		)
-		fromU = sqlgraph.SetNeighbors(vq.driver.Dialect(), step)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
 	}
 	return query
@@ -110,8 +110,8 @@ func (vq *VersionQuery) QueryResource() *ResourceQuery {
 
 // First returns the first Version entity from the query.
 // Returns a *NotFoundError when no Version was found.
-func (vq *VersionQuery) First(ctx context.Context) (*Version, error) {
-	nodes, err := vq.Limit(1).All(setContextOp(ctx, vq.ctx, ent.OpQueryFirst))
+func (_q *VersionQuery) First(ctx context.Context) (*Version, error) {
+	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +122,8 @@ func (vq *VersionQuery) First(ctx context.Context) (*Version, error) {
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (vq *VersionQuery) FirstX(ctx context.Context) *Version {
-	node, err := vq.First(ctx)
+func (_q *VersionQuery) FirstX(ctx context.Context) *Version {
+	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -132,9 +132,9 @@ func (vq *VersionQuery) FirstX(ctx context.Context) *Version {
 
 // FirstID returns the first Version ID from the query.
 // Returns a *NotFoundError when no Version ID was found.
-func (vq *VersionQuery) FirstID(ctx context.Context) (id int, err error) {
+func (_q *VersionQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = vq.Limit(1).IDs(setContextOp(ctx, vq.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -145,8 +145,8 @@ func (vq *VersionQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (vq *VersionQuery) FirstIDX(ctx context.Context) int {
-	id, err := vq.FirstID(ctx)
+func (_q *VersionQuery) FirstIDX(ctx context.Context) int {
+	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -156,8 +156,8 @@ func (vq *VersionQuery) FirstIDX(ctx context.Context) int {
 // Only returns a single Version entity found by the query, ensuring it only returns one.
 // Returns a *NotSingularError when more than one Version entity is found.
 // Returns a *NotFoundError when no Version entities are found.
-func (vq *VersionQuery) Only(ctx context.Context) (*Version, error) {
-	nodes, err := vq.Limit(2).All(setContextOp(ctx, vq.ctx, ent.OpQueryOnly))
+func (_q *VersionQuery) Only(ctx context.Context) (*Version, error) {
+	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +172,8 @@ func (vq *VersionQuery) Only(ctx context.Context) (*Version, error) {
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (vq *VersionQuery) OnlyX(ctx context.Context) *Version {
-	node, err := vq.Only(ctx)
+func (_q *VersionQuery) OnlyX(ctx context.Context) *Version {
+	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -183,9 +183,9 @@ func (vq *VersionQuery) OnlyX(ctx context.Context) *Version {
 // OnlyID is like Only, but returns the only Version ID in the query.
 // Returns a *NotSingularError when more than one Version ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (vq *VersionQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *VersionQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = vq.Limit(2).IDs(setContextOp(ctx, vq.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -200,8 +200,8 @@ func (vq *VersionQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (vq *VersionQuery) OnlyIDX(ctx context.Context) int {
-	id, err := vq.OnlyID(ctx)
+func (_q *VersionQuery) OnlyIDX(ctx context.Context) int {
+	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -209,18 +209,18 @@ func (vq *VersionQuery) OnlyIDX(ctx context.Context) int {
 }
 
 // All executes the query and returns a list of Versions.
-func (vq *VersionQuery) All(ctx context.Context) ([]*Version, error) {
-	ctx = setContextOp(ctx, vq.ctx, ent.OpQueryAll)
-	if err := vq.prepareQuery(ctx); err != nil {
+func (_q *VersionQuery) All(ctx context.Context) ([]*Version, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
+	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
 	qr := querierAll[[]*Version, *VersionQuery]()
-	return withInterceptors[[]*Version](ctx, vq, qr, vq.inters)
+	return withInterceptors[[]*Version](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (vq *VersionQuery) AllX(ctx context.Context) []*Version {
-	nodes, err := vq.All(ctx)
+func (_q *VersionQuery) AllX(ctx context.Context) []*Version {
+	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -228,20 +228,20 @@ func (vq *VersionQuery) AllX(ctx context.Context) []*Version {
 }
 
 // IDs executes the query and returns a list of Version IDs.
-func (vq *VersionQuery) IDs(ctx context.Context) (ids []int, err error) {
-	if vq.ctx.Unique == nil && vq.path != nil {
-		vq.Unique(true)
+func (_q *VersionQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if _q.ctx.Unique == nil && _q.path != nil {
+		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, vq.ctx, ent.OpQueryIDs)
-	if err = vq.Select(version.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
+	if err = _q.Select(version.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (vq *VersionQuery) IDsX(ctx context.Context) []int {
-	ids, err := vq.IDs(ctx)
+func (_q *VersionQuery) IDsX(ctx context.Context) []int {
+	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -249,17 +249,17 @@ func (vq *VersionQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (vq *VersionQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, vq.ctx, ent.OpQueryCount)
-	if err := vq.prepareQuery(ctx); err != nil {
+func (_q *VersionQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
+	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, vq, querierCount[*VersionQuery](), vq.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*VersionQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (vq *VersionQuery) CountX(ctx context.Context) int {
-	count, err := vq.Count(ctx)
+func (_q *VersionQuery) CountX(ctx context.Context) int {
+	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -267,9 +267,9 @@ func (vq *VersionQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (vq *VersionQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, vq.ctx, ent.OpQueryExist)
-	switch _, err := vq.FirstID(ctx); {
+func (_q *VersionQuery) Exist(ctx context.Context) (bool, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
+	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -280,8 +280,8 @@ func (vq *VersionQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (vq *VersionQuery) ExistX(ctx context.Context) bool {
-	exist, err := vq.Exist(ctx)
+func (_q *VersionQuery) ExistX(ctx context.Context) bool {
+	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -290,44 +290,44 @@ func (vq *VersionQuery) ExistX(ctx context.Context) bool {
 
 // Clone returns a duplicate of the VersionQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (vq *VersionQuery) Clone() *VersionQuery {
-	if vq == nil {
+func (_q *VersionQuery) Clone() *VersionQuery {
+	if _q == nil {
 		return nil
 	}
 	return &VersionQuery{
-		config:       vq.config,
-		ctx:          vq.ctx.Clone(),
-		order:        append([]version.OrderOption{}, vq.order...),
-		inters:       append([]Interceptor{}, vq.inters...),
-		predicates:   append([]predicate.Version{}, vq.predicates...),
-		withStorages: vq.withStorages.Clone(),
-		withResource: vq.withResource.Clone(),
+		config:       _q.config,
+		ctx:          _q.ctx.Clone(),
+		order:        append([]version.OrderOption{}, _q.order...),
+		inters:       append([]Interceptor{}, _q.inters...),
+		predicates:   append([]predicate.Version{}, _q.predicates...),
+		withStorages: _q.withStorages.Clone(),
+		withResource: _q.withResource.Clone(),
 		// clone intermediate query.
-		sql:  vq.sql.Clone(),
-		path: vq.path,
+		sql:  _q.sql.Clone(),
+		path: _q.path,
 	}
 }
 
 // WithStorages tells the query-builder to eager-load the nodes that are connected to
 // the "storages" edge. The optional arguments are used to configure the query builder of the edge.
-func (vq *VersionQuery) WithStorages(opts ...func(*StorageQuery)) *VersionQuery {
-	query := (&StorageClient{config: vq.config}).Query()
+func (_q *VersionQuery) WithStorages(opts ...func(*StorageQuery)) *VersionQuery {
+	query := (&StorageClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	vq.withStorages = query
-	return vq
+	_q.withStorages = query
+	return _q
 }
 
 // WithResource tells the query-builder to eager-load the nodes that are connected to
 // the "resource" edge. The optional arguments are used to configure the query builder of the edge.
-func (vq *VersionQuery) WithResource(opts ...func(*ResourceQuery)) *VersionQuery {
-	query := (&ResourceClient{config: vq.config}).Query()
+func (_q *VersionQuery) WithResource(opts ...func(*ResourceQuery)) *VersionQuery {
+	query := (&ResourceClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	vq.withResource = query
-	return vq
+	_q.withResource = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -344,10 +344,10 @@ func (vq *VersionQuery) WithResource(opts ...func(*ResourceQuery)) *VersionQuery
 //		GroupBy(version.FieldChannel).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (vq *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy {
-	vq.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &VersionGroupBy{build: vq}
-	grbuild.flds = &vq.ctx.Fields
+func (_q *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy {
+	_q.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &VersionGroupBy{build: _q}
+	grbuild.flds = &_q.ctx.Fields
 	grbuild.label = version.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
@@ -365,56 +365,56 @@ func (vq *VersionQuery) GroupBy(field string, fields ...string) *VersionGroupBy 
 //	client.Version.Query().
 //		Select(version.FieldChannel).
 //		Scan(ctx, &v)
-func (vq *VersionQuery) Select(fields ...string) *VersionSelect {
-	vq.ctx.Fields = append(vq.ctx.Fields, fields...)
-	sbuild := &VersionSelect{VersionQuery: vq}
+func (_q *VersionQuery) Select(fields ...string) *VersionSelect {
+	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
+	sbuild := &VersionSelect{VersionQuery: _q}
 	sbuild.label = version.Label
-	sbuild.flds, sbuild.scan = &vq.ctx.Fields, sbuild.Scan
+	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
 // Aggregate returns a VersionSelect configured with the given aggregations.
-func (vq *VersionQuery) Aggregate(fns ...AggregateFunc) *VersionSelect {
-	return vq.Select().Aggregate(fns...)
+func (_q *VersionQuery) Aggregate(fns ...AggregateFunc) *VersionSelect {
+	return _q.Select().Aggregate(fns...)
 }
 
-func (vq *VersionQuery) prepareQuery(ctx context.Context) error {
-	for _, inter := range vq.inters {
+func (_q *VersionQuery) prepareQuery(ctx context.Context) error {
+	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
 		}
 		if trv, ok := inter.(Traverser); ok {
-			if err := trv.Traverse(ctx, vq); err != nil {
+			if err := trv.Traverse(ctx, _q); err != nil {
 				return err
 			}
 		}
 	}
-	for _, f := range vq.ctx.Fields {
+	for _, f := range _q.ctx.Fields {
 		if !version.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
-	if vq.path != nil {
-		prev, err := vq.path(ctx)
+	if _q.path != nil {
+		prev, err := _q.path(ctx)
 		if err != nil {
 			return err
 		}
-		vq.sql = prev
+		_q.sql = prev
 	}
 	return nil
 }
 
-func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Version, error) {
+func (_q *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Version, error) {
 	var (
 		nodes       = []*Version{}
-		withFKs     = vq.withFKs
-		_spec       = vq.querySpec()
+		withFKs     = _q.withFKs
+		_spec       = _q.querySpec()
 		loadedTypes = [2]bool{
-			vq.withStorages != nil,
-			vq.withResource != nil,
+			_q.withStorages != nil,
+			_q.withResource != nil,
 		}
 	)
-	if vq.withResource != nil {
+	if _q.withResource != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -424,7 +424,7 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 		return (*Version).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Version{config: vq.config}
+		node := &Version{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -432,21 +432,21 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
-	if err := sqlgraph.QueryNodes(ctx, vq.driver, _spec); err != nil {
+	if err := sqlgraph.QueryNodes(ctx, _q.driver, _spec); err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := vq.withStorages; query != nil {
-		if err := vq.loadStorages(ctx, query, nodes,
+	if query := _q.withStorages; query != nil {
+		if err := _q.loadStorages(ctx, query, nodes,
 			func(n *Version) { n.Edges.Storages = []*Storage{} },
 			func(n *Version, e *Storage) { n.Edges.Storages = append(n.Edges.Storages, e) }); err != nil {
 			return nil, err
 		}
 	}
-	if query := vq.withResource; query != nil {
-		if err := vq.loadResource(ctx, query, nodes, nil,
+	if query := _q.withResource; query != nil {
+		if err := _q.loadResource(ctx, query, nodes, nil,
 			func(n *Version, e *Resource) { n.Edges.Resource = e }); err != nil {
 			return nil, err
 		}
@@ -454,7 +454,7 @@ func (vq *VersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vers
 	return nodes, nil
 }
 
-func (vq *VersionQuery) loadStorages(ctx context.Context, query *StorageQuery, nodes []*Version, init func(*Version), assign func(*Version, *Storage)) error {
+func (_q *VersionQuery) loadStorages(ctx context.Context, query *StorageQuery, nodes []*Version, init func(*Version), assign func(*Version, *Storage)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*Version)
 	for i := range nodes {
@@ -485,7 +485,7 @@ func (vq *VersionQuery) loadStorages(ctx context.Context, query *StorageQuery, n
 	}
 	return nil
 }
-func (vq *VersionQuery) loadResource(ctx context.Context, query *ResourceQuery, nodes []*Version, init func(*Version), assign func(*Version, *Resource)) error {
+func (_q *VersionQuery) loadResource(ctx context.Context, query *ResourceQuery, nodes []*Version, init func(*Version), assign func(*Version, *Resource)) error {
 	ids := make([]string, 0, len(nodes))
 	nodeids := make(map[string][]*Version)
 	for i := range nodes {
@@ -518,24 +518,24 @@ func (vq *VersionQuery) loadResource(ctx context.Context, query *ResourceQuery, 
 	return nil
 }
 
-func (vq *VersionQuery) sqlCount(ctx context.Context) (int, error) {
-	_spec := vq.querySpec()
-	_spec.Node.Columns = vq.ctx.Fields
-	if len(vq.ctx.Fields) > 0 {
-		_spec.Unique = vq.ctx.Unique != nil && *vq.ctx.Unique
+func (_q *VersionQuery) sqlCount(ctx context.Context) (int, error) {
+	_spec := _q.querySpec()
+	_spec.Node.Columns = _q.ctx.Fields
+	if len(_q.ctx.Fields) > 0 {
+		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
 	}
-	return sqlgraph.CountNodes(ctx, vq.driver, _spec)
+	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (vq *VersionQuery) querySpec() *sqlgraph.QuerySpec {
+func (_q *VersionQuery) querySpec() *sqlgraph.QuerySpec {
 	_spec := sqlgraph.NewQuerySpec(version.Table, version.Columns, sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt))
-	_spec.From = vq.sql
-	if unique := vq.ctx.Unique; unique != nil {
+	_spec.From = _q.sql
+	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
-	} else if vq.path != nil {
+	} else if _q.path != nil {
 		_spec.Unique = true
 	}
-	if fields := vq.ctx.Fields; len(fields) > 0 {
+	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, version.FieldID)
 		for i := range fields {
@@ -544,20 +544,20 @@ func (vq *VersionQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if ps := vq.predicates; len(ps) > 0 {
+	if ps := _q.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if limit := vq.ctx.Limit; limit != nil {
+	if limit := _q.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := vq.ctx.Offset; offset != nil {
+	if offset := _q.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
-	if ps := vq.order; len(ps) > 0 {
+	if ps := _q.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -567,33 +567,33 @@ func (vq *VersionQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (vq *VersionQuery) sqlQuery(ctx context.Context) *sql.Selector {
-	builder := sql.Dialect(vq.driver.Dialect())
+func (_q *VersionQuery) sqlQuery(ctx context.Context) *sql.Selector {
+	builder := sql.Dialect(_q.driver.Dialect())
 	t1 := builder.Table(version.Table)
-	columns := vq.ctx.Fields
+	columns := _q.ctx.Fields
 	if len(columns) == 0 {
 		columns = version.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
-	if vq.sql != nil {
-		selector = vq.sql
+	if _q.sql != nil {
+		selector = _q.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if vq.ctx.Unique != nil && *vq.ctx.Unique {
+	if _q.ctx.Unique != nil && *_q.ctx.Unique {
 		selector.Distinct()
 	}
-	for _, p := range vq.predicates {
+	for _, p := range _q.predicates {
 		p(selector)
 	}
-	for _, p := range vq.order {
+	for _, p := range _q.order {
 		p(selector)
 	}
-	if offset := vq.ctx.Offset; offset != nil {
+	if offset := _q.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := vq.ctx.Limit; limit != nil {
+	if limit := _q.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -606,41 +606,41 @@ type VersionGroupBy struct {
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (vgb *VersionGroupBy) Aggregate(fns ...AggregateFunc) *VersionGroupBy {
-	vgb.fns = append(vgb.fns, fns...)
-	return vgb
+func (_g *VersionGroupBy) Aggregate(fns ...AggregateFunc) *VersionGroupBy {
+	_g.fns = append(_g.fns, fns...)
+	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (vgb *VersionGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, vgb.build.ctx, ent.OpQueryGroupBy)
-	if err := vgb.build.prepareQuery(ctx); err != nil {
+func (_g *VersionGroupBy) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
+	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*VersionQuery, *VersionGroupBy](ctx, vgb.build, vgb, vgb.build.inters, v)
+	return scanWithInterceptors[*VersionQuery, *VersionGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (vgb *VersionGroupBy) sqlScan(ctx context.Context, root *VersionQuery, v any) error {
+func (_g *VersionGroupBy) sqlScan(ctx context.Context, root *VersionQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
-	aggregation := make([]string, 0, len(vgb.fns))
-	for _, fn := range vgb.fns {
+	aggregation := make([]string, 0, len(_g.fns))
+	for _, fn := range _g.fns {
 		aggregation = append(aggregation, fn(selector))
 	}
 	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(*vgb.flds)+len(vgb.fns))
-		for _, f := range *vgb.flds {
+		columns := make([]string, 0, len(*_g.flds)+len(_g.fns))
+		for _, f := range *_g.flds {
 			columns = append(columns, selector.C(f))
 		}
 		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
-	selector.GroupBy(selector.Columns(*vgb.flds...)...)
+	selector.GroupBy(selector.Columns(*_g.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := vgb.build.driver.Query(ctx, query, args, rows); err != nil {
+	if err := _g.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
@@ -654,27 +654,27 @@ type VersionSelect struct {
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (vs *VersionSelect) Aggregate(fns ...AggregateFunc) *VersionSelect {
-	vs.fns = append(vs.fns, fns...)
-	return vs
+func (_s *VersionSelect) Aggregate(fns ...AggregateFunc) *VersionSelect {
+	_s.fns = append(_s.fns, fns...)
+	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (vs *VersionSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, vs.ctx, ent.OpQuerySelect)
-	if err := vs.prepareQuery(ctx); err != nil {
+func (_s *VersionSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
+	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*VersionQuery, *VersionSelect](ctx, vs.VersionQuery, vs, vs.inters, v)
+	return scanWithInterceptors[*VersionQuery, *VersionSelect](ctx, _s.VersionQuery, _s, _s.inters, v)
 }
 
-func (vs *VersionSelect) sqlScan(ctx context.Context, root *VersionQuery, v any) error {
+func (_s *VersionSelect) sqlScan(ctx context.Context, root *VersionQuery, v any) error {
 	selector := root.sqlQuery(ctx)
-	aggregation := make([]string, 0, len(vs.fns))
-	for _, fn := range vs.fns {
+	aggregation := make([]string, 0, len(_s.fns))
+	for _, fn := range _s.fns {
 		aggregation = append(aggregation, fn(selector))
 	}
-	switch n := len(*vs.selector.flds); {
+	switch n := len(*_s.selector.flds); {
 	case n == 0 && len(aggregation) > 0:
 		selector.Select(aggregation...)
 	case n != 0 && len(aggregation) > 0:
@@ -682,7 +682,7 @@ func (vs *VersionSelect) sqlScan(ctx context.Context, root *VersionQuery, v any)
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := vs.driver.Query(ctx, query, args, rows); err != nil {
+	if err := _s.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()

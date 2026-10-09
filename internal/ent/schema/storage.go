@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 )
 
@@ -57,5 +58,17 @@ func (Storage) Edges() []ent.Edge {
 		edge.To("old_version", Version.Type).
 			Unique().
 			Comment("only for incremental update"),
+	}
+}
+
+// Indexes of the Storage.
+func (Storage) Indexes() []ent.Index {
+	return []ent.Index{
+		// one incremental package per version pair and platform; a full storage has no
+		// old version and NULLs never collide, so only incremental storages are bound
+		index.Fields("version_storages", "os", "arch", "update_type").
+			Edges("old_version").
+			Unique().
+			StorageKey("storage_version_os_arch_type_old_version"),
 	}
 }

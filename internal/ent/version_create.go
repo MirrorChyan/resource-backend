@@ -23,121 +23,121 @@ type VersionCreate struct {
 }
 
 // SetChannel sets the "channel" field.
-func (vc *VersionCreate) SetChannel(v version.Channel) *VersionCreate {
-	vc.mutation.SetChannel(v)
-	return vc
+func (_c *VersionCreate) SetChannel(v version.Channel) *VersionCreate {
+	_c.mutation.SetChannel(v)
+	return _c
 }
 
 // SetNillableChannel sets the "channel" field if the given value is not nil.
-func (vc *VersionCreate) SetNillableChannel(v *version.Channel) *VersionCreate {
+func (_c *VersionCreate) SetNillableChannel(v *version.Channel) *VersionCreate {
 	if v != nil {
-		vc.SetChannel(*v)
+		_c.SetChannel(*v)
 	}
-	return vc
+	return _c
 }
 
 // SetName sets the "name" field.
-func (vc *VersionCreate) SetName(s string) *VersionCreate {
-	vc.mutation.SetName(s)
-	return vc
+func (_c *VersionCreate) SetName(v string) *VersionCreate {
+	_c.mutation.SetName(v)
+	return _c
 }
 
 // SetNumber sets the "number" field.
-func (vc *VersionCreate) SetNumber(u uint64) *VersionCreate {
-	vc.mutation.SetNumber(u)
-	return vc
+func (_c *VersionCreate) SetNumber(v uint64) *VersionCreate {
+	_c.mutation.SetNumber(v)
+	return _c
 }
 
 // SetReleaseNote sets the "release_note" field.
-func (vc *VersionCreate) SetReleaseNote(s string) *VersionCreate {
-	vc.mutation.SetReleaseNote(s)
-	return vc
+func (_c *VersionCreate) SetReleaseNote(v string) *VersionCreate {
+	_c.mutation.SetReleaseNote(v)
+	return _c
 }
 
 // SetNillableReleaseNote sets the "release_note" field if the given value is not nil.
-func (vc *VersionCreate) SetNillableReleaseNote(s *string) *VersionCreate {
-	if s != nil {
-		vc.SetReleaseNote(*s)
+func (_c *VersionCreate) SetNillableReleaseNote(v *string) *VersionCreate {
+	if v != nil {
+		_c.SetReleaseNote(*v)
 	}
-	return vc
+	return _c
 }
 
 // SetCustomData sets the "custom_data" field.
-func (vc *VersionCreate) SetCustomData(s string) *VersionCreate {
-	vc.mutation.SetCustomData(s)
-	return vc
+func (_c *VersionCreate) SetCustomData(v string) *VersionCreate {
+	_c.mutation.SetCustomData(v)
+	return _c
 }
 
 // SetNillableCustomData sets the "custom_data" field if the given value is not nil.
-func (vc *VersionCreate) SetNillableCustomData(s *string) *VersionCreate {
-	if s != nil {
-		vc.SetCustomData(*s)
+func (_c *VersionCreate) SetNillableCustomData(v *string) *VersionCreate {
+	if v != nil {
+		_c.SetCustomData(*v)
 	}
-	return vc
+	return _c
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (vc *VersionCreate) SetCreatedAt(t time.Time) *VersionCreate {
-	vc.mutation.SetCreatedAt(t)
-	return vc
+func (_c *VersionCreate) SetCreatedAt(v time.Time) *VersionCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (vc *VersionCreate) SetNillableCreatedAt(t *time.Time) *VersionCreate {
-	if t != nil {
-		vc.SetCreatedAt(*t)
+func (_c *VersionCreate) SetNillableCreatedAt(v *time.Time) *VersionCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return vc
+	return _c
 }
 
 // AddStorageIDs adds the "storages" edge to the Storage entity by IDs.
-func (vc *VersionCreate) AddStorageIDs(ids ...int) *VersionCreate {
-	vc.mutation.AddStorageIDs(ids...)
-	return vc
+func (_c *VersionCreate) AddStorageIDs(ids ...int) *VersionCreate {
+	_c.mutation.AddStorageIDs(ids...)
+	return _c
 }
 
 // AddStorages adds the "storages" edges to the Storage entity.
-func (vc *VersionCreate) AddStorages(s ...*Storage) *VersionCreate {
-	ids := make([]int, len(s))
-	for i := range s {
-		ids[i] = s[i].ID
+func (_c *VersionCreate) AddStorages(v ...*Storage) *VersionCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return vc.AddStorageIDs(ids...)
+	return _c.AddStorageIDs(ids...)
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
-func (vc *VersionCreate) SetResourceID(id string) *VersionCreate {
-	vc.mutation.SetResourceID(id)
-	return vc
+func (_c *VersionCreate) SetResourceID(id string) *VersionCreate {
+	_c.mutation.SetResourceID(id)
+	return _c
 }
 
 // SetNillableResourceID sets the "resource" edge to the Resource entity by ID if the given value is not nil.
-func (vc *VersionCreate) SetNillableResourceID(id *string) *VersionCreate {
+func (_c *VersionCreate) SetNillableResourceID(id *string) *VersionCreate {
 	if id != nil {
-		vc = vc.SetResourceID(*id)
+		_c = _c.SetResourceID(*id)
 	}
-	return vc
+	return _c
 }
 
 // SetResource sets the "resource" edge to the Resource entity.
-func (vc *VersionCreate) SetResource(r *Resource) *VersionCreate {
-	return vc.SetResourceID(r.ID)
+func (_c *VersionCreate) SetResource(v *Resource) *VersionCreate {
+	return _c.SetResourceID(v.ID)
 }
 
 // Mutation returns the VersionMutation object of the builder.
-func (vc *VersionCreate) Mutation() *VersionMutation {
-	return vc.mutation
+func (_c *VersionCreate) Mutation() *VersionMutation {
+	return _c.mutation
 }
 
 // Save creates the Version in the database.
-func (vc *VersionCreate) Save(ctx context.Context) (*Version, error) {
-	vc.defaults()
-	return withHooks(ctx, vc.sqlSave, vc.mutation, vc.hooks)
+func (_c *VersionCreate) Save(ctx context.Context) (*Version, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (vc *VersionCreate) SaveX(ctx context.Context) *Version {
-	v, err := vc.Save(ctx)
+func (_c *VersionCreate) SaveX(ctx context.Context) *Version {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -145,77 +145,77 @@ func (vc *VersionCreate) SaveX(ctx context.Context) *Version {
 }
 
 // Exec executes the query.
-func (vc *VersionCreate) Exec(ctx context.Context) error {
-	_, err := vc.Save(ctx)
+func (_c *VersionCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (vc *VersionCreate) ExecX(ctx context.Context) {
-	if err := vc.Exec(ctx); err != nil {
+func (_c *VersionCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (vc *VersionCreate) defaults() {
-	if _, ok := vc.mutation.Channel(); !ok {
+func (_c *VersionCreate) defaults() {
+	if _, ok := _c.mutation.Channel(); !ok {
 		v := version.DefaultChannel
-		vc.mutation.SetChannel(v)
+		_c.mutation.SetChannel(v)
 	}
-	if _, ok := vc.mutation.ReleaseNote(); !ok {
+	if _, ok := _c.mutation.ReleaseNote(); !ok {
 		v := version.DefaultReleaseNote
-		vc.mutation.SetReleaseNote(v)
+		_c.mutation.SetReleaseNote(v)
 	}
-	if _, ok := vc.mutation.CustomData(); !ok {
+	if _, ok := _c.mutation.CustomData(); !ok {
 		v := version.DefaultCustomData
-		vc.mutation.SetCustomData(v)
+		_c.mutation.SetCustomData(v)
 	}
-	if _, ok := vc.mutation.CreatedAt(); !ok {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := version.DefaultCreatedAt()
-		vc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (vc *VersionCreate) check() error {
-	if _, ok := vc.mutation.Channel(); !ok {
+func (_c *VersionCreate) check() error {
+	if _, ok := _c.mutation.Channel(); !ok {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required field "Version.channel"`)}
 	}
-	if v, ok := vc.mutation.Channel(); ok {
+	if v, ok := _c.mutation.Channel(); ok {
 		if err := version.ChannelValidator(v); err != nil {
 			return &ValidationError{Name: "channel", err: fmt.Errorf(`ent: validator failed for field "Version.channel": %w`, err)}
 		}
 	}
-	if _, ok := vc.mutation.Name(); !ok {
+	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Version.name"`)}
 	}
-	if v, ok := vc.mutation.Name(); ok {
+	if v, ok := _c.mutation.Name(); ok {
 		if err := version.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Version.name": %w`, err)}
 		}
 	}
-	if _, ok := vc.mutation.Number(); !ok {
+	if _, ok := _c.mutation.Number(); !ok {
 		return &ValidationError{Name: "number", err: errors.New(`ent: missing required field "Version.number"`)}
 	}
-	if _, ok := vc.mutation.ReleaseNote(); !ok {
+	if _, ok := _c.mutation.ReleaseNote(); !ok {
 		return &ValidationError{Name: "release_note", err: errors.New(`ent: missing required field "Version.release_note"`)}
 	}
-	if _, ok := vc.mutation.CustomData(); !ok {
+	if _, ok := _c.mutation.CustomData(); !ok {
 		return &ValidationError{Name: "custom_data", err: errors.New(`ent: missing required field "Version.custom_data"`)}
 	}
-	if _, ok := vc.mutation.CreatedAt(); !ok {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Version.created_at"`)}
 	}
 	return nil
 }
 
-func (vc *VersionCreate) sqlSave(ctx context.Context) (*Version, error) {
-	if err := vc.check(); err != nil {
+func (_c *VersionCreate) sqlSave(ctx context.Context) (*Version, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := vc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, vc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -223,41 +223,41 @@ func (vc *VersionCreate) sqlSave(ctx context.Context) (*Version, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	vc.mutation.id = &_node.ID
-	vc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
+func (_c *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Version{config: vc.config}
+		_node = &Version{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(version.Table, sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt))
 	)
-	if value, ok := vc.mutation.Channel(); ok {
+	if value, ok := _c.mutation.Channel(); ok {
 		_spec.SetField(version.FieldChannel, field.TypeEnum, value)
 		_node.Channel = value
 	}
-	if value, ok := vc.mutation.Name(); ok {
+	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(version.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := vc.mutation.Number(); ok {
+	if value, ok := _c.mutation.Number(); ok {
 		_spec.SetField(version.FieldNumber, field.TypeUint64, value)
 		_node.Number = value
 	}
-	if value, ok := vc.mutation.ReleaseNote(); ok {
+	if value, ok := _c.mutation.ReleaseNote(); ok {
 		_spec.SetField(version.FieldReleaseNote, field.TypeString, value)
 		_node.ReleaseNote = value
 	}
-	if value, ok := vc.mutation.CustomData(); ok {
+	if value, ok := _c.mutation.CustomData(); ok {
 		_spec.SetField(version.FieldCustomData, field.TypeString, value)
 		_node.CustomData = value
 	}
-	if value, ok := vc.mutation.CreatedAt(); ok {
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(version.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if nodes := vc.mutation.StoragesIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.StoragesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -273,7 +273,7 @@ func (vc *VersionCreate) createSpec() (*Version, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := vc.mutation.ResourceIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ResourceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -301,16 +301,16 @@ type VersionCreateBulk struct {
 }
 
 // Save creates the Version entities in the database.
-func (vcb *VersionCreateBulk) Save(ctx context.Context) ([]*Version, error) {
-	if vcb.err != nil {
-		return nil, vcb.err
+func (_c *VersionCreateBulk) Save(ctx context.Context) ([]*Version, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(vcb.builders))
-	nodes := make([]*Version, len(vcb.builders))
-	mutators := make([]Mutator, len(vcb.builders))
-	for i := range vcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Version, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := vcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*VersionMutation)
@@ -324,11 +324,11 @@ func (vcb *VersionCreateBulk) Save(ctx context.Context) ([]*Version, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, vcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, vcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -352,7 +352,7 @@ func (vcb *VersionCreateBulk) Save(ctx context.Context) ([]*Version, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, vcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -360,8 +360,8 @@ func (vcb *VersionCreateBulk) Save(ctx context.Context) ([]*Version, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (vcb *VersionCreateBulk) SaveX(ctx context.Context) []*Version {
-	v, err := vcb.Save(ctx)
+func (_c *VersionCreateBulk) SaveX(ctx context.Context) []*Version {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -369,14 +369,14 @@ func (vcb *VersionCreateBulk) SaveX(ctx context.Context) []*Version {
 }
 
 // Exec executes the query.
-func (vcb *VersionCreateBulk) Exec(ctx context.Context) error {
-	_, err := vcb.Save(ctx)
+func (_c *VersionCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (vcb *VersionCreateBulk) ExecX(ctx context.Context) {
-	if err := vcb.Exec(ctx); err != nil {
+func (_c *VersionCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

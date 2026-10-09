@@ -56,6 +56,13 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "storage_version_os_arch_type_old_version",
+				Unique:  true,
+				Columns: []*schema.Column{StoragesColumns[11], StoragesColumns[2], StoragesColumns[3], StoragesColumns[1], StoragesColumns[10]},
+			},
+		},
 	}
 	// VersionsColumns holds the columns for the "versions" table.
 	VersionsColumns = []*schema.Column{
