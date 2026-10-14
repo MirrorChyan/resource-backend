@@ -20,8 +20,8 @@ func NewResourceHandler(resourceLogic *logic.ResourceLogic) *ResourceHandler {
 }
 
 func (h *ResourceHandler) Register(r fiber.Router) {
-	// For Developer
-	r.Post("/resources", h.Create)
+	// For Admin
+	r.Post("/admin/resources", h.Create)
 }
 
 func (h *ResourceHandler) Create(c *fiber.Ctx) error {

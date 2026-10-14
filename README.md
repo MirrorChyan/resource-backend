@@ -146,11 +146,10 @@ Returns file metadata headers:
 
 #### Create Resource
 ```http
-POST /resources
-Authorization: Bearer <token>
+POST /admin/resources
 
 {
-  "resource_id": "my-app",
+  "id": "my-app",
   "name": "My Application",
   "description": "Description here",
   "update_type": "incremental"
