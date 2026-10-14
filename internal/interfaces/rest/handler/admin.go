@@ -14,10 +14,7 @@ import (
 
 // AdminHandler serves read-only resource/version queries for the admin console.
 //
-// For Admin (gateway-restricted): these endpoints are NOT authenticated in-process,
-// consistent with the existing "For Developer" endpoints. Access control is expected
-// at the APISIX gateway, which can match the shared `/admin` prefix to enforce
-// internal-network / token admission.
+// For Admin: these endpoints are NOT authenticated in-process.
 type AdminHandler struct {
 	logger        *zap.Logger
 	resourceLogic *logic.ResourceLogic
