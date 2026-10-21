@@ -1,6 +1,6 @@
 module github.com/MirrorChyan/resource-backend
 
-go 1.26.8
+go 1.26.10
 
 require (
 	entgo.io/ent v0.14.6
