@@ -66,20 +66,21 @@ func NewValidateUploader() fiber.Handler {
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
 		}
 
-		if res.Code == 1 {
-			zap.L().Info("Uploader validation failed",
-				zap.Int("code", res.Code),
-				zap.String("msg", res.Msg),
-			)
-			resp := response.BusinessError(res.Msg)
-			return c.Status(fiber.StatusUnauthorized).JSON(resp)
-		} else if res.Code == -1 {
+		// Only code 0 allows the upload; any other code is a rejection
+		if res.Code < 0 {
 			zap.L().Error("Uploader validation failed",
 				zap.Int("code", res.Code),
 				zap.String("msg", res.Msg),
 			)
 			resp := response.UnexpectedError()
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		} else if res.Code != 0 {
+			zap.L().Info("Uploader validation failed",
+				zap.Int("code", res.Code),
+				zap.String("msg", res.Msg),
+			)
+			resp := response.BusinessError(res.Msg)
+			return c.Status(fiber.StatusUnauthorized).JSON(resp)
 		}
 
 		return c.Next()
