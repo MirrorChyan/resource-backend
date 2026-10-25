@@ -66,17 +66,25 @@ func NewValidateUploader() fiber.Handler {
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
 		}
 
-		// Only code 0 allows the upload; any other code is a rejection
-		if res.Code < 0 {
+		// Only an explicit code 0 allows the upload; a missing code or any other code is a rejection
+		if res.Code == nil {
+			zap.L().Error("Uploader validation response has no code",
+				zap.ByteString("body", buf),
+			)
+			resp := response.UnexpectedError()
+			return c.Status(fiber.StatusInternalServerError).JSON(resp)
+		}
+		code := *res.Code
+		if code < 0 {
 			zap.L().Error("Uploader validation failed",
-				zap.Int("code", res.Code),
+				zap.Int("code", code),
 				zap.String("msg", res.Msg),
 			)
 			resp := response.UnexpectedError()
 			return c.Status(fiber.StatusInternalServerError).JSON(resp)
-		} else if res.Code != 0 {
+		} else if code != 0 {
 			zap.L().Info("Uploader validation failed",
-				zap.Int("code", res.Code),
+				zap.Int("code", code),
 				zap.String("msg", res.Msg),
 			)
 			resp := response.BusinessError(res.Msg)

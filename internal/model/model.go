@@ -30,7 +30,8 @@ type ValidateResponse struct {
 }
 
 type ValidateUploaderResponse struct {
-	Code int    `json:"code"`
+	// nil when the response omits code or sets it to null
+	Code *int   `json:"code"`
 	Msg  string `json:"msg"`
 }
 
