@@ -53,6 +53,12 @@ type DistributeInfo struct {
 	Mode     string `json:"mode,omitempty"`
 }
 
+// Platform names the packages of one os and arch, "" in either being the platform-independent one
+type Platform struct {
+	OS   string `json:"os"`
+	Arch string `json:"arch"`
+}
+
 type FileDetectResult struct {
 	Valid    bool
 	FileType types.FileType

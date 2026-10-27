@@ -2,8 +2,6 @@ package logic
 
 import (
 	"context"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
@@ -32,7 +30,14 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		}
 	)
 
-	if isFull || targetInfo.ResourceUpdateType == types.UpdateFull {
+	if isFull {
+		return full, nil
+	}
+	ut, err := l.resourceLogic.ResolveUpdateType(ctx, resourceId, targetInfo.OS, targetInfo.Arch)
+	if err != nil {
+		return nil, err
+	}
+	if ut == types.UpdateFull {
 		return full, nil
 	}
 
@@ -88,13 +93,9 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 		return full, nil
 	}
 
-	var (
-		targetVersion  = strconv.Itoa(targetInfo.VersionId)
-		currentVersion = strconv.Itoa(currentVersionId)
-		key            = strings.Join([]string{misc.GenerateTagKey,
-			strings.Join([]string{resourceId, targetInfo.OS, targetInfo.Arch}, "-"),
-			targetVersion, currentVersion,
-		}, ":")
+	key := misc.PatchGenerateTagKey(resourceId,
+		targetInfo.VersionId, currentVersionId,
+		targetInfo.OS, targetInfo.Arch,
 	)
 
 	l.logger.Info("incremental fallback to full update",
@@ -136,8 +137,8 @@ func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateR
 	}
 	l.logger.Info("submit generate incremental update package task success",
 		zap.String("resource id", resourceId),
-		zap.String("target version", targetVersion),
-		zap.String("current version", currentVersion),
+		zap.Int("target version", targetInfo.VersionId),
+		zap.Int("current version", currentVersionId),
 		zap.String("task id", submitted.ID),
 	)
 

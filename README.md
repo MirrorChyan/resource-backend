@@ -156,6 +156,19 @@ POST /admin/resources
 }
 ```
 
+#### Platform Update Types
+```http
+GET    /admin/resources/:rid/platforms
+PUT    /admin/resources/:rid/platforms   {"os": "android", "arch": "arm64", "update_type": "full"}
+DELETE /admin/resources/:rid/platforms?os=android&arch=arm64
+```
+
+A platform with its own update type uses it; any other platform uses the resource's `update_type`.
+`GET` lists the platforms packages were uploaded for and the ones with their own update type,
+each with the type in effect and its `source` (`inherit` / `override`). `PUT` and `DELETE` return the
+platform's update type `before` and `after` the change; `DELETE` returns the platform to the resource's.
+`os` / `arch` take the same aliases as the version endpoints (e.g. `x64` → `amd64`).
+
 #### Create Version
 ```http
 POST /resources/:rid/versions
@@ -229,6 +242,10 @@ internal/ent (ORM entities)
 - `name` - Display name
 - `description` - Description
 - `update_type` - Default update strategy (full/incremental)
+
+**ResourcePlatformConfig** (Per-platform settings of a resource)
+- `resource_id`, `os`, `arch` - The platform, unique per resource; `""` is the platform-independent package, not a wildcard
+- `update_type` - Update strategy of the platform; a platform without a row uses the resource's
 
 **Version** (Release versions)
 - `channel` - Release channel (stable/beta/alpha)

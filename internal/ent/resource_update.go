@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/predicate"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -100,6 +101,21 @@ func (_u *ResourceUpdate) AddVersions(v ...*Version) *ResourceUpdate {
 	return _u.AddVersionIDs(ids...)
 }
 
+// AddPlatformConfigIDs adds the "platform_configs" edge to the ResourcePlatformConfig entity by IDs.
+func (_u *ResourceUpdate) AddPlatformConfigIDs(ids ...int) *ResourceUpdate {
+	_u.mutation.AddPlatformConfigIDs(ids...)
+	return _u
+}
+
+// AddPlatformConfigs adds the "platform_configs" edges to the ResourcePlatformConfig entity.
+func (_u *ResourceUpdate) AddPlatformConfigs(v ...*ResourcePlatformConfig) *ResourceUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPlatformConfigIDs(ids...)
+}
+
 // Mutation returns the ResourceMutation object of the builder.
 func (_u *ResourceUpdate) Mutation() *ResourceMutation {
 	return _u.mutation
@@ -124,6 +140,27 @@ func (_u *ResourceUpdate) RemoveVersions(v ...*Version) *ResourceUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveVersionIDs(ids...)
+}
+
+// ClearPlatformConfigs clears all "platform_configs" edges to the ResourcePlatformConfig entity.
+func (_u *ResourceUpdate) ClearPlatformConfigs() *ResourceUpdate {
+	_u.mutation.ClearPlatformConfigs()
+	return _u
+}
+
+// RemovePlatformConfigIDs removes the "platform_configs" edge to ResourcePlatformConfig entities by IDs.
+func (_u *ResourceUpdate) RemovePlatformConfigIDs(ids ...int) *ResourceUpdate {
+	_u.mutation.RemovePlatformConfigIDs(ids...)
+	return _u
+}
+
+// RemovePlatformConfigs removes "platform_configs" edges to ResourcePlatformConfig entities.
+func (_u *ResourceUpdate) RemovePlatformConfigs(v ...*ResourcePlatformConfig) *ResourceUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePlatformConfigIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -232,6 +269,51 @@ func (_u *ResourceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.PlatformConfigsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPlatformConfigsIDs(); len(nodes) > 0 && !_u.mutation.PlatformConfigsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PlatformConfigsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{resource.Label}
@@ -323,6 +405,21 @@ func (_u *ResourceUpdateOne) AddVersions(v ...*Version) *ResourceUpdateOne {
 	return _u.AddVersionIDs(ids...)
 }
 
+// AddPlatformConfigIDs adds the "platform_configs" edge to the ResourcePlatformConfig entity by IDs.
+func (_u *ResourceUpdateOne) AddPlatformConfigIDs(ids ...int) *ResourceUpdateOne {
+	_u.mutation.AddPlatformConfigIDs(ids...)
+	return _u
+}
+
+// AddPlatformConfigs adds the "platform_configs" edges to the ResourcePlatformConfig entity.
+func (_u *ResourceUpdateOne) AddPlatformConfigs(v ...*ResourcePlatformConfig) *ResourceUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPlatformConfigIDs(ids...)
+}
+
 // Mutation returns the ResourceMutation object of the builder.
 func (_u *ResourceUpdateOne) Mutation() *ResourceMutation {
 	return _u.mutation
@@ -347,6 +444,27 @@ func (_u *ResourceUpdateOne) RemoveVersions(v ...*Version) *ResourceUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveVersionIDs(ids...)
+}
+
+// ClearPlatformConfigs clears all "platform_configs" edges to the ResourcePlatformConfig entity.
+func (_u *ResourceUpdateOne) ClearPlatformConfigs() *ResourceUpdateOne {
+	_u.mutation.ClearPlatformConfigs()
+	return _u
+}
+
+// RemovePlatformConfigIDs removes the "platform_configs" edge to ResourcePlatformConfig entities by IDs.
+func (_u *ResourceUpdateOne) RemovePlatformConfigIDs(ids ...int) *ResourceUpdateOne {
+	_u.mutation.RemovePlatformConfigIDs(ids...)
+	return _u
+}
+
+// RemovePlatformConfigs removes "platform_configs" edges to ResourcePlatformConfig entities.
+func (_u *ResourceUpdateOne) RemovePlatformConfigs(v ...*ResourcePlatformConfig) *ResourceUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePlatformConfigIDs(ids...)
 }
 
 // Where appends a list predicates to the ResourceUpdate builder.
@@ -478,6 +596,51 @@ func (_u *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PlatformConfigsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPlatformConfigsIDs(); len(nodes) > 0 && !_u.mutation.PlatformConfigsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PlatformConfigsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

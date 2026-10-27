@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/schema"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -33,6 +34,34 @@ func init() {
 	resourceDescID := resourceFields[0].Descriptor()
 	// resource.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	resource.IDValidator = resourceDescID.Validators[0].(func(string) error)
+	resourceplatformconfigFields := schema.ResourcePlatformConfig{}.Fields()
+	_ = resourceplatformconfigFields
+	// resourceplatformconfigDescResourceID is the schema descriptor for resource_id field.
+	resourceplatformconfigDescResourceID := resourceplatformconfigFields[0].Descriptor()
+	// resourceplatformconfig.ResourceIDValidator is a validator for the "resource_id" field. It is called by the builders before save.
+	resourceplatformconfig.ResourceIDValidator = resourceplatformconfigDescResourceID.Validators[0].(func(string) error)
+	// resourceplatformconfigDescOs is the schema descriptor for os field.
+	resourceplatformconfigDescOs := resourceplatformconfigFields[1].Descriptor()
+	// resourceplatformconfig.DefaultOs holds the default value on creation for the os field.
+	resourceplatformconfig.DefaultOs = resourceplatformconfigDescOs.Default.(string)
+	// resourceplatformconfig.OsValidator is a validator for the "os" field. It is called by the builders before save.
+	resourceplatformconfig.OsValidator = resourceplatformconfigDescOs.Validators[0].(func(string) error)
+	// resourceplatformconfigDescArch is the schema descriptor for arch field.
+	resourceplatformconfigDescArch := resourceplatformconfigFields[2].Descriptor()
+	// resourceplatformconfig.DefaultArch holds the default value on creation for the arch field.
+	resourceplatformconfig.DefaultArch = resourceplatformconfigDescArch.Default.(string)
+	// resourceplatformconfig.ArchValidator is a validator for the "arch" field. It is called by the builders before save.
+	resourceplatformconfig.ArchValidator = resourceplatformconfigDescArch.Validators[0].(func(string) error)
+	// resourceplatformconfigDescCreatedAt is the schema descriptor for created_at field.
+	resourceplatformconfigDescCreatedAt := resourceplatformconfigFields[4].Descriptor()
+	// resourceplatformconfig.DefaultCreatedAt holds the default value on creation for the created_at field.
+	resourceplatformconfig.DefaultCreatedAt = resourceplatformconfigDescCreatedAt.Default.(func() time.Time)
+	// resourceplatformconfigDescUpdatedAt is the schema descriptor for updated_at field.
+	resourceplatformconfigDescUpdatedAt := resourceplatformconfigFields[5].Descriptor()
+	// resourceplatformconfig.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	resourceplatformconfig.DefaultUpdatedAt = resourceplatformconfigDescUpdatedAt.Default.(func() time.Time)
+	// resourceplatformconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	resourceplatformconfig.UpdateDefaultUpdatedAt = resourceplatformconfigDescUpdatedAt.UpdateDefault.(func() time.Time)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
 	// storageDescOs is the schema descriptor for os field.

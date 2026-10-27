@@ -24,6 +24,8 @@ const (
 	FieldUpdateType = "update_type"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
 	EdgeVersions = "versions"
+	// EdgePlatformConfigs holds the string denoting the platform_configs edge name in mutations.
+	EdgePlatformConfigs = "platform_configs"
 	// Table holds the table name of the resource in the database.
 	Table = "resources"
 	// VersionsTable is the table that holds the versions relation/edge.
@@ -33,6 +35,13 @@ const (
 	VersionsInverseTable = "versions"
 	// VersionsColumn is the table column denoting the versions relation/edge.
 	VersionsColumn = "resource_versions"
+	// PlatformConfigsTable is the table that holds the platform_configs relation/edge.
+	PlatformConfigsTable = "resource_platform_configs"
+	// PlatformConfigsInverseTable is the table name for the ResourcePlatformConfig entity.
+	// It exists in this package in order to avoid circular dependency with the "resourceplatformconfig" package.
+	PlatformConfigsInverseTable = "resource_platform_configs"
+	// PlatformConfigsColumn is the table column denoting the platform_configs relation/edge.
+	PlatformConfigsColumn = "resource_id"
 )
 
 // Columns holds all SQL columns for resource fields.
@@ -106,10 +115,31 @@ func ByVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByPlatformConfigsCount orders the results by platform_configs count.
+func ByPlatformConfigsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPlatformConfigsStep(), opts...)
+	}
+}
+
+// ByPlatformConfigs orders the results by platform_configs terms.
+func ByPlatformConfigs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPlatformConfigsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newVersionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(VersionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
+	)
+}
+func newPlatformConfigsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PlatformConfigsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PlatformConfigsTable, PlatformConfigsColumn),
 	)
 }

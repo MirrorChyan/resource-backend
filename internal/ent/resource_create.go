@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -80,6 +81,21 @@ func (_c *ResourceCreate) AddVersions(v ...*Version) *ResourceCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddVersionIDs(ids...)
+}
+
+// AddPlatformConfigIDs adds the "platform_configs" edge to the ResourcePlatformConfig entity by IDs.
+func (_c *ResourceCreate) AddPlatformConfigIDs(ids ...int) *ResourceCreate {
+	_c.mutation.AddPlatformConfigIDs(ids...)
+	return _c
+}
+
+// AddPlatformConfigs adds the "platform_configs" edges to the ResourcePlatformConfig entity.
+func (_c *ResourceCreate) AddPlatformConfigs(v ...*ResourcePlatformConfig) *ResourceCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPlatformConfigIDs(ids...)
 }
 
 // Mutation returns the ResourceMutation object of the builder.
@@ -211,6 +227,22 @@ func (_c *ResourceCreate) createSpec() (*Resource, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.PlatformConfigsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   resource.PlatformConfigsTable,
+			Columns: []string{resource.PlatformConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(resourceplatformconfig.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

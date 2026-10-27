@@ -35,9 +35,11 @@ type Resource struct {
 type ResourceEdges struct {
 	// Versions holds the value of the versions edge.
 	Versions []*Version `json:"versions,omitempty"`
+	// PlatformConfigs holds the value of the platform_configs edge.
+	PlatformConfigs []*ResourcePlatformConfig `json:"platform_configs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // VersionsOrErr returns the Versions value or an error if the edge
@@ -47,6 +49,15 @@ func (e ResourceEdges) VersionsOrErr() ([]*Version, error) {
 		return e.Versions, nil
 	}
 	return nil, &NotLoadedError{edge: "versions"}
+}
+
+// PlatformConfigsOrErr returns the PlatformConfigs value or an error if the edge
+// was not loaded in eager-loading.
+func (e ResourceEdges) PlatformConfigsOrErr() ([]*ResourcePlatformConfig, error) {
+	if e.loadedTypes[1] {
+		return e.PlatformConfigs, nil
+	}
+	return nil, &NotLoadedError{edge: "platform_configs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -119,6 +130,11 @@ func (_m *Resource) Value(name string) (ent.Value, error) {
 // QueryVersions queries the "versions" edge of the Resource entity.
 func (_m *Resource) QueryVersions() *VersionQuery {
 	return NewResourceClient(_m.config).QueryVersions(_m)
+}
+
+// QueryPlatformConfigs queries the "platform_configs" edge of the Resource entity.
+func (_m *Resource) QueryPlatformConfigs() *ResourcePlatformConfigQuery {
+	return NewResourceClient(_m.config).QueryPlatformConfigs(_m)
 }
 
 // Update returns a builder for updating this Resource.

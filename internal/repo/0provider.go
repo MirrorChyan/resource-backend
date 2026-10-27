@@ -8,4 +8,5 @@ var Provider = wire.NewSet(
 	NewResource,
 	NewVersion,
 	NewStorage,
+	NewPlatformConfig,
 )

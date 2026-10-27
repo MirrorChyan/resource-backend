@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Resource is the client for interacting with the Resource builders.
 	Resource *ResourceClient
+	// ResourcePlatformConfig is the client for interacting with the ResourcePlatformConfig builders.
+	ResourcePlatformConfig *ResourcePlatformConfigClient
 	// Storage is the client for interacting with the Storage builders.
 	Storage *StorageClient
 	// Version is the client for interacting with the Version builders.
@@ -150,6 +152,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Resource = NewResourceClient(tx.config)
+	tx.ResourcePlatformConfig = NewResourcePlatformConfigClient(tx.config)
 	tx.Storage = NewStorageClient(tx.config)
 	tx.Version = NewVersionClient(tx.config)
 }

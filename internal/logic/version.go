@@ -203,10 +203,12 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
-	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
+	ut, err := l.resourceLogic.ResolveUpdateType(ctx, resourceId, system, arch)
 	if err != nil {
-		l.logger.Error("Failed to find resource",
+		l.logger.Error("Failed to resolve update type",
 			zap.String("resource id", resourceId),
+			zap.String("os", system),
+			zap.String("arch", arch),
 			zap.Error(err),
 		)
 		return nil, err
@@ -313,10 +315,12 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
-	ut, err := l.resourceLogic.FindUpdateTypeById(ctx, resourceId)
+	ut, err := l.resourceLogic.ResolveUpdateType(ctx, resourceId, system, arch)
 	if err != nil {
-		l.logger.Error("Failed to find resource",
+		l.logger.Error("Failed to resolve update type",
 			zap.String("resource id", resourceId),
+			zap.String("os", system),
+			zap.String("arch", arch),
 			zap.Error(err),
 		)
 		return "", err
@@ -599,6 +603,33 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 		return err
 	}
 
+	// the platform may have been switched to full updates since the task was queued
+	ut, err := l.resourceLogic.ResolveUpdateType(ctx, resourceId, system, arch)
+	if err != nil {
+		return err
+	}
+	if ut == types.UpdateFull {
+		l.logger.Info("platform serves full updates, skip generating incremental update package",
+			zap.String("resource id", resourceId),
+			zap.Int("target version id", target),
+			zap.Int("current version id", current),
+			zap.String("os", system),
+			zap.String("arch", arch),
+		)
+		// no skip flag, so the pair can be queued again once the platform returns to incremental
+		// updates; its generate tag is only shortened, not dropped, so an instance that still
+		// serves the platform incrementally does not queue the pair on every request
+		key := misc.PatchGenerateTagKey(resourceId, target, current, system, arch)
+		if err := l.rdb.Expire(ctx, key, patchRequeueAfterFull).Err(); err != nil {
+			// the tag then just keeps its own expiry
+			l.logger.Warn("failed to shorten generate tag",
+				zap.String("key", key),
+				zap.Error(err),
+			)
+		}
+		return nil
+	}
+
 	// only use package hash and file hash
 	targetInfo, currentInfo, err := l.fetchStorageInfoTuple(ctx, target, current, system, arch)
 	if err != nil {
@@ -647,6 +678,10 @@ const maxPatchSizeRatio = 0.8
 // patchSkipTTL keeps a skip decision; it never changes for a pair, the expiry only
 // drops the flags of target versions that are long gone
 const patchSkipTTL = 30 * 24 * time.Hour
+
+// patchRequeueAfterFull is how soon a pair whose diff task found its platform on full
+// updates can be queued again
+const patchRequeueAfterFull = time.Hour
 
 func patchTooLarge(patchSize, fullSize int64) bool {
 	return fullSize > 0 && float64(patchSize) >= maxPatchSizeRatio*float64(fullSize)
@@ -882,13 +917,6 @@ func (l *VersionLogic) GetMultiLatestVersionInfo(resourceId, os, arch, channel s
 			)
 			return nil, misc.StorageInfoNotFoundError
 		}
-
-		ut, err := l.resourceLogic.FindUpdateTypeById(context.Background(), resourceId)
-		if err != nil {
-			return nil, err
-		}
-		info.ResourceUpdateType = ut
-
 		return info, nil
 	}
 	return nil, errs.ErrResourceNotFound

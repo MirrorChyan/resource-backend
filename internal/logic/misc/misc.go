@@ -52,6 +52,14 @@ func PatchSkipKey(target, current int, os, arch string) string {
 	return strings.Join([]string{PatchSkipPrefix, strconv.Itoa(target), strconv.Itoa(current), os, arch}, ":")
 }
 
+// PatchGenerateTagKey marks the diff task of a target/current version pair as queued
+func PatchGenerateTagKey(resourceId string, target, current int, os, arch string) string {
+	return strings.Join([]string{GenerateTagKey,
+		strings.Join([]string{resourceId, os, arch}, "-"),
+		strconv.Itoa(target), strconv.Itoa(current),
+	}, ":")
+}
+
 // StatusPollingPrefix status polling
 const StatusPollingPrefix = "status:polling"
 

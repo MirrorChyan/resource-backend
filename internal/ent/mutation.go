@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/MirrorChyan/resource-backend/internal/ent/predicate"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
@@ -26,28 +27,32 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeResource = "Resource"
-	TypeStorage  = "Storage"
-	TypeVersion  = "Version"
+	TypeResource               = "Resource"
+	TypeResourcePlatformConfig = "ResourcePlatformConfig"
+	TypeStorage                = "Storage"
+	TypeVersion                = "Version"
 )
 
 // ResourceMutation represents an operation that mutates the Resource nodes in the graph.
 type ResourceMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *string
-	name            *string
-	description     *string
-	created_at      *time.Time
-	update_type     *string
-	clearedFields   map[string]struct{}
-	versions        map[int]struct{}
-	removedversions map[int]struct{}
-	clearedversions bool
-	done            bool
-	oldValue        func(context.Context) (*Resource, error)
-	predicates      []predicate.Resource
+	op                      Op
+	typ                     string
+	id                      *string
+	name                    *string
+	description             *string
+	created_at              *time.Time
+	update_type             *string
+	clearedFields           map[string]struct{}
+	versions                map[int]struct{}
+	removedversions         map[int]struct{}
+	clearedversions         bool
+	platform_configs        map[int]struct{}
+	removedplatform_configs map[int]struct{}
+	clearedplatform_configs bool
+	done                    bool
+	oldValue                func(context.Context) (*Resource, error)
+	predicates              []predicate.Resource
 }
 
 var _ ent.Mutation = (*ResourceMutation)(nil)
@@ -352,6 +357,60 @@ func (m *ResourceMutation) ResetVersions() {
 	m.removedversions = nil
 }
 
+// AddPlatformConfigIDs adds the "platform_configs" edge to the ResourcePlatformConfig entity by ids.
+func (m *ResourceMutation) AddPlatformConfigIDs(ids ...int) {
+	if m.platform_configs == nil {
+		m.platform_configs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.platform_configs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPlatformConfigs clears the "platform_configs" edge to the ResourcePlatformConfig entity.
+func (m *ResourceMutation) ClearPlatformConfigs() {
+	m.clearedplatform_configs = true
+}
+
+// PlatformConfigsCleared reports if the "platform_configs" edge to the ResourcePlatformConfig entity was cleared.
+func (m *ResourceMutation) PlatformConfigsCleared() bool {
+	return m.clearedplatform_configs
+}
+
+// RemovePlatformConfigIDs removes the "platform_configs" edge to the ResourcePlatformConfig entity by IDs.
+func (m *ResourceMutation) RemovePlatformConfigIDs(ids ...int) {
+	if m.removedplatform_configs == nil {
+		m.removedplatform_configs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.platform_configs, ids[i])
+		m.removedplatform_configs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPlatformConfigs returns the removed IDs of the "platform_configs" edge to the ResourcePlatformConfig entity.
+func (m *ResourceMutation) RemovedPlatformConfigsIDs() (ids []int) {
+	for id := range m.removedplatform_configs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PlatformConfigsIDs returns the "platform_configs" edge IDs in the mutation.
+func (m *ResourceMutation) PlatformConfigsIDs() (ids []int) {
+	for id := range m.platform_configs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPlatformConfigs resets all changes to the "platform_configs" edge.
+func (m *ResourceMutation) ResetPlatformConfigs() {
+	m.platform_configs = nil
+	m.clearedplatform_configs = false
+	m.removedplatform_configs = nil
+}
+
 // Where appends a list predicates to the ResourceMutation builder.
 func (m *ResourceMutation) Where(ps ...predicate.Resource) {
 	m.predicates = append(m.predicates, ps...)
@@ -536,9 +595,12 @@ func (m *ResourceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ResourceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.versions != nil {
 		edges = append(edges, resource.EdgeVersions)
+	}
+	if m.platform_configs != nil {
+		edges = append(edges, resource.EdgePlatformConfigs)
 	}
 	return edges
 }
@@ -553,15 +615,24 @@ func (m *ResourceMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case resource.EdgePlatformConfigs:
+		ids := make([]ent.Value, 0, len(m.platform_configs))
+		for id := range m.platform_configs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ResourceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedversions != nil {
 		edges = append(edges, resource.EdgeVersions)
+	}
+	if m.removedplatform_configs != nil {
+		edges = append(edges, resource.EdgePlatformConfigs)
 	}
 	return edges
 }
@@ -576,15 +647,24 @@ func (m *ResourceMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case resource.EdgePlatformConfigs:
+		ids := make([]ent.Value, 0, len(m.removedplatform_configs))
+		for id := range m.removedplatform_configs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ResourceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedversions {
 		edges = append(edges, resource.EdgeVersions)
+	}
+	if m.clearedplatform_configs {
+		edges = append(edges, resource.EdgePlatformConfigs)
 	}
 	return edges
 }
@@ -595,6 +675,8 @@ func (m *ResourceMutation) EdgeCleared(name string) bool {
 	switch name {
 	case resource.EdgeVersions:
 		return m.clearedversions
+	case resource.EdgePlatformConfigs:
+		return m.clearedplatform_configs
 	}
 	return false
 }
@@ -614,8 +696,661 @@ func (m *ResourceMutation) ResetEdge(name string) error {
 	case resource.EdgeVersions:
 		m.ResetVersions()
 		return nil
+	case resource.EdgePlatformConfigs:
+		m.ResetPlatformConfigs()
+		return nil
 	}
 	return fmt.Errorf("unknown Resource edge %s", name)
+}
+
+// ResourcePlatformConfigMutation represents an operation that mutates the ResourcePlatformConfig nodes in the graph.
+type ResourcePlatformConfigMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	os              *string
+	arch            *string
+	update_type     *resourceplatformconfig.UpdateType
+	created_at      *time.Time
+	updated_at      *time.Time
+	clearedFields   map[string]struct{}
+	resource        *string
+	clearedresource bool
+	done            bool
+	oldValue        func(context.Context) (*ResourcePlatformConfig, error)
+	predicates      []predicate.ResourcePlatformConfig
+}
+
+var _ ent.Mutation = (*ResourcePlatformConfigMutation)(nil)
+
+// resourceplatformconfigOption allows management of the mutation configuration using functional options.
+type resourceplatformconfigOption func(*ResourcePlatformConfigMutation)
+
+// newResourcePlatformConfigMutation creates new mutation for the ResourcePlatformConfig entity.
+func newResourcePlatformConfigMutation(c config, op Op, opts ...resourceplatformconfigOption) *ResourcePlatformConfigMutation {
+	m := &ResourcePlatformConfigMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeResourcePlatformConfig,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withResourcePlatformConfigID sets the ID field of the mutation.
+func withResourcePlatformConfigID(id int) resourceplatformconfigOption {
+	return func(m *ResourcePlatformConfigMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ResourcePlatformConfig
+		)
+		m.oldValue = func(ctx context.Context) (*ResourcePlatformConfig, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ResourcePlatformConfig.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withResourcePlatformConfig sets the old ResourcePlatformConfig of the mutation.
+func withResourcePlatformConfig(node *ResourcePlatformConfig) resourceplatformconfigOption {
+	return func(m *ResourcePlatformConfigMutation) {
+		m.oldValue = func(context.Context) (*ResourcePlatformConfig, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ResourcePlatformConfigMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ResourcePlatformConfigMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ResourcePlatformConfigMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ResourcePlatformConfigMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ResourcePlatformConfig.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetResourceID sets the "resource_id" field.
+func (m *ResourcePlatformConfigMutation) SetResourceID(s string) {
+	m.resource = &s
+}
+
+// ResourceID returns the value of the "resource_id" field in the mutation.
+func (m *ResourcePlatformConfigMutation) ResourceID() (r string, exists bool) {
+	v := m.resource
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResourceID returns the old "resource_id" field's value of the ResourcePlatformConfig entity.
+// If the ResourcePlatformConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourcePlatformConfigMutation) OldResourceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResourceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResourceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResourceID: %w", err)
+	}
+	return oldValue.ResourceID, nil
+}
+
+// ResetResourceID resets all changes to the "resource_id" field.
+func (m *ResourcePlatformConfigMutation) ResetResourceID() {
+	m.resource = nil
+}
+
+// SetOs sets the "os" field.
+func (m *ResourcePlatformConfigMutation) SetOs(s string) {
+	m.os = &s
+}
+
+// Os returns the value of the "os" field in the mutation.
+func (m *ResourcePlatformConfigMutation) Os() (r string, exists bool) {
+	v := m.os
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOs returns the old "os" field's value of the ResourcePlatformConfig entity.
+// If the ResourcePlatformConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourcePlatformConfigMutation) OldOs(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOs: %w", err)
+	}
+	return oldValue.Os, nil
+}
+
+// ResetOs resets all changes to the "os" field.
+func (m *ResourcePlatformConfigMutation) ResetOs() {
+	m.os = nil
+}
+
+// SetArch sets the "arch" field.
+func (m *ResourcePlatformConfigMutation) SetArch(s string) {
+	m.arch = &s
+}
+
+// Arch returns the value of the "arch" field in the mutation.
+func (m *ResourcePlatformConfigMutation) Arch() (r string, exists bool) {
+	v := m.arch
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldArch returns the old "arch" field's value of the ResourcePlatformConfig entity.
+// If the ResourcePlatformConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourcePlatformConfigMutation) OldArch(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldArch is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldArch requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldArch: %w", err)
+	}
+	return oldValue.Arch, nil
+}
+
+// ResetArch resets all changes to the "arch" field.
+func (m *ResourcePlatformConfigMutation) ResetArch() {
+	m.arch = nil
+}
+
+// SetUpdateType sets the "update_type" field.
+func (m *ResourcePlatformConfigMutation) SetUpdateType(rt resourceplatformconfig.UpdateType) {
+	m.update_type = &rt
+}
+
+// UpdateType returns the value of the "update_type" field in the mutation.
+func (m *ResourcePlatformConfigMutation) UpdateType() (r resourceplatformconfig.UpdateType, exists bool) {
+	v := m.update_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateType returns the old "update_type" field's value of the ResourcePlatformConfig entity.
+// If the ResourcePlatformConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourcePlatformConfigMutation) OldUpdateType(ctx context.Context) (v resourceplatformconfig.UpdateType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateType: %w", err)
+	}
+	return oldValue.UpdateType, nil
+}
+
+// ResetUpdateType resets all changes to the "update_type" field.
+func (m *ResourcePlatformConfigMutation) ResetUpdateType() {
+	m.update_type = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ResourcePlatformConfigMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ResourcePlatformConfigMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ResourcePlatformConfig entity.
+// If the ResourcePlatformConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourcePlatformConfigMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ResourcePlatformConfigMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ResourcePlatformConfigMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ResourcePlatformConfigMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ResourcePlatformConfig entity.
+// If the ResourcePlatformConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourcePlatformConfigMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ResourcePlatformConfigMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearResource clears the "resource" edge to the Resource entity.
+func (m *ResourcePlatformConfigMutation) ClearResource() {
+	m.clearedresource = true
+	m.clearedFields[resourceplatformconfig.FieldResourceID] = struct{}{}
+}
+
+// ResourceCleared reports if the "resource" edge to the Resource entity was cleared.
+func (m *ResourcePlatformConfigMutation) ResourceCleared() bool {
+	return m.clearedresource
+}
+
+// ResourceIDs returns the "resource" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ResourceID instead. It exists only for internal usage by the builders.
+func (m *ResourcePlatformConfigMutation) ResourceIDs() (ids []string) {
+	if id := m.resource; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetResource resets all changes to the "resource" edge.
+func (m *ResourcePlatformConfigMutation) ResetResource() {
+	m.resource = nil
+	m.clearedresource = false
+}
+
+// Where appends a list predicates to the ResourcePlatformConfigMutation builder.
+func (m *ResourcePlatformConfigMutation) Where(ps ...predicate.ResourcePlatformConfig) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ResourcePlatformConfigMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ResourcePlatformConfigMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ResourcePlatformConfig, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ResourcePlatformConfigMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ResourcePlatformConfigMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ResourcePlatformConfig).
+func (m *ResourcePlatformConfigMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ResourcePlatformConfigMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.resource != nil {
+		fields = append(fields, resourceplatformconfig.FieldResourceID)
+	}
+	if m.os != nil {
+		fields = append(fields, resourceplatformconfig.FieldOs)
+	}
+	if m.arch != nil {
+		fields = append(fields, resourceplatformconfig.FieldArch)
+	}
+	if m.update_type != nil {
+		fields = append(fields, resourceplatformconfig.FieldUpdateType)
+	}
+	if m.created_at != nil {
+		fields = append(fields, resourceplatformconfig.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, resourceplatformconfig.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ResourcePlatformConfigMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case resourceplatformconfig.FieldResourceID:
+		return m.ResourceID()
+	case resourceplatformconfig.FieldOs:
+		return m.Os()
+	case resourceplatformconfig.FieldArch:
+		return m.Arch()
+	case resourceplatformconfig.FieldUpdateType:
+		return m.UpdateType()
+	case resourceplatformconfig.FieldCreatedAt:
+		return m.CreatedAt()
+	case resourceplatformconfig.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ResourcePlatformConfigMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case resourceplatformconfig.FieldResourceID:
+		return m.OldResourceID(ctx)
+	case resourceplatformconfig.FieldOs:
+		return m.OldOs(ctx)
+	case resourceplatformconfig.FieldArch:
+		return m.OldArch(ctx)
+	case resourceplatformconfig.FieldUpdateType:
+		return m.OldUpdateType(ctx)
+	case resourceplatformconfig.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case resourceplatformconfig.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ResourcePlatformConfig field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ResourcePlatformConfigMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case resourceplatformconfig.FieldResourceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResourceID(v)
+		return nil
+	case resourceplatformconfig.FieldOs:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOs(v)
+		return nil
+	case resourceplatformconfig.FieldArch:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetArch(v)
+		return nil
+	case resourceplatformconfig.FieldUpdateType:
+		v, ok := value.(resourceplatformconfig.UpdateType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateType(v)
+		return nil
+	case resourceplatformconfig.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case resourceplatformconfig.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ResourcePlatformConfig field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ResourcePlatformConfigMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ResourcePlatformConfigMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ResourcePlatformConfigMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ResourcePlatformConfig numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ResourcePlatformConfigMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ResourcePlatformConfigMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ResourcePlatformConfigMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ResourcePlatformConfig nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ResourcePlatformConfigMutation) ResetField(name string) error {
+	switch name {
+	case resourceplatformconfig.FieldResourceID:
+		m.ResetResourceID()
+		return nil
+	case resourceplatformconfig.FieldOs:
+		m.ResetOs()
+		return nil
+	case resourceplatformconfig.FieldArch:
+		m.ResetArch()
+		return nil
+	case resourceplatformconfig.FieldUpdateType:
+		m.ResetUpdateType()
+		return nil
+	case resourceplatformconfig.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case resourceplatformconfig.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ResourcePlatformConfig field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ResourcePlatformConfigMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.resource != nil {
+		edges = append(edges, resourceplatformconfig.EdgeResource)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ResourcePlatformConfigMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case resourceplatformconfig.EdgeResource:
+		if id := m.resource; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ResourcePlatformConfigMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ResourcePlatformConfigMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ResourcePlatformConfigMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedresource {
+		edges = append(edges, resourceplatformconfig.EdgeResource)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ResourcePlatformConfigMutation) EdgeCleared(name string) bool {
+	switch name {
+	case resourceplatformconfig.EdgeResource:
+		return m.clearedresource
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ResourcePlatformConfigMutation) ClearEdge(name string) error {
+	switch name {
+	case resourceplatformconfig.EdgeResource:
+		m.ClearResource()
+		return nil
+	}
+	return fmt.Errorf("unknown ResourcePlatformConfig unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ResourcePlatformConfigMutation) ResetEdge(name string) error {
+	switch name {
+	case resourceplatformconfig.EdgeResource:
+		m.ResetResource()
+		return nil
+	}
+	return fmt.Errorf("unknown ResourcePlatformConfig edge %s", name)
 }
 
 // StorageMutation represents an operation that mutates the Storage nodes in the graph.
