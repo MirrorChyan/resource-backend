@@ -192,26 +192,30 @@ func (h *VersionHandler) Register(r fiber.Router) {
 }
 
 func (h *VersionHandler) bindRequiredParams(os, arch, channel *string) error {
-	*os = strings.ToLower(*os)
-	*arch = strings.ToLower(*arch)
+	if err := bindPlatform(os, arch); err != nil {
+		return err
+	}
+
 	*channel = strings.ToLower(*channel)
-	if o, ok := OsMap[*os]; !ok {
-		return errs.ErrResourceInvalidOS
-	} else {
-		*os = o
-	}
-
-	if a, ok := ArchMap[*arch]; !ok {
-		return errs.ErrResourceInvalidArch
-	} else {
-		*arch = a
-	}
-
 	if c, ok := ChannelMap[*channel]; !ok {
 		return errs.ErrResourceInvalidChannel
 	} else {
 		*channel = c
 	}
+	return nil
+}
+
+// bindPlatform normalizes os and arch to the values packages are stored under.
+func bindPlatform(os, arch *string) error {
+	o, ok := OsMap[strings.ToLower(*os)]
+	if !ok {
+		return errs.ErrResourceInvalidOS
+	}
+	a, ok := ArchMap[strings.ToLower(*arch)]
+	if !ok {
+		return errs.ErrResourceInvalidArch
+	}
+	*os, *arch = o, a
 	return nil
 }
 

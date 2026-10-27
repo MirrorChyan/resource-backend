@@ -9,6 +9,9 @@ import (
 // Resource is the predicate function for resource builders.
 type Resource func(*sql.Selector)
 
+// ResourcePlatformConfig is the predicate function for resourceplatformconfig builders.
+type ResourcePlatformConfig func(*sql.Selector)
+
 // Storage is the predicate function for storage builders.
 type Storage func(*sql.Selector)
 

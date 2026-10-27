@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 )
 
@@ -74,6 +76,19 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 			storage.Arch(arch),
 		).
 		Only(ctx)
+}
+
+// ListPlatforms returns the platforms the resource has full packages stored for.
+func (r *Storage) ListPlatforms(ctx context.Context, rid string) ([]model.Platform, error) {
+	var platforms []model.Platform
+	err := r.db.Storage.Query().
+		Where(
+			storage.HasVersionWith(version.HasResourceWith(resource.ID(rid))),
+			storage.UpdateTypeEQ(storage.UpdateTypeFull),
+		).
+		GroupBy(storage.FieldOs, storage.FieldArch).
+		Scan(ctx, &platforms)
+	return platforms, err
 }
 
 func (r *Storage) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {

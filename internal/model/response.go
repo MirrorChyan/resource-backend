@@ -54,6 +54,8 @@ type ResourceItem struct {
 	Description string    `json:"description"`
 	UpdateType  string    `json:"update_type"`
 	CreatedAt   time.Time `json:"created_at"`
+	// PlatformOverrideCount is the number of platforms that have their own update type
+	PlatformOverrideCount int `json:"platform_override_count"`
 }
 
 // ResourceDetailData is the admin resource detail payload.
@@ -69,4 +71,43 @@ type VersionItem struct {
 	Name      string    `json:"name"`
 	Number    uint64    `json:"number"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+const (
+	// PlatformSourceOverride marks a platform that has its own update type.
+	PlatformSourceOverride = "override"
+	// PlatformSourceInherit marks a platform that uses the update type of its resource.
+	PlatformSourceInherit = "inherit"
+)
+
+// PlatformUpdateTypeItem is the update type in effect for one platform of a resource.
+type PlatformUpdateTypeItem struct {
+	OS   string `json:"os"`
+	Arch string `json:"arch"`
+	PlatformUpdateTypeState
+	// HasStorage tells whether packages have been uploaded for the platform
+	HasStorage bool `json:"has_storage"`
+	// UpdatedAt is when the platform's own update type was last set, absent when it has none
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+}
+
+// PlatformUpdateTypesData lists the platforms of a resource: the ones packages have been
+// uploaded for and the ones given their own update type.
+type PlatformUpdateTypesData struct {
+	DefaultUpdateType string                   `json:"default_update_type"`
+	Platforms         []PlatformUpdateTypeItem `json:"platforms"`
+}
+
+// PlatformUpdateTypeState is the update type in effect for a platform and where it comes from.
+type PlatformUpdateTypeState struct {
+	UpdateType string `json:"update_type"`
+	Source     string `json:"source"`
+}
+
+// PlatformUpdateTypeChangeData is the update type of a platform before and after a change.
+type PlatformUpdateTypeChangeData struct {
+	OS     string                  `json:"os"`
+	Arch   string                  `json:"arch"`
+	Before PlatformUpdateTypeState `json:"before"`
+	After  PlatformUpdateTypeState `json:"after"`
 }

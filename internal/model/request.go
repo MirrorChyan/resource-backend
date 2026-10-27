@@ -59,3 +59,12 @@ type ListVersionsRequest struct {
 	PageSize int    `query:"page_size"`
 	Channel  string `query:"channel"`
 }
+
+// SetPlatformUpdateTypeRequest is the body of the admin endpoint that gives a platform
+// of a resource its own update type. os and arch must be given, "" included: "" names
+// the platform-independent package, so a missing one must not default to it.
+type SetPlatformUpdateTypeRequest struct {
+	OS         *string `json:"os" validate:"required"`
+	Arch       *string `json:"arch" validate:"required"`
+	UpdateType string  `json:"update_type" validate:"required,oneof=full incremental"`
+}

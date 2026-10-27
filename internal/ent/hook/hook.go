@@ -21,6 +21,18 @@ func (f ResourceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ResourceMutation", m)
 }
 
+// The ResourcePlatformConfigFunc type is an adapter to allow the use of ordinary
+// function as ResourcePlatformConfig mutator.
+type ResourcePlatformConfigFunc func(context.Context, *ent.ResourcePlatformConfigMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ResourcePlatformConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ResourcePlatformConfigMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ResourcePlatformConfigMutation", m)
+}
+
 // The StorageFunc type is an adapter to allow the use of ordinary
 // function as Storage mutator.
 type StorageFunc func(context.Context, *ent.StorageMutation) (ent.Value, error)

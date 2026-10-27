@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -42,16 +41,15 @@ func newPatchTestLogic(t *testing.T) (*VersionLogic, *ent.Client) {
 		_ = rdb.Close()
 	})
 	dir := t.TempDir()
+	cg := newTestCacheGroup()
 	return &VersionLogic{
 		logger:      zap.NewNop(),
 		repo:        r,
 		versionRepo: repo.NewVersion(r),
 		rdb:         rdb,
 		taskQueue:   &tasks.TaskQueue{Client: queue},
-		cacheGroup: &cache.MultiCacheGroup{
-			VersionNameIdCache:         cache.NewCache[string, int](-1),
-			IncrementalUpdateInfoCache: cache.NewCache[string, *model.IncrementalUpdateInfo](time.Hour),
-		},
+		cacheGroup:  cg,
+		resourceLogic: newTestResourceLogic(r, rdb, cg),
 		storageLogic: &StorageLogic{
 			logger:      zap.NewNop(),
 			storageRepo: repo.NewStorage(r),
@@ -343,10 +341,9 @@ func TestUpdateRequestHonorsSkipFlag(t *testing.T) {
 				ResourceId:         p.ResourceId,
 				CurrentVersionName: "v1",
 				TargetVersionInfo: &model.LatestVersionInfo{
-					ResourceUpdateType: types.UpdateIncremental,
-					VersionId:          p.TargetVersionId,
-					PackagePath:        sql.NullString{String: p.TargetOriginPackage, Valid: true},
-					FileSize:           p.TargetFileSize,
+					VersionId:   p.TargetVersionId,
+					PackagePath: sql.NullString{String: p.TargetOriginPackage, Valid: true},
+					FileSize:    p.TargetFileSize,
 				},
 			})
 			require.NoError(t, err)
@@ -356,6 +353,68 @@ func TestUpdateRequestHonorsSkipFlag(t *testing.T) {
 			generated, err := f.l.rdb.Keys(ctx, misc.GenerateTagKey+":*").Result()
 			require.NoError(t, err)
 			if flagged {
+				require.Empty(t, generated)
+			} else {
+				require.Len(t, generated, 1)
+			}
+		})
+	}
+}
+
+// A platform switched to full updates after the diff task was queued gets no patch, and is
+// not flagged either: the pair can be queued again soon, once it returns to incremental updates.
+func TestPatchNotGeneratedForFullPlatform(t *testing.T) {
+	ctx := context.Background()
+	files, current := smallChangeFiles(t)
+	f := newPatchFixture(t, types.Zip, files, current)
+	p := f.param
+	tag := misc.PatchGenerateTagKey(p.ResourceId, p.TargetVersionId, p.CurrentVersionId, p.OS, p.Arch)
+	require.NoError(t, f.l.rdb.Set(ctx, tag, 1, 168*time.Hour).Err())
+	_, err := f.l.resourceLogic.SetPlatformUpdateType(ctx, p.ResourceId, p.OS, p.Arch, types.UpdateFull)
+	require.NoError(t, err)
+
+	require.NoError(t, f.l.GenerateIncrementalPackage(ctx, p.ResourceId, p.TargetVersionId, p.CurrentVersionId, p.OS, p.Arch))
+
+	require.Empty(t, f.ossPatches(t))
+	require.Empty(t, f.incrementalStorages(t))
+	require.False(t, f.skipFlagged(t))
+	ttl, err := f.l.rdb.TTL(ctx, tag).Result()
+	require.NoError(t, err)
+	require.Positive(t, ttl)
+	require.LessOrEqual(t, ttl, patchRequeueAfterFull)
+}
+
+// The update type served follows the platform of the target version, not just its resource.
+func TestUpdateInfoFollowsPlatformUpdateType(t *testing.T) {
+	for _, own := range []types.Update{"", types.UpdateFull} {
+		t.Run("own="+own.String(), func(t *testing.T) {
+			ctx := context.Background()
+			f := newPatchFixture(t, types.Zip, map[string][]byte{"a.txt": []byte("a")}, nil)
+			p := f.param
+			if own != "" {
+				_, err := f.l.resourceLogic.SetPlatformUpdateType(ctx, p.ResourceId, p.OS, p.Arch, own)
+				require.NoError(t, err)
+			}
+
+			result, err := f.l.GetUpdateInfo(ctx, model.UpdateRequestParam{
+				ResourceId:         p.ResourceId,
+				CurrentVersionName: "v1",
+				TargetVersionInfo: &model.LatestVersionInfo{
+					VersionId:   p.TargetVersionId,
+					OS:          p.OS,
+					Arch:        p.Arch,
+					PackagePath: sql.NullString{String: p.TargetOriginPackage, Valid: true},
+					FileSize:    p.TargetFileSize,
+				},
+			})
+			require.NoError(t, err)
+			// no patch is stored yet, so either way the full package is served
+			require.Equal(t, types.UpdateFull.String(), result.UpdateType)
+
+			// only a platform on incremental updates queues the diff task
+			generated, err := f.l.rdb.Keys(ctx, misc.GenerateTagKey+":*").Result()
+			require.NoError(t, err)
+			if own == types.UpdateFull {
 				require.Empty(t, generated)
 			} else {
 				require.Len(t, generated, 1)

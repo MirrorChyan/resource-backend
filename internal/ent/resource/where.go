@@ -343,6 +343,29 @@ func HasVersionsWith(preds ...predicate.Version) predicate.Resource {
 	})
 }
 
+// HasPlatformConfigs applies the HasEdge predicate on the "platform_configs" edge.
+func HasPlatformConfigs() predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PlatformConfigsTable, PlatformConfigsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPlatformConfigsWith applies the HasEdge predicate on the "platform_configs" edge with a given conditions (other predicates).
+func HasPlatformConfigsWith(preds ...predicate.ResourcePlatformConfig) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		step := newPlatformConfigsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Resource) predicate.Resource {
 	return predicate.Resource(sql.AndPredicates(predicates...))

@@ -14,17 +14,19 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/predicate"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
 // ResourceQuery is the builder for querying Resource entities.
 type ResourceQuery struct {
 	config
-	ctx          *QueryContext
-	order        []resource.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.Resource
-	withVersions *VersionQuery
+	ctx                 *QueryContext
+	order               []resource.OrderOption
+	inters              []Interceptor
+	predicates          []predicate.Resource
+	withVersions        *VersionQuery
+	withPlatformConfigs *ResourcePlatformConfigQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +78,28 @@ func (_q *ResourceQuery) QueryVersions() *VersionQuery {
 			sqlgraph.From(resource.Table, resource.FieldID, selector),
 			sqlgraph.To(version.Table, version.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, resource.VersionsTable, resource.VersionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPlatformConfigs chains the current query on the "platform_configs" edge.
+func (_q *ResourceQuery) QueryPlatformConfigs() *ResourcePlatformConfigQuery {
+	query := (&ResourcePlatformConfigClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(resource.Table, resource.FieldID, selector),
+			sqlgraph.To(resourceplatformconfig.Table, resourceplatformconfig.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, resource.PlatformConfigsTable, resource.PlatformConfigsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -270,12 +294,13 @@ func (_q *ResourceQuery) Clone() *ResourceQuery {
 		return nil
 	}
 	return &ResourceQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]resource.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.Resource{}, _q.predicates...),
-		withVersions: _q.withVersions.Clone(),
+		config:              _q.config,
+		ctx:                 _q.ctx.Clone(),
+		order:               append([]resource.OrderOption{}, _q.order...),
+		inters:              append([]Interceptor{}, _q.inters...),
+		predicates:          append([]predicate.Resource{}, _q.predicates...),
+		withVersions:        _q.withVersions.Clone(),
+		withPlatformConfigs: _q.withPlatformConfigs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -290,6 +315,17 @@ func (_q *ResourceQuery) WithVersions(opts ...func(*VersionQuery)) *ResourceQuer
 		opt(query)
 	}
 	_q.withVersions = query
+	return _q
+}
+
+// WithPlatformConfigs tells the query-builder to eager-load the nodes that are connected to
+// the "platform_configs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ResourceQuery) WithPlatformConfigs(opts ...func(*ResourcePlatformConfigQuery)) *ResourceQuery {
+	query := (&ResourcePlatformConfigClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPlatformConfigs = query
 	return _q
 }
 
@@ -371,8 +407,9 @@ func (_q *ResourceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Res
 	var (
 		nodes       = []*Resource{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withVersions != nil,
+			_q.withPlatformConfigs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -397,6 +434,15 @@ func (_q *ResourceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Res
 		if err := _q.loadVersions(ctx, query, nodes,
 			func(n *Resource) { n.Edges.Versions = []*Version{} },
 			func(n *Resource, e *Version) { n.Edges.Versions = append(n.Edges.Versions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withPlatformConfigs; query != nil {
+		if err := _q.loadPlatformConfigs(ctx, query, nodes,
+			func(n *Resource) { n.Edges.PlatformConfigs = []*ResourcePlatformConfig{} },
+			func(n *Resource, e *ResourcePlatformConfig) {
+				n.Edges.PlatformConfigs = append(n.Edges.PlatformConfigs, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -429,6 +475,36 @@ func (_q *ResourceQuery) loadVersions(ctx context.Context, query *VersionQuery, 
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "resource_versions" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ResourceQuery) loadPlatformConfigs(ctx context.Context, query *ResourcePlatformConfigQuery, nodes []*Resource, init func(*Resource), assign func(*Resource, *ResourcePlatformConfig)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Resource)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(resourceplatformconfig.FieldResourceID)
+	}
+	query.Where(predicate.ResourcePlatformConfig(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(resource.PlatformConfigsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ResourceID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "resource_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

@@ -22,6 +22,37 @@ var (
 		Columns:    ResourcesColumns,
 		PrimaryKey: []*schema.Column{ResourcesColumns[0]},
 	}
+	// ResourcePlatformConfigsColumns holds the columns for the "resource_platform_configs" table.
+	ResourcePlatformConfigsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "os", Type: field.TypeString, Size: 32, Default: ""},
+		{Name: "arch", Type: field.TypeString, Size: 32, Default: ""},
+		{Name: "update_type", Type: field.TypeEnum, Enums: []string{"full", "incremental"}},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "resource_id", Type: field.TypeString},
+	}
+	// ResourcePlatformConfigsTable holds the schema information for the "resource_platform_configs" table.
+	ResourcePlatformConfigsTable = &schema.Table{
+		Name:       "resource_platform_configs",
+		Columns:    ResourcePlatformConfigsColumns,
+		PrimaryKey: []*schema.Column{ResourcePlatformConfigsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "resource_platform_configs_resources_platform_configs",
+				Columns:    []*schema.Column{ResourcePlatformConfigsColumns[6]},
+				RefColumns: []*schema.Column{ResourcesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "resourceplatformconfig_resource_id_os_arch",
+				Unique:  true,
+				Columns: []*schema.Column{ResourcePlatformConfigsColumns[6], ResourcePlatformConfigsColumns[1], ResourcePlatformConfigsColumns[2]},
+			},
+		},
+	}
 	// StoragesColumns holds the columns for the "storages" table.
 	StoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -92,12 +123,14 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ResourcesTable,
+		ResourcePlatformConfigsTable,
 		StoragesTable,
 		VersionsTable,
 	}
 )
 
 func init() {
+	ResourcePlatformConfigsTable.ForeignKeys[0].RefTable = ResourcesTable
 	StoragesTable.ForeignKeys[0].RefTable = VersionsTable
 	StoragesTable.ForeignKeys[1].RefTable = VersionsTable
 	VersionsTable.ForeignKeys[0].RefTable = ResourcesTable

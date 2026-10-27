@@ -16,6 +16,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
@@ -27,6 +28,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Resource is the client for interacting with the Resource builders.
 	Resource *ResourceClient
+	// ResourcePlatformConfig is the client for interacting with the ResourcePlatformConfig builders.
+	ResourcePlatformConfig *ResourcePlatformConfigClient
 	// Storage is the client for interacting with the Storage builders.
 	Storage *StorageClient
 	// Version is the client for interacting with the Version builders.
@@ -43,6 +46,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Resource = NewResourceClient(c.config)
+	c.ResourcePlatformConfig = NewResourcePlatformConfigClient(c.config)
 	c.Storage = NewStorageClient(c.config)
 	c.Version = NewVersionClient(c.config)
 }
@@ -135,11 +139,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Resource: NewResourceClient(cfg),
-		Storage:  NewStorageClient(cfg),
-		Version:  NewVersionClient(cfg),
+		ctx:                    ctx,
+		config:                 cfg,
+		Resource:               NewResourceClient(cfg),
+		ResourcePlatformConfig: NewResourcePlatformConfigClient(cfg),
+		Storage:                NewStorageClient(cfg),
+		Version:                NewVersionClient(cfg),
 	}, nil
 }
 
@@ -157,11 +162,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Resource: NewResourceClient(cfg),
-		Storage:  NewStorageClient(cfg),
-		Version:  NewVersionClient(cfg),
+		ctx:                    ctx,
+		config:                 cfg,
+		Resource:               NewResourceClient(cfg),
+		ResourcePlatformConfig: NewResourcePlatformConfigClient(cfg),
+		Storage:                NewStorageClient(cfg),
+		Version:                NewVersionClient(cfg),
 	}, nil
 }
 
@@ -191,6 +197,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Resource.Use(hooks...)
+	c.ResourcePlatformConfig.Use(hooks...)
 	c.Storage.Use(hooks...)
 	c.Version.Use(hooks...)
 }
@@ -199,6 +206,7 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Resource.Intercept(interceptors...)
+	c.ResourcePlatformConfig.Intercept(interceptors...)
 	c.Storage.Intercept(interceptors...)
 	c.Version.Intercept(interceptors...)
 }
@@ -208,6 +216,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *ResourceMutation:
 		return c.Resource.mutate(ctx, m)
+	case *ResourcePlatformConfigMutation:
+		return c.ResourcePlatformConfig.mutate(ctx, m)
 	case *StorageMutation:
 		return c.Storage.mutate(ctx, m)
 	case *VersionMutation:
@@ -341,6 +351,22 @@ func (c *ResourceClient) QueryVersions(_m *Resource) *VersionQuery {
 	return query
 }
 
+// QueryPlatformConfigs queries the platform_configs edge of a Resource.
+func (c *ResourceClient) QueryPlatformConfigs(_m *Resource) *ResourcePlatformConfigQuery {
+	query := (&ResourcePlatformConfigClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(resource.Table, resource.FieldID, id),
+			sqlgraph.To(resourceplatformconfig.Table, resourceplatformconfig.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, resource.PlatformConfigsTable, resource.PlatformConfigsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ResourceClient) Hooks() []Hook {
 	return c.hooks.Resource
@@ -363,6 +389,155 @@ func (c *ResourceClient) mutate(ctx context.Context, m *ResourceMutation) (Value
 		return (&ResourceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Resource mutation op: %q", m.Op())
+	}
+}
+
+// ResourcePlatformConfigClient is a client for the ResourcePlatformConfig schema.
+type ResourcePlatformConfigClient struct {
+	config
+}
+
+// NewResourcePlatformConfigClient returns a client for the ResourcePlatformConfig from the given config.
+func NewResourcePlatformConfigClient(c config) *ResourcePlatformConfigClient {
+	return &ResourcePlatformConfigClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `resourceplatformconfig.Hooks(f(g(h())))`.
+func (c *ResourcePlatformConfigClient) Use(hooks ...Hook) {
+	c.hooks.ResourcePlatformConfig = append(c.hooks.ResourcePlatformConfig, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `resourceplatformconfig.Intercept(f(g(h())))`.
+func (c *ResourcePlatformConfigClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ResourcePlatformConfig = append(c.inters.ResourcePlatformConfig, interceptors...)
+}
+
+// Create returns a builder for creating a ResourcePlatformConfig entity.
+func (c *ResourcePlatformConfigClient) Create() *ResourcePlatformConfigCreate {
+	mutation := newResourcePlatformConfigMutation(c.config, OpCreate)
+	return &ResourcePlatformConfigCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ResourcePlatformConfig entities.
+func (c *ResourcePlatformConfigClient) CreateBulk(builders ...*ResourcePlatformConfigCreate) *ResourcePlatformConfigCreateBulk {
+	return &ResourcePlatformConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ResourcePlatformConfigClient) MapCreateBulk(slice any, setFunc func(*ResourcePlatformConfigCreate, int)) *ResourcePlatformConfigCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ResourcePlatformConfigCreateBulk{err: fmt.Errorf("calling to ResourcePlatformConfigClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ResourcePlatformConfigCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ResourcePlatformConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ResourcePlatformConfig.
+func (c *ResourcePlatformConfigClient) Update() *ResourcePlatformConfigUpdate {
+	mutation := newResourcePlatformConfigMutation(c.config, OpUpdate)
+	return &ResourcePlatformConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ResourcePlatformConfigClient) UpdateOne(_m *ResourcePlatformConfig) *ResourcePlatformConfigUpdateOne {
+	mutation := newResourcePlatformConfigMutation(c.config, OpUpdateOne, withResourcePlatformConfig(_m))
+	return &ResourcePlatformConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ResourcePlatformConfigClient) UpdateOneID(id int) *ResourcePlatformConfigUpdateOne {
+	mutation := newResourcePlatformConfigMutation(c.config, OpUpdateOne, withResourcePlatformConfigID(id))
+	return &ResourcePlatformConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ResourcePlatformConfig.
+func (c *ResourcePlatformConfigClient) Delete() *ResourcePlatformConfigDelete {
+	mutation := newResourcePlatformConfigMutation(c.config, OpDelete)
+	return &ResourcePlatformConfigDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ResourcePlatformConfigClient) DeleteOne(_m *ResourcePlatformConfig) *ResourcePlatformConfigDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ResourcePlatformConfigClient) DeleteOneID(id int) *ResourcePlatformConfigDeleteOne {
+	builder := c.Delete().Where(resourceplatformconfig.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ResourcePlatformConfigDeleteOne{builder}
+}
+
+// Query returns a query builder for ResourcePlatformConfig.
+func (c *ResourcePlatformConfigClient) Query() *ResourcePlatformConfigQuery {
+	return &ResourcePlatformConfigQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeResourcePlatformConfig},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ResourcePlatformConfig entity by its id.
+func (c *ResourcePlatformConfigClient) Get(ctx context.Context, id int) (*ResourcePlatformConfig, error) {
+	return c.Query().Where(resourceplatformconfig.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ResourcePlatformConfigClient) GetX(ctx context.Context, id int) *ResourcePlatformConfig {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryResource queries the resource edge of a ResourcePlatformConfig.
+func (c *ResourcePlatformConfigClient) QueryResource(_m *ResourcePlatformConfig) *ResourceQuery {
+	query := (&ResourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(resourceplatformconfig.Table, resourceplatformconfig.FieldID, id),
+			sqlgraph.To(resource.Table, resource.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, resourceplatformconfig.ResourceTable, resourceplatformconfig.ResourceColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ResourcePlatformConfigClient) Hooks() []Hook {
+	return c.hooks.ResourcePlatformConfig
+}
+
+// Interceptors returns the client interceptors.
+func (c *ResourcePlatformConfigClient) Interceptors() []Interceptor {
+	return c.inters.ResourcePlatformConfig
+}
+
+func (c *ResourcePlatformConfigClient) mutate(ctx context.Context, m *ResourcePlatformConfigMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ResourcePlatformConfigCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ResourcePlatformConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ResourcePlatformConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ResourcePlatformConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ResourcePlatformConfig mutation op: %q", m.Op())
 	}
 }
 
@@ -699,9 +874,9 @@ func (c *VersionClient) mutate(ctx context.Context, m *VersionMutation) (Value, 
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Resource, Storage, Version []ent.Hook
+		Resource, ResourcePlatformConfig, Storage, Version []ent.Hook
 	}
 	inters struct {
-		Resource, Storage, Version []ent.Interceptor
+		Resource, ResourcePlatformConfig, Storage, Version []ent.Interceptor
 	}
 )
