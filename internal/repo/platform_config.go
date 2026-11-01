@@ -40,18 +40,27 @@ func (r *PlatformConfig) Get(ctx context.Context, rid, os, arch string) (*ent.Re
 		Only(ctx)
 }
 
-// InitUpdateType creates a platform setting without replacing an existing one,
-// including one set by an admin or another upload since the caller checked.
-func (r *PlatformConfig) InitUpdateType(ctx context.Context, rid, os, arch string, t types.Update) (*ent.ResourcePlatformConfig, error) {
-	row, err := r.db.ResourcePlatformConfig.Create().
-		SetResourceID(rid).
-		SetOs(os).
-		SetArch(arch).
-		SetUpdateType(resourceplatformconfig.UpdateType(t)).
-		Save(ctx)
-	if sqlgraph.IsUniqueConstraintError(err) {
-		return r.Get(ctx, rid, os, arch)
-	}
+// InitUpdateType keeps a new setting uncommitted until submit succeeds, so an
+// enqueue failure rolls it back before another upload can adopt it. An existing
+// setting is never replaced, including one set since the caller checked.
+func (r *PlatformConfig) InitUpdateType(ctx context.Context, rid, os, arch string, t types.Update, submit func(types.Update) error) (*ent.ResourcePlatformConfig, error) {
+	var row *ent.ResourcePlatformConfig
+	err := r.WithTx(ctx, func(tx *ent.Tx) error {
+		var err error
+		row, err = tx.ResourcePlatformConfig.Create().
+			SetResourceID(rid).
+			SetOs(os).
+			SetArch(arch).
+			SetUpdateType(resourceplatformconfig.UpdateType(t)).
+			Save(ctx)
+		if sqlgraph.IsUniqueConstraintError(err) {
+			row, err = tx.ResourcePlatformConfig.Query().Where(platformOf(rid, os, arch)...).Only(ctx)
+		}
+		if err != nil {
+			return err
+		}
+		return submit(types.Update(row.UpdateType))
+	})
 	return row, err
 }
 

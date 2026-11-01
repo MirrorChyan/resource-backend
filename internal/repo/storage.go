@@ -82,7 +82,6 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 func (r *Storage) HasPlatform(ctx context.Context, rid, os, arch string) (bool, error) {
 	return r.db.Storage.Query().Where(
 		storage.HasVersionWith(version.HasResourceWith(resource.ID(rid))),
-		storage.UpdateTypeEQ(storage.UpdateTypeFull),
 		storage.Os(os),
 		storage.Arch(arch),
 	).Exist(ctx)

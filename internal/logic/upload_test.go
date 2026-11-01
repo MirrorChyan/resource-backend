@@ -2,17 +2,22 @@ package logic
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bytedance/sonic"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
+	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -101,10 +106,7 @@ func TestUploadPlatformUpdateType(t *testing.T) {
 				require.Equal(t, before, client.ResourcePlatformConfig.Query().CountX(ctx))
 			}
 
-			inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: l.rdb.Options().Addr})
-			t.Cleanup(func() { _ = inspector.Close() })
-			queued, err := inspector.ListPendingTasks("default")
-			require.NoError(t, err)
+			queued := pendingUploads(t, l)
 			require.Len(t, queued, 1)
 			var payload model.StorageInfoCreatePayload
 			require.NoError(t, sonic.Unmarshal(queued[0].Payload, &payload))
@@ -138,6 +140,149 @@ func TestUploadPlatformUpdateType(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "other.zip", next.Name)
 			}
+		})
+	}
+}
+
+func pendingUploads(t *testing.T, l *VersionLogic) []*asynq.TaskInfo {
+	t.Helper()
+	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: l.rdb.Options().Addr})
+	t.Cleanup(func() { _ = inspector.Close() })
+	queued, err := inspector.ListPendingTasks("default")
+	require.NoError(t, err)
+	return queued
+}
+
+func TestQueuedUploadsKeepAcceptedMode(t *testing.T) {
+	ctx := context.Background()
+	l, client := newPatchTestLogic(t)
+	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
+	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](-1)
+	client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+	first := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+	second := client.Version.Create().SetResourceID("res").SetName("v2").SetNumber(2).SaveX(ctx)
+	require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(l.storageLogic.OSSDir, "app.apk"), []byte("installer"), 0o644))
+	param := model.CreateVersionCallBackParam{ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: "app.apk"}
+	_, err := l.ProcessCreateVersionCallback(ctx, param)
+	require.NoError(t, err)
+	require.Zero(t, client.Storage.Query().CountX(ctx), "the worker has not run yet")
+	mode, initialize, err := l.resourceLogic.resolveUploadUpdateType(ctx, "res", param.OS, param.Arch, "next.zip")
+	require.NoError(t, err)
+	require.False(t, initialize)
+	require.Equal(t, types.UpdateFull, mode, "a queued upload already determines the platform mode")
+
+	// The second upload must keep full processing, even before the first worker runs.
+	require.NoError(t, os.WriteFile(filepath.Join(l.storageLogic.OSSDir, "next.zip"), []byte("opaque full package"), 0o644))
+	param.Name, param.Key = "v2", "next.zip"
+	_, err = l.ProcessCreateVersionCallback(ctx, param)
+	require.NoError(t, err)
+	queued := pendingUploads(t, l)
+	require.Len(t, queued, 2)
+	// Changing the platform now controls future callbacks and serving, not the format
+	// of already accepted packages (an APK cannot be retroactively made incremental).
+	_, err = l.resourceLogic.SetPlatformUpdateType(ctx, "res", param.OS, param.Arch, types.UpdateIncremental)
+	require.NoError(t, err)
+	for _, task := range queued {
+		var payload model.StorageInfoCreatePayload
+		require.NoError(t, sonic.Unmarshal(task.Payload, &payload))
+		require.Empty(t, payload.IncrementalType)
+		require.NoError(t, doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(task.Type, task.Payload)))
+	}
+	// The existing missing-hash guard skips patches and serves full packages safely.
+	target, err := l.storageLogic.GetFullUpdateStorage(ctx, second.ID, param.OS, param.Arch)
+	require.NoError(t, err)
+	require.Empty(t, target.FileHashes)
+	require.NoError(t, l.GenerateIncrementalPackage(ctx, "res", second.ID, first.ID, param.OS, param.Arch))
+	got, err := l.doProcessUpdateRequest(ctx, model.UpdateRequestParam{
+		ResourceId: "res", CurrentVersionName: "v1",
+		TargetVersionInfo: &model.LatestVersionInfo{
+			VersionId: second.ID, OS: param.OS, Arch: param.Arch,
+			PackagePath: sql.NullString{String: target.PackagePath, Valid: true},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, types.UpdateFull.String(), got.UpdateType)
+	require.Equal(t, target.PackagePath, got.PackagePath)
+}
+
+func TestOnlyPatchHistoryStillCountsAsPriorUpload(t *testing.T) {
+	ctx := context.Background()
+	l, client, _ := newResourceTestLogic(t)
+	client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+	v1 := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+	v2 := client.Version.Create().SetResourceID("res").SetName("v2").SetNumber(2).SaveX(ctx)
+	client.Storage.Create().SetVersion(v2).SetOldVersion(v1).SetOs("android").SetArch("arm64").
+		SetUpdateType(storage.UpdateTypeIncremental).SaveX(ctx)
+	got, initialize, err := l.resolveUploadUpdateType(ctx, "res", "android", "arm64", "app.apk")
+	require.NoError(t, err)
+	require.False(t, initialize)
+	require.Equal(t, types.UpdateIncremental, got)
+	// History is scoped to the resource and the exact os/arch tuple.
+	client.Resource.Create().SetID("other").SetName("other").SetDescription("").SaveX(ctx)
+	got, initialize, err = l.resolveUploadUpdateType(ctx, "other", "android", "arm64", "app.apk")
+	require.NoError(t, err)
+	require.True(t, initialize)
+	require.Equal(t, types.UpdateFull, got)
+}
+
+// Fail just the status SET while allowing the pending marker and cleanup to work.
+type failStatusWrite struct{ enabled bool }
+
+func (h *failStatusWrite) DialHook(next redis.DialHook) redis.DialHook { return next }
+func (h *failStatusWrite) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+func (h *failStatusWrite) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		if h.enabled && cmd.Name() == "set" {
+			key, _ := cmd.Args()[1].(string)
+			if strings.HasPrefix(key, misc.StatusPollingPrefix+":") {
+				return errors.New("injected status write failure")
+			}
+		}
+		return next(ctx, cmd)
+	}
+}
+
+func TestFailedSubmissionDoesNotPinPlatform(t *testing.T) {
+	for _, failure := range []string{"status write", "enqueue"} {
+		t.Run(failure, func(t *testing.T) {
+			ctx := context.Background()
+			l, client := newPatchTestLogic(t)
+			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+			client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+			files := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(files, "app.txt"), []byte("data"), 0o644))
+			require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))
+			require.NoError(t, archiver.CompressToZip(files, filepath.Join(l.storageLogic.OSSDir, "app.zip")))
+			hook := &failStatusWrite{enabled: failure == "status write"}
+			l.rdb.AddHook(hook)
+			if failure == "enqueue" {
+				require.NoError(t, l.taskQueue.Close())
+			}
+			param := model.CreateVersionCallBackParam{ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: "app.zip"}
+			_, err := l.ProcessCreateVersionCallback(ctx, param)
+			require.Error(t, err)
+			require.Zero(t, client.ResourcePlatformConfig.Query().CountX(ctx))
+			keys, err := l.rdb.Keys(ctx, "*").Result()
+			require.NoError(t, err)
+			require.Empty(t, keys, "failed submissions must remove pending/polling markers")
+
+			hook.enabled = false
+			if failure == "enqueue" {
+				queue := asynq.NewClient(asynq.RedisClientOpt{Addr: l.rdb.Options().Addr})
+				t.Cleanup(func() { _ = queue.Close() })
+				l.taskQueue.Client = queue
+			}
+			// A different-format retry is free to choose full mode.
+			require.NoError(t, os.WriteFile(filepath.Join(l.storageLogic.OSSDir, "app.apk"), []byte("installer"), 0o644))
+			param.Key = "app.apk"
+			_, err = l.ProcessCreateVersionCallback(ctx, param)
+			require.NoError(t, err)
+			got, err := l.resourceLogic.ResolveUpdateType(ctx, "res", param.OS, param.Arch)
+			require.NoError(t, err)
+			require.Equal(t, types.UpdateFull, got)
 		})
 	}
 }
@@ -177,10 +322,21 @@ func TestUploadInitializationPreservesConcurrentSetting(t *testing.T) {
 	// An admin or another upload sets the platform after inference, before saving.
 	_, err = l.SetPlatformUpdateType(ctx, "res", "android", "arm64", types.UpdateIncremental)
 	require.NoError(t, err)
-	actual, err := l.initUploadUpdateType(ctx, "res", "android", "arm64", inferred)
+	actual, err := l.initUploadUpdateType(ctx, "res", "android", "arm64", inferred, func(actual types.Update) error {
+		require.Equal(t, types.UpdateIncremental, actual)
+		return nil
+	})
 	require.NoError(t, err)
 	require.Equal(t, types.UpdateIncremental, actual)
 	require.Equal(t, 1, client.ResourcePlatformConfig.Query().CountX(ctx))
+	failure := errors.New("submission rejected")
+	_, err = l.initUploadUpdateType(ctx, "res", "android", "arm64", inferred, func(actual types.Update) error {
+		return failure
+	})
+	require.ErrorIs(t, err, failure)
+	actual, err = l.ResolveUpdateType(ctx, "res", "android", "arm64")
+	require.NoError(t, err)
+	require.Equal(t, types.UpdateIncremental, actual, "rollback must preserve an existing admin setting")
 
 	// A different arch or os still gets its own first-upload selection.
 	for _, p := range []model.Platform{{OS: "android", Arch: "amd64"}, {OS: "linux", Arch: "arm64"}, {OS: "", Arch: ""}} {

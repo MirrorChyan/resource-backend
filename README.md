@@ -169,9 +169,13 @@ selects incremental updates for `.zip` and `.tar.gz` (case-insensitive), and ful
 all other filenames (e.g. `.exe`, `.dmg`, `.apk`). Only ZIP and TAR.GZ currently support incremental
 processing; `.7z`, `.tar`, and `.tgz` are delivered as full packages.
 The upload callback saves this selection as a platform setting after file-type validation;
-requesting an upload URL alone does not save it. Later uploads keep the selected mode, and
+requesting an upload URL alone does not save it. Status-write and task-enqueue failures do not
+leave an automatic setting behind. Later uploads keep the selected mode, and
 admins can override it as usual. Platforms with prior uploads keep their existing behavior,
 including uploads in another channel or packages that have been purged.
+Queued uploads retain the processing mode accepted by their callback. Changing a platform to
+incremental updates does not retroactively unpack full-mode uploads; version pairs without
+file hashes fall back to full downloads.
 `GET` lists the platforms packages were uploaded for and the ones with their own update type,
 each with the type in effect and its `source` (`inherit` / `override`). `PUT` and `DELETE` return the
 platform's update type `before` and `after` the change; `DELETE` returns the platform to the resource's.

@@ -95,8 +95,8 @@ func (l *ResourceLogic) resolveUploadUpdateType(ctx context.Context, id, os, arc
 	return types.UpdateFull, true, nil
 }
 
-func (l *ResourceLogic) initUploadUpdateType(ctx context.Context, id, os, arch string, t types.Update) (types.Update, error) {
-	row, err := l.platformRepo.InitUpdateType(ctx, id, os, arch, t)
+func (l *ResourceLogic) initUploadUpdateType(ctx context.Context, id, os, arch string, t types.Update, submit func(types.Update) error) (types.Update, error) {
+	row, err := l.platformRepo.InitUpdateType(ctx, id, os, arch, t, submit)
 	if err != nil {
 		return "", err
 	}

@@ -335,8 +335,9 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
+	var statusKey string
 	rollback := func() {
-		l.rdb.Del(ctx, mk)
+		l.rdb.Del(ctx, mk, misc.StatusPollingKey(statusKey))
 	}
 
 	var (
@@ -353,20 +354,8 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		fileType = val.FileType
 	}
 
-	if initialize {
-		actual, err := l.resourceLogic.initUploadUpdateType(ctx, resourceId, system, arch, ut)
-		if err != nil {
-			rollback()
-			return "", err
-		}
-		if actual != ut {
-			rollback()
-			return "", errs.NewUnchecked("platform update type changed during upload; please retry upload")
-		}
-	}
-
 	// Generate a random status polling key
-	statusKey := ksuid.New().String()
+	statusKey = ksuid.New().String()
 	if err := l.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusPending), 30*time.Minute).Err(); err != nil {
 		rollback()
 		return "", err
@@ -391,10 +380,23 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}
 
 	task := asynq.NewTask(misc.ProcessStorageTask, buf, asynq.MaxRetry(5))
-	submitted, err := l.taskQueue.Enqueue(task)
+	var submitted *asynq.TaskInfo
+	submit := func(actual types.Update) error {
+		if actual != ut {
+			return errs.NewUnchecked("platform update type changed during upload; please retry upload")
+		}
+		var err error
+		submitted, err = l.taskQueue.Enqueue(task)
+		return err
+	}
+	if initialize {
+		_, err = l.resourceLogic.initUploadUpdateType(ctx, resourceId, system, arch, ut, submit)
+	} else {
+		err = submit(ut)
+	}
 	if err != nil {
 		rollback()
-		l.logger.Error("failed to CreateFullUpdateStorage",
+		l.logger.Error("failed to submit storage task",
 			zap.Error(err),
 			zap.String("resource id", resourceId),
 			zap.Int("version id", versionId),
