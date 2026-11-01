@@ -164,6 +164,14 @@ DELETE /admin/resources/:rid/platforms?os=android&arch=arm64
 ```
 
 A platform with its own update type uses it; any other platform uses the resource's `update_type`.
+For a platform with neither a prior upload nor its own setting, the first upload automatically
+selects incremental updates for `.zip` and `.tar.gz` (case-insensitive), and full updates for
+all other filenames (e.g. `.exe`, `.dmg`, `.apk`). Only ZIP and TAR.GZ currently support incremental
+processing; `.7z`, `.tar`, and `.tgz` are delivered as full packages.
+The upload callback saves this selection as a platform setting after file-type validation;
+requesting an upload URL alone does not save it. Later uploads keep the selected mode, and
+admins can override it as usual. Platforms with prior uploads keep their existing behavior,
+including uploads in another channel or packages that have been purged.
 `GET` lists the platforms packages were uploaded for and the ones with their own update type,
 each with the type in effect and its `source` (`inherit` / `override`). `PUT` and `DELETE` return the
 platform's update type `before` and `after` the change; `DELETE` returns the platform to the resource's.

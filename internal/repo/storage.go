@@ -78,6 +78,16 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 		Only(ctx)
 }
 
+// HasPlatform includes purged packages and all channels: either still counts as a prior upload.
+func (r *Storage) HasPlatform(ctx context.Context, rid, os, arch string) (bool, error) {
+	return r.db.Storage.Query().Where(
+		storage.HasVersionWith(version.HasResourceWith(resource.ID(rid))),
+		storage.UpdateTypeEQ(storage.UpdateTypeFull),
+		storage.Os(os),
+		storage.Arch(arch),
+	).Exist(ctx)
+}
+
 // ListPlatforms returns the platforms the resource has full packages stored for.
 func (r *Storage) ListPlatforms(ctx context.Context, rid string) ([]model.Platform, error) {
 	var platforms []model.Platform

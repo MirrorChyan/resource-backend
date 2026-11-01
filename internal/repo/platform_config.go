@@ -40,6 +40,21 @@ func (r *PlatformConfig) Get(ctx context.Context, rid, os, arch string) (*ent.Re
 		Only(ctx)
 }
 
+// InitUpdateType creates a platform setting without replacing an existing one,
+// including one set by an admin or another upload since the caller checked.
+func (r *PlatformConfig) InitUpdateType(ctx context.Context, rid, os, arch string, t types.Update) (*ent.ResourcePlatformConfig, error) {
+	row, err := r.db.ResourcePlatformConfig.Create().
+		SetResourceID(rid).
+		SetOs(os).
+		SetArch(arch).
+		SetUpdateType(resourceplatformconfig.UpdateType(t)).
+		Save(ctx)
+	if sqlgraph.IsUniqueConstraintError(err) {
+		return r.Get(ctx, rid, os, arch)
+	}
+	return row, err
+}
+
 // SetUpdateType gives the platform its own update type, creating its row when it has none.
 func (r *PlatformConfig) SetUpdateType(ctx context.Context, rid, os, arch string, t types.Update) error {
 	err := r.db.ResourcePlatformConfig.Create().

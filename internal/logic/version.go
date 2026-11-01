@@ -203,7 +203,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
-	ut, err := l.resourceLogic.ResolveUpdateType(ctx, resourceId, system, arch)
+	ut, _, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, filename)
 	if err != nil {
 		l.logger.Error("Failed to resolve update type",
 			zap.String("resource id", resourceId),
@@ -215,15 +215,12 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	}
 
 	if ut == types.UpdateIncremental {
-		switch {
-		case strings.HasSuffix(filename, misc.ZipSuffix):
-			filename = strings.Join([]string{misc.DefaultResourceName, misc.ZipSuffix}, "")
-		case strings.HasSuffix(filename, misc.TgzSuffix):
-			filename = strings.Join([]string{misc.DefaultResourceName, misc.TgzSuffix}, "")
-		default:
+		fileType := types.IncrementalFileType(filename)
+		if fileType == "" {
 			text := fmt.Sprintf("incremental resource %s file ext not supported", filename)
 			return nil, errs.NewUnchecked(text)
 		}
+		filename = misc.DefaultResourceName + types.GetFileSuffix(fileType)
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
@@ -250,14 +247,15 @@ func (l *VersionLogic) doVerifyRequiredFileType(dest string) FileDetectResult {
 	}(f)
 	sniff := make([]byte, misc.SniffLen)
 	_, _ = f.Read(sniff)
-	if strings.HasSuffix(dest, misc.ZipSuffix) && bytes.HasPrefix(sniff, misc.ZipMagicHeader) {
+	fileType := types.IncrementalFileType(dest)
+	if fileType == types.Zip && bytes.HasPrefix(sniff, misc.ZipMagicHeader) {
 		return FileDetectResult{
 			Valid:    true,
 			FileType: types.Zip,
 		}
 	}
 
-	if strings.HasSuffix(dest, misc.TgzSuffix) && bytes.HasPrefix(sniff, misc.TgzMagicHeader) {
+	if fileType == types.Tgz && bytes.HasPrefix(sniff, misc.TgzMagicHeader) {
 		return FileDetectResult{
 			Valid:    true,
 			FileType: types.Tgz,
@@ -315,7 +313,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
-	ut, err := l.resourceLogic.ResolveUpdateType(ctx, resourceId, system, arch)
+	ut, initialize, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, source)
 	if err != nil {
 		l.logger.Error("Failed to resolve update type",
 			zap.String("resource id", resourceId),
@@ -353,6 +351,18 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			return "", misc.NotAllowedFileTypeError
 		}
 		fileType = val.FileType
+	}
+
+	if initialize {
+		actual, err := l.resourceLogic.initUploadUpdateType(ctx, resourceId, system, arch, ut)
+		if err != nil {
+			rollback()
+			return "", err
+		}
+		if actual != ut {
+			rollback()
+			return "", errs.NewUnchecked("platform update type changed during upload; please retry upload")
+		}
 	}
 
 	// Generate a random status polling key
