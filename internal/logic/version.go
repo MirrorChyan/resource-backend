@@ -313,7 +313,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
-	ut, initialize, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, source)
+	ut, inferred, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, source)
 	if err != nil {
 		l.logger.Error("Failed to resolve update type",
 			zap.String("resource id", resourceId),
@@ -337,21 +337,49 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 
 	var statusKey string
 	rollback := func() {
-		l.rdb.Del(ctx, mk, misc.StatusPollingKey(statusKey))
+		keys := []string{mk}
+		if statusKey != "" {
+			keys = append(keys, misc.StatusPollingKey(statusKey))
+		}
+		l.rdb.Del(ctx, keys...)
 	}
 
-	var (
-		isIncremental = ut == types.UpdateIncremental
-		fileType      types.FileType
-	)
-
-	if isIncremental {
+	var fileType types.FileType
+	if ut == types.UpdateIncremental {
 		val := l.doVerifyRequiredFileType(source)
 		if !val.Valid {
 			rollback()
 			return "", misc.NotAllowedFileTypeError
 		}
 		fileType = val.FileType
+	}
+
+	// Save the inferred type before queuing, and keep it if queuing fails: the task must
+	// never run for a platform whose type is not saved yet, and a platform's type does
+	// not change with later uploads anyway
+	if inferred {
+		actual, err := l.resourceLogic.initUploadUpdateType(ctx, resourceId, system, arch, ut)
+		if err != nil {
+			rollback()
+			l.logger.Error("Failed to save inferred update type",
+				zap.String("resource id", resourceId),
+				zap.String("os", system),
+				zap.String("arch", arch),
+				zap.Error(err),
+			)
+			return "", err
+		}
+		// an admin or another upload set the platform first
+		switch {
+		case actual == ut:
+		case actual == types.UpdateIncremental:
+			// the type was inferred as full, so the file is no zip or tar.gz
+			rollback()
+			return "", misc.NotAllowedFileTypeError
+		default:
+			// a full platform takes any file as it is
+			fileType = ""
+		}
 	}
 
 	// Generate a random status polling key
@@ -380,20 +408,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 	}
 
 	task := asynq.NewTask(misc.ProcessStorageTask, buf, asynq.MaxRetry(5))
-	var submitted *asynq.TaskInfo
-	submit := func(actual types.Update) error {
-		if actual != ut {
-			return errs.NewUnchecked("platform update type changed during upload; please retry upload")
-		}
-		var err error
-		submitted, err = l.taskQueue.Enqueue(task)
-		return err
-	}
-	if initialize {
-		_, err = l.resourceLogic.initUploadUpdateType(ctx, resourceId, system, arch, ut, submit)
-	} else {
-		err = submit(ut)
-	}
+	submitted, err := l.taskQueue.Enqueue(task)
 	if err != nil {
 		rollback()
 		l.logger.Error("failed to submit storage task",

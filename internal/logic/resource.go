@@ -70,9 +70,10 @@ func (l *ResourceLogic) ResolveUpdateType(ctx context.Context, id, os, arch stri
 }
 
 // resolveUploadUpdateType infers a mode only for a platform with neither a setting
-// nor a prior upload. The bool asks the callback to persist it after file validation;
-// requesting an upload URL alone must not pin the platform's mode.
-func (l *ResourceLogic) resolveUploadUpdateType(ctx context.Context, id, os, arch, filename string) (types.Update, bool, error) {
+// nor a prior upload. inferred reports that ut comes from the filename, so the platform
+// has no mode yet: the callback saves ut after file validation, while requesting an
+// upload URL alone must not pin the platform's mode.
+func (l *ResourceLogic) resolveUploadUpdateType(ctx context.Context, id, os, arch, filename string) (ut types.Update, inferred bool, err error) {
 	// Read settings directly so an upload respects recent admin/concurrent changes.
 	row, err := l.platformRepo.Get(ctx, id, os, arch)
 	if err == nil {
@@ -95,13 +96,21 @@ func (l *ResourceLogic) resolveUploadUpdateType(ctx context.Context, id, os, arc
 	return types.UpdateFull, true, nil
 }
 
-func (l *ResourceLogic) initUploadUpdateType(ctx context.Context, id, os, arch string, t types.Update, submit func(types.Update) error) (types.Update, error) {
-	row, err := l.platformRepo.InitUpdateType(ctx, id, os, arch, t, submit)
+// initUploadUpdateType saves the inferred update type t as the platform's own, unless the
+// platform has one already, and returns the type the platform has. The setting is kept
+// even when the upload fails later: a platform's update type never changes with uploads.
+func (l *ResourceLogic) initUploadUpdateType(ctx context.Context, id, os, arch string, t types.Update) (types.Update, error) {
+	actual, created, err := l.platformRepo.InitUpdateType(ctx, id, os, arch, t)
 	if err != nil {
 		return "", err
 	}
-	l.evictPlatformUpdateTypes(ctx, id)
-	return types.Update(row.UpdateType), nil
+	// whoever saved an existing row evicted the cache then. An instance that misses this
+	// eviction serves the resource's type for the platform: uploads read the row directly,
+	// and downloads fall back to full packages wherever patches are missing
+	if created {
+		l.evictPlatformUpdateTypes(ctx, id)
+	}
+	return actual, nil
 }
 
 // platformUpdateTypes returns the update types of the platforms of the resource that

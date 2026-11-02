@@ -18,6 +18,7 @@ import (
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
@@ -167,9 +168,9 @@ func TestQueuedUploadsKeepAcceptedMode(t *testing.T) {
 	_, err := l.ProcessCreateVersionCallback(ctx, param)
 	require.NoError(t, err)
 	require.Zero(t, client.Storage.Query().CountX(ctx), "the worker has not run yet")
-	mode, initialize, err := l.resourceLogic.resolveUploadUpdateType(ctx, "res", param.OS, param.Arch, "next.zip")
+	mode, inferred, err := l.resourceLogic.resolveUploadUpdateType(ctx, "res", param.OS, param.Arch, "next.zip")
 	require.NoError(t, err)
-	require.False(t, initialize)
+	require.False(t, inferred)
 	require.Equal(t, types.UpdateFull, mode, "a queued upload already determines the platform mode")
 
 	// The second upload must keep full processing, even before the first worker runs.
@@ -214,15 +215,15 @@ func TestOnlyPatchHistoryStillCountsAsPriorUpload(t *testing.T) {
 	v2 := client.Version.Create().SetResourceID("res").SetName("v2").SetNumber(2).SaveX(ctx)
 	client.Storage.Create().SetVersion(v2).SetOldVersion(v1).SetOs("android").SetArch("arm64").
 		SetUpdateType(storage.UpdateTypeIncremental).SaveX(ctx)
-	got, initialize, err := l.resolveUploadUpdateType(ctx, "res", "android", "arm64", "app.apk")
+	got, inferred, err := l.resolveUploadUpdateType(ctx, "res", "android", "arm64", "app.apk")
 	require.NoError(t, err)
-	require.False(t, initialize)
+	require.False(t, inferred)
 	require.Equal(t, types.UpdateIncremental, got)
 	// History is scoped to the resource and the exact os/arch tuple.
 	client.Resource.Create().SetID("other").SetName("other").SetDescription("").SaveX(ctx)
-	got, initialize, err = l.resolveUploadUpdateType(ctx, "other", "android", "arm64", "app.apk")
+	got, inferred, err = l.resolveUploadUpdateType(ctx, "other", "android", "arm64", "app.apk")
 	require.NoError(t, err)
-	require.True(t, initialize)
+	require.True(t, inferred)
 	require.Equal(t, types.UpdateFull, got)
 }
 
@@ -245,12 +246,16 @@ func (h *failStatusWrite) ProcessHook(next redis.ProcessHook) redis.ProcessHook 
 	}
 }
 
-func TestFailedSubmissionDoesNotPinPlatform(t *testing.T) {
+// The inferred type is saved before the task is queued, so no task ever runs for a
+// platform without its saved type; a failure after saving keeps the type, as the
+// platform's type does not change with uploads.
+func TestFailedSubmissionKeepsPlatformSetting(t *testing.T) {
 	for _, failure := range []string{"status write", "enqueue"} {
 		t.Run(failure, func(t *testing.T) {
 			ctx := context.Background()
 			l, client := newPatchTestLogic(t)
-			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+			client.Resource.Create().SetID("res").SetName("res").SetDescription("").
+				SetUpdateType(types.UpdateFull.String()).SaveX(ctx)
 			client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
 			files := t.TempDir()
 			require.NoError(t, os.WriteFile(filepath.Join(files, "app.txt"), []byte("data"), 0o644))
@@ -264,10 +269,12 @@ func TestFailedSubmissionDoesNotPinPlatform(t *testing.T) {
 			param := model.CreateVersionCallBackParam{ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: "app.zip"}
 			_, err := l.ProcessCreateVersionCallback(ctx, param)
 			require.Error(t, err)
-			require.Zero(t, client.ResourcePlatformConfig.Query().CountX(ctx))
 			keys, err := l.rdb.Keys(ctx, "*").Result()
 			require.NoError(t, err)
 			require.Empty(t, keys, "failed submissions must remove pending/polling markers")
+			got, err := l.resourceLogic.ResolveUpdateType(ctx, "res", param.OS, param.Arch)
+			require.NoError(t, err)
+			require.Equal(t, types.UpdateIncremental, got, "the saved type outlives the failed submission")
 
 			hook.enabled = false
 			if failure == "enqueue" {
@@ -275,14 +282,86 @@ func TestFailedSubmissionDoesNotPinPlatform(t *testing.T) {
 				t.Cleanup(func() { _ = queue.Close() })
 				l.taskQueue.Client = queue
 			}
-			// A different-format retry is free to choose full mode.
+			// Another type of package no longer fits the platform.
 			require.NoError(t, os.WriteFile(filepath.Join(l.storageLogic.OSSDir, "app.apk"), []byte("installer"), 0o644))
 			param.Key = "app.apk"
 			_, err = l.ProcessCreateVersionCallback(ctx, param)
+			require.ErrorIs(t, err, misc.NotAllowedFileTypeError)
+
+			// Retrying the callback of the same package goes through once.
+			param.Key = "app.zip"
+			_, err = l.ProcessCreateVersionCallback(ctx, param)
 			require.NoError(t, err)
-			got, err := l.resourceLogic.ResolveUpdateType(ctx, "res", param.OS, param.Arch)
+			queued := pendingUploads(t, l)
+			require.Len(t, queued, 1)
+			var payload model.StorageInfoCreatePayload
+			require.NoError(t, sonic.Unmarshal(queued[0].Payload, &payload))
+			require.Equal(t, types.Zip, payload.IncrementalType)
+			require.Equal(t, 1, client.ResourcePlatformConfig.Query().CountX(ctx))
+		})
+	}
+}
+
+// saveFirst sets the platform to t right before the upload saves its inferred type,
+// as an admin or a concurrent upload would.
+func saveFirst(client *ent.Client, t types.Update) {
+	done := false
+	client.ResourcePlatformConfig.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if !done && m.Op().Is(ent.OpCreate) {
+				done = true
+				client.ResourcePlatformConfig.Create().SetResourceID("res").SetOs("android").SetArch("arm64").
+					SetUpdateType(resourceplatformconfig.UpdateType(t)).SaveX(ctx)
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+}
+
+func TestCallbackFollowsSettingSavedFirst(t *testing.T) {
+	for _, c := range []struct {
+		name, key string
+		saved     types.Update
+		wantErr   error
+	}{
+		{"installer on incremental platform", "app.apk", types.UpdateIncremental, misc.NotAllowedFileTypeError},
+		{"archive on full platform", "app.zip", types.UpdateFull, nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			l, client := newPatchTestLogic(t)
+			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+			client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+			require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))
+			source := filepath.Join(l.storageLogic.OSSDir, c.key)
+			if types.IncrementalFileType(c.key) == types.Zip {
+				files := t.TempDir()
+				require.NoError(t, os.WriteFile(filepath.Join(files, "app.txt"), []byte("data"), 0o644))
+				require.NoError(t, archiver.CompressToZip(files, source))
+			} else {
+				require.NoError(t, os.WriteFile(source, []byte("installer"), 0o644))
+			}
+			saveFirst(client, c.saved)
+
+			param := model.CreateVersionCallBackParam{ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: c.key}
+			_, err := l.ProcessCreateVersionCallback(ctx, param)
+			got, rerr := l.resourceLogic.ResolveUpdateType(ctx, "res", param.OS, param.Arch)
+			require.NoError(t, rerr)
+			require.Equal(t, c.saved, got, "the type saved first is kept")
+			require.Equal(t, 1, client.ResourcePlatformConfig.Query().CountX(ctx))
+			if c.wantErr != nil {
+				require.ErrorIs(t, err, c.wantErr)
+				keys, err := l.rdb.Keys(ctx, "*").Result()
+				require.NoError(t, err)
+				require.Empty(t, keys)
+				return
+			}
 			require.NoError(t, err)
-			require.Equal(t, types.UpdateFull, got)
+			queued := pendingUploads(t, l)
+			require.Len(t, queued, 1)
+			var payload model.StorageInfoCreatePayload
+			require.NoError(t, sonic.Unmarshal(queued[0].Payload, &payload))
+			require.Empty(t, payload.IncrementalType, "a full platform keeps the archive as it is")
 		})
 	}
 }
@@ -314,35 +393,27 @@ func TestUploadInitializationPreservesConcurrentSetting(t *testing.T) {
 	ctx := context.Background()
 	l, client, _ := newResourceTestLogic(t)
 	client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
-	inferred, initialize, err := l.resolveUploadUpdateType(ctx, "res", "android", "arm64", "app.apk")
+	mode, inferred, err := l.resolveUploadUpdateType(ctx, "res", "android", "arm64", "app.apk")
 	require.NoError(t, err)
-	require.True(t, initialize)
-	require.Equal(t, types.UpdateFull, inferred)
+	require.True(t, inferred)
+	require.Equal(t, types.UpdateFull, mode)
 
 	// An admin or another upload sets the platform after inference, before saving.
 	_, err = l.SetPlatformUpdateType(ctx, "res", "android", "arm64", types.UpdateIncremental)
 	require.NoError(t, err)
-	actual, err := l.initUploadUpdateType(ctx, "res", "android", "arm64", inferred, func(actual types.Update) error {
-		require.Equal(t, types.UpdateIncremental, actual)
-		return nil
-	})
+	actual, err := l.initUploadUpdateType(ctx, "res", "android", "arm64", mode)
 	require.NoError(t, err)
 	require.Equal(t, types.UpdateIncremental, actual)
 	require.Equal(t, 1, client.ResourcePlatformConfig.Query().CountX(ctx))
-	failure := errors.New("submission rejected")
-	_, err = l.initUploadUpdateType(ctx, "res", "android", "arm64", inferred, func(actual types.Update) error {
-		return failure
-	})
-	require.ErrorIs(t, err, failure)
 	actual, err = l.ResolveUpdateType(ctx, "res", "android", "arm64")
 	require.NoError(t, err)
-	require.Equal(t, types.UpdateIncremental, actual, "rollback must preserve an existing admin setting")
+	require.Equal(t, types.UpdateIncremental, actual, "an inferred type never replaces an existing setting")
 
 	// A different arch or os still gets its own first-upload selection.
 	for _, p := range []model.Platform{{OS: "android", Arch: "amd64"}, {OS: "linux", Arch: "arm64"}, {OS: "", Arch: ""}} {
-		got, initialize, err := l.resolveUploadUpdateType(ctx, "res", p.OS, p.Arch, "app.apk")
+		got, inferred, err := l.resolveUploadUpdateType(ctx, "res", p.OS, p.Arch, "app.apk")
 		require.NoError(t, err)
-		require.True(t, initialize)
+		require.True(t, inferred)
 		require.Equal(t, types.UpdateFull, got)
 	}
 }
