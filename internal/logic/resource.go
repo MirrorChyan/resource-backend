@@ -69,6 +69,50 @@ func (l *ResourceLogic) ResolveUpdateType(ctx context.Context, id, os, arch stri
 	return l.findUpdateTypeById(ctx, id)
 }
 
+// resolveUploadUpdateType infers a mode only for a platform with neither a setting
+// nor a prior upload. inferred reports that ut comes from the filename, so the platform
+// has no mode yet: the callback saves ut after file validation, while requesting an
+// upload URL alone must not pin the platform's mode.
+func (l *ResourceLogic) resolveUploadUpdateType(ctx context.Context, id, os, arch, filename string) (ut types.Update, inferred bool, err error) {
+	// Read settings directly so an upload respects recent admin/concurrent changes.
+	row, err := l.platformRepo.Get(ctx, id, os, arch)
+	if err == nil {
+		return types.Update(row.UpdateType), false, nil
+	}
+	if !ent.IsNotFound(err) {
+		return "", false, err
+	}
+	exists, err := l.storageRepo.HasPlatform(ctx, id, os, arch)
+	if err != nil {
+		return "", false, err
+	}
+	if exists {
+		t, err := l.findUpdateTypeById(ctx, id)
+		return t, false, err
+	}
+	if types.IncrementalFileType(filename) != "" {
+		return types.UpdateIncremental, true, nil
+	}
+	return types.UpdateFull, true, nil
+}
+
+// initUploadUpdateType saves the inferred update type t as the platform's own, unless the
+// platform has one already, and returns the type the platform has. The setting is kept
+// even when the upload fails later: a platform's update type never changes with uploads.
+func (l *ResourceLogic) initUploadUpdateType(ctx context.Context, id, os, arch string, t types.Update) (types.Update, error) {
+	actual, created, err := l.platformRepo.InitUpdateType(ctx, id, os, arch, t)
+	if err != nil {
+		return "", err
+	}
+	// whoever saved an existing row evicted the cache then. An instance that misses this
+	// eviction serves the resource's type for the platform: uploads read the row directly,
+	// and downloads fall back to full packages wherever patches are missing
+	if created {
+		l.evictPlatformUpdateTypes(ctx, id)
+	}
+	return actual, nil
+}
+
 // platformUpdateTypes returns the update types of the platforms of the resource that
 // have their own; the map is shared through the cache, never modify it.
 func (l *ResourceLogic) platformUpdateTypes(ctx context.Context, id string) (map[Platform]types.Update, error) {
