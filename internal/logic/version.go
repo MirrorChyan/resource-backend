@@ -361,10 +361,13 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
+	// the pending key holds the status key of the upload, which lets the task free it
+	// when the upload fails
+	statusKey := ksuid.New().String()
 	mk := strings.Join([]string{misc.ProcessStoragePendingKey,
 		resourceId, strconv.Itoa(versionId), channel, system, arch,
 	}, ":")
-	result := l.rdb.SetNX(ctx, mk, misc.ProcessFlag, time.Hour*5)
+	result := l.rdb.SetNX(ctx, mk, statusKey, time.Hour*5)
 	if err := result.Err(); err != nil {
 		return "", err
 	}
@@ -372,13 +375,8 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
-	var statusKey string
 	rollback := func() {
-		keys := []string{mk}
-		if statusKey != "" {
-			keys = append(keys, misc.StatusPollingKey(statusKey))
-		}
-		l.rdb.Del(ctx, keys...)
+		l.rdb.Del(ctx, mk, misc.StatusPollingKey(statusKey))
 	}
 
 	fileType, ok := l.doVerifyUploadFile(ut, source)
@@ -412,8 +410,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		}
 	}
 
-	// Generate a random status polling key
-	statusKey = ksuid.New().String()
 	if err := l.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusPending), 30*time.Minute).Err(); err != nil {
 		rollback()
 		return "", err
@@ -525,7 +521,8 @@ func (l *VersionLogic) doCalculatePackageHash(dest, resourceId, system, arch str
 
 func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, versionName, channel string) (*ent.Version, error) {
 	var (
-		mutexKey = strings.Join([]string{misc.LoadStoreNewVersionKey, resourceId, versionName, channel}, ":")
+		// a version name is unique in all channels
+		mutexKey = strings.Join([]string{misc.LoadStoreNewVersionKey, resourceId, versionName}, ":")
 	)
 	mutex := l.sync.NewMutex(mutexKey, redsync.WithExpiry(10*time.Second))
 

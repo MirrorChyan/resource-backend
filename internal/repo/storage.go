@@ -127,26 +127,36 @@ func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
 		Save(ctx)
 }
 
-// TouchStorage makes the storage the newest of its platform: the latest version and the
-// purge both go by the time a storage was created.
-func (r *Storage) TouchStorage(ctx context.Context, id int) error {
-	return r.db.Storage.UpdateOneID(id).SetCreatedAt(time.Now()).Exec(ctx)
+// RestoredPackage is the package written again for a storage the purge emptied.
+type RestoredPackage struct {
+	Path string
+	Hash string
+	Size int64
 }
 
-// RestorePackage gives a purged storage a package again and makes it the newest of its platform.
-func (r *Storage) RestorePackage(ctx context.Context, id int, path, hash string, size int64) error {
-	return r.db.Storage.UpdateOneID(id).
-		SetPackagePath(path).
-		SetPackageHashSha256(hash).
-		SetFileSize(size).
-		SetCreatedAt(time.Now()).
-		Exec(ctx)
+// RepublishStorage makes the full storage the newest of its platform, as the latest
+// version and the purge both go by the time a storage was created. It gives the storage
+// its package again when pkg is set, and moves the version to channel when it is set,
+// all at once: no channel is to see the version without a package, or in between.
+func (r *Storage) RepublishStorage(ctx context.Context, id, verID int, channel *version.Channel, pkg *RestoredPackage) error {
+	return r.WithTx(ctx, func(tx *ent.Tx) error {
+		if channel != nil {
+			if err := tx.Version.UpdateOneID(verID).SetChannel(*channel).Exec(ctx); err != nil {
+				return err
+			}
+		}
+		update := tx.Storage.UpdateOneID(id).SetCreatedAt(time.Now())
+		if pkg != nil {
+			update.SetPackagePath(pkg.Path).SetPackageHashSha256(pkg.Hash).SetFileSize(pkg.Size)
+		}
+		return update.Exec(ctx)
+	})
 }
 
-// DeletePurgedIncrementalStorages drops the incremental storages to the version whose
-// packages the purge removed, and returns the versions they started from.
-func (r *Storage) DeletePurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]int, error) {
-	rows, err := r.db.Storage.Query().
+// ListPurgedIncrementalStorages lists the incremental storages to the version whose
+// packages the purge removed, with the versions they start from.
+func (r *Storage) ListPurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]*ent.Storage, error) {
+	return r.db.Storage.Query().
 		Where(
 			storage.HasVersionWith(version.ID(verID)),
 			storage.UpdateTypeEQ(storage.UpdateTypeIncremental),
@@ -156,21 +166,11 @@ func (r *Storage) DeletePurgedIncrementalStorages(ctx context.Context, verID int
 		).
 		WithOldVersion().
 		All(ctx)
-	if err != nil || len(rows) == 0 {
-		return nil, err
-	}
-	ids := make([]int, 0, len(rows))
-	from := make([]int, 0, len(rows))
-	for _, row := range rows {
-		ids = append(ids, row.ID)
-		if row.Edges.OldVersion != nil {
-			from = append(from, row.Edges.OldVersion.ID)
-		}
-	}
-	if _, err := r.db.Storage.Delete().Where(storage.IDIn(ids...)).Exec(ctx); err != nil {
-		return nil, err
-	}
-	return from, nil
+}
+
+func (r *Storage) DeleteStorages(ctx context.Context, ids ...int) error {
+	_, err := r.db.Storage.Delete().Where(storage.IDIn(ids...)).Exec(ctx)
+	return err
 }
 
 func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {

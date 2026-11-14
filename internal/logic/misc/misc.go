@@ -45,6 +45,13 @@ const (
 	ProcessFlag = "1"
 )
 
+// ResourceStorageLockPrefix locks which packages of a resource are the newest
+const ResourceStorageLockPrefix = "ResourceStorage"
+
+func ResourceStorageLockKey(resourceId string) string {
+	return ResourceStorageLockPrefix + ":" + resourceId
+}
+
 const WebhookNotifyThrottlePrefix = "webhook:notify:throttle"
 
 // PatchSkipPrefix records a target/current version pair whose incremental package is not
