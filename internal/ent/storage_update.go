@@ -164,6 +164,26 @@ func (_u *StorageUpdate) ClearFileHashes() *StorageUpdate {
 	return _u
 }
 
+// SetPackCommit sets the "pack_commit" field.
+func (_u *StorageUpdate) SetPackCommit(v string) *StorageUpdate {
+	_u.mutation.SetPackCommit(v)
+	return _u
+}
+
+// SetNillablePackCommit sets the "pack_commit" field if the given value is not nil.
+func (_u *StorageUpdate) SetNillablePackCommit(v *string) *StorageUpdate {
+	if v != nil {
+		_u.SetPackCommit(*v)
+	}
+	return _u
+}
+
+// ClearPackCommit clears the value of the "pack_commit" field.
+func (_u *StorageUpdate) ClearPackCommit() *StorageUpdate {
+	_u.mutation.ClearPackCommit()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *StorageUpdate) SetCreatedAt(v time.Time) *StorageUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -329,6 +349,12 @@ func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.FileHashesCleared() {
 		_spec.ClearField(storage.FieldFileHashes, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.PackCommit(); ok {
+		_spec.SetField(storage.FieldPackCommit, field.TypeString, value)
+	}
+	if _u.mutation.PackCommitCleared() {
+		_spec.ClearField(storage.FieldPackCommit, field.TypeString)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(storage.FieldCreatedAt, field.TypeTime, value)
@@ -546,6 +572,26 @@ func (_u *StorageUpdateOne) ClearFileHashes() *StorageUpdateOne {
 	return _u
 }
 
+// SetPackCommit sets the "pack_commit" field.
+func (_u *StorageUpdateOne) SetPackCommit(v string) *StorageUpdateOne {
+	_u.mutation.SetPackCommit(v)
+	return _u
+}
+
+// SetNillablePackCommit sets the "pack_commit" field if the given value is not nil.
+func (_u *StorageUpdateOne) SetNillablePackCommit(v *string) *StorageUpdateOne {
+	if v != nil {
+		_u.SetPackCommit(*v)
+	}
+	return _u
+}
+
+// ClearPackCommit clears the value of the "pack_commit" field.
+func (_u *StorageUpdateOne) ClearPackCommit() *StorageUpdateOne {
+	_u.mutation.ClearPackCommit()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *StorageUpdateOne) SetCreatedAt(v time.Time) *StorageUpdateOne {
 	_u.mutation.SetCreatedAt(v)
@@ -741,6 +787,12 @@ func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err er
 	}
 	if _u.mutation.FileHashesCleared() {
 		_spec.ClearField(storage.FieldFileHashes, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.PackCommit(); ok {
+		_spec.SetField(storage.FieldPackCommit, field.TypeString, value)
+	}
+	if _u.mutation.PackCommitCleared() {
+		_spec.ClearField(storage.FieldPackCommit, field.TypeString)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(storage.FieldCreatedAt, field.TypeTime, value)

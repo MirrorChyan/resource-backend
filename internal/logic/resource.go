@@ -93,6 +93,17 @@ func (l *ResourceLogic) resolveUploadUpdateType(ctx context.Context, id, os, arc
 	if types.IncrementalFileType(filename) != "" {
 		return types.UpdateIncremental, true, nil
 	}
+	// only a pack resource takes git packs: elsewhere a .pack file stays a plain file,
+	// as it was before pack resources existed
+	if types.IsPackFile(filename) {
+		t, err := l.findUpdateTypeById(ctx, id)
+		if err != nil {
+			return "", false, err
+		}
+		if t == types.UpdatePack {
+			return types.UpdatePack, true, nil
+		}
+	}
 	return types.UpdateFull, true, nil
 }
 

@@ -11,10 +11,13 @@ import (
 const ResourceKey = "rid"
 
 const (
-	ZipSuffix = ".zip"
-	TgzSuffix = ".tar.gz"
+	ZipSuffix  = ".zip"
+	TgzSuffix  = ".tar.gz"
+	PackSuffix = ".pack"
 
 	DefaultResourceName = "resource"
+	// PackSnapshotName names the snapshot uploaded to a pack resource
+	PackSnapshotName = "snapshot"
 
 	DispensePrefix = "dispense"
 )
@@ -105,7 +108,8 @@ const SniffLen = 4
 
 var (
 	ZipMagicHeader = []byte("PK\x03\x04")
-	TgzMagicHeader = []byte("\x1F\x8B\x08")
+	TgzMagicHeader  = []byte("\x1F\x8B\x08")
+	PackMagicHeader = []byte("PACK")
 )
 
 var (

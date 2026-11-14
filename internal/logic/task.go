@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +17,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/gitpack"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -138,7 +141,8 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			if retErr != nil && statusKey != "" {
 				maxRetry, _ := asynq.GetMaxRetry(ctx)
 				retryCount, _ := asynq.GetRetryCount(ctx)
-				if retryCount >= maxRetry {
+				// a run that skips its retries is the last one too
+				if retryCount >= maxRetry || errors.Is(retErr, asynq.SkipRetry) {
 					v.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusFailed), time.Minute*30)
 				}
 			}
@@ -159,6 +163,31 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			dest   string
 			hashes map[string]string
 		)
+
+		if fileType == types.Pack {
+			mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+				resourceId, strconv.Itoa(versionId), channel, system, arch,
+			}, ":")
+			err := v.DoProcessPackStorage(ctx, resourceId, versionId, versionName, channel, system, arch, source)
+			if errors.Is(err, gitpack.ErrInvalid) {
+				l.Warn("pack snapshot rejected",
+					zap.String("resource id", resourceId),
+					zap.String("version name", versionName),
+					zap.Error(err),
+				)
+				// trying again cannot help; free the version for a corrected upload
+				v.rdb.Del(ctx, mk)
+				return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
+			}
+			if err != nil {
+				return err
+			}
+			v.rdb.Del(ctx, mk)
+			if statusKey != "" {
+				v.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusCompleted), time.Minute*30)
+			}
+			return nil
+		}
 
 		if fileType != "" {
 			// Incremental: copy source to local storage, unpack, compute file hashes

@@ -117,6 +117,20 @@ func (_c *StorageCreate) SetFileHashes(v map[string]string) *StorageCreate {
 	return _c
 }
 
+// SetPackCommit sets the "pack_commit" field.
+func (_c *StorageCreate) SetPackCommit(v string) *StorageCreate {
+	_c.mutation.SetPackCommit(v)
+	return _c
+}
+
+// SetNillablePackCommit sets the "pack_commit" field if the given value is not nil.
+func (_c *StorageCreate) SetNillablePackCommit(v *string) *StorageCreate {
+	if v != nil {
+		_c.SetPackCommit(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *StorageCreate) SetCreatedAt(v time.Time) *StorageCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -305,6 +319,10 @@ func (_c *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FileHashes(); ok {
 		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
 		_node.FileHashes = value
+	}
+	if value, ok := _c.mutation.PackCommit(); ok {
+		_spec.SetField(storage.FieldPackCommit, field.TypeString, value)
+		_node.PackCommit = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(storage.FieldCreatedAt, field.TypeTime, value)

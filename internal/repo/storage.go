@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
@@ -102,6 +103,74 @@ func (r *Storage) ListPlatforms(ctx context.Context, rid string) ([]model.Platfo
 
 func (r *Storage) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {
 	return r.db.Storage.UpdateOneID(id).SetPackageHashSha256(hash).Exec(ctx)
+}
+
+// CreatePackStorage records the package of a version of a pack resource: an archive of the
+// snapshot, the IDs of its objects and its commit.
+func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
+	os, arch, path, hash string,
+	size int64,
+	objects map[string]string,
+	commit string,
+) (*ent.Storage, error) {
+	return r.db.Storage.Create().
+		SetUpdateType(storage.UpdateTypeFull).
+		SetOs(os).
+		SetArch(arch).
+		SetPackagePath(path).
+		SetPackageHashSha256(hash).
+		SetFileType(string(types.Zip)).
+		SetFileSize(size).
+		SetFileHashes(objects).
+		SetPackCommit(commit).
+		SetVersionID(verID).
+		Save(ctx)
+}
+
+// TouchStorage makes the storage the newest of its platform: the latest version and the
+// purge both go by the time a storage was created.
+func (r *Storage) TouchStorage(ctx context.Context, id int) error {
+	return r.db.Storage.UpdateOneID(id).SetCreatedAt(time.Now()).Exec(ctx)
+}
+
+// RestorePackage gives a purged storage a package again and makes it the newest of its platform.
+func (r *Storage) RestorePackage(ctx context.Context, id int, path, hash string, size int64) error {
+	return r.db.Storage.UpdateOneID(id).
+		SetPackagePath(path).
+		SetPackageHashSha256(hash).
+		SetFileSize(size).
+		SetCreatedAt(time.Now()).
+		Exec(ctx)
+}
+
+// DeletePurgedIncrementalStorages drops the incremental storages to the version whose
+// packages the purge removed, and returns the versions they started from.
+func (r *Storage) DeletePurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]int, error) {
+	rows, err := r.db.Storage.Query().
+		Where(
+			storage.HasVersionWith(version.ID(verID)),
+			storage.UpdateTypeEQ(storage.UpdateTypeIncremental),
+			storage.Os(os),
+			storage.Arch(arch),
+			storage.PackagePathIsNil(),
+		).
+		WithOldVersion().
+		All(ctx)
+	if err != nil || len(rows) == 0 {
+		return nil, err
+	}
+	ids := make([]int, 0, len(rows))
+	from := make([]int, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+		if row.Edges.OldVersion != nil {
+			from = append(from, row.Edges.OldVersion.ID)
+		}
+	}
+	if _, err := r.db.Storage.Delete().Where(storage.IDIn(ids...)).Exec(ctx); err != nil {
+		return nil, err
+	}
+	return from, nil
 }
 
 func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {

@@ -41,6 +41,9 @@ func (Storage) Fields() []ent.Field {
 		field.JSON("file_hashes", map[string]string{}).
 			Optional().
 			Comment("only for full update"),
+		field.String("pack_commit").
+			Optional().
+			Comment("only for the full update of a pack resource: the commit of the snapshot"),
 		field.Time("created_at").
 			Default(time.Now),
 		field.Int("version_storages"),

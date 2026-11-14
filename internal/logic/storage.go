@@ -144,6 +144,25 @@ func (l *StorageLogic) UpdateStoragePackageHash(ctx context.Context, id int, has
 	return l.storageRepo.UpdateStoragePackageHash(ctx, id, hash)
 }
 
+func (l *StorageLogic) CreatePackStorage(ctx context.Context, verID int,
+	os, arch, path, hash string, size int64,
+	objects map[string]string, commit string,
+) (*ent.Storage, error) {
+	return l.storageRepo.CreatePackStorage(ctx, verID, os, arch, path, hash, size, objects, commit)
+}
+
+func (l *StorageLogic) TouchStorage(ctx context.Context, id int) error {
+	return l.storageRepo.TouchStorage(ctx, id)
+}
+
+func (l *StorageLogic) RestorePackage(ctx context.Context, id int, path, hash string, size int64) error {
+	return l.storageRepo.RestorePackage(ctx, id, path, hash, size)
+}
+
+func (l *StorageLogic) DeletePurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]int, error) {
+	return l.storageRepo.DeletePurgedIncrementalStorages(ctx, verID, os, arch)
+}
+
 func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 	resource, err := l.resourceRepo.GetFullResource(ctx)
 	if err != nil {
