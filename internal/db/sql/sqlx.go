@@ -5,8 +5,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const DriverName = "mysql"
-
+// NewSqlx shares the connection pool of the ent driver; the dialect names the bind
+// variables sqlx uses.
 func NewSqlx(drv *sql.Driver) *sqlx.DB {
-	return sqlx.NewDb(drv.DB(), DriverName)
+	return sqlx.NewDb(drv.DB(), drv.Dialect())
 }
