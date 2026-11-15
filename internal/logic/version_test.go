@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -42,17 +44,20 @@ func newPatchTestLogic(t *testing.T) (*VersionLogic, *ent.Client) {
 	})
 	dir := t.TempDir()
 	cg := newTestCacheGroup()
+	rs := redsync.New(goredis.NewPool(rdb))
 	return &VersionLogic{
 		logger:      zap.NewNop(),
 		repo:        r,
 		versionRepo: repo.NewVersion(r),
 		rdb:         rdb,
+		sync:        rs,
 		taskQueue:   &tasks.TaskQueue{Client: queue},
 		cacheGroup:  cg,
 		resourceLogic: newTestResourceLogic(r, rdb, cg),
 		storageLogic: &StorageLogic{
 			logger:      zap.NewNop(),
 			storageRepo: repo.NewStorage(r),
+			sync:        rs,
 			RootDir:     filepath.Join(dir, "storage"),
 			OSSDir:      filepath.Join(dir, "oss"),
 		},

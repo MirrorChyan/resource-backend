@@ -77,7 +77,7 @@ func init() {
 	// storage.DefaultFileSize holds the default value on creation for the file_size field.
 	storage.DefaultFileSize = storageDescFileSize.Default.(int64)
 	// storageDescCreatedAt is the schema descriptor for created_at field.
-	storageDescCreatedAt := storageFields[8].Descriptor()
+	storageDescCreatedAt := storageFields[9].Descriptor()
 	// storage.DefaultCreatedAt holds the default value on creation for the created_at field.
 	storage.DefaultCreatedAt = storageDescCreatedAt.Default.(func() time.Time)
 	versionFields := schema.Version{}.Fields()

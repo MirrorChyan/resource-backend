@@ -174,6 +174,17 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		return nil, errs.ErrResourceNotFound
 	}
 
+	ut, _, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, filename)
+	if err != nil {
+		l.logger.Error("Failed to resolve update type",
+			zap.String("resource id", resourceId),
+			zap.String("os", system),
+			zap.String("arch", arch),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
 	if exists, err := l.ExistNameWithOSAndArch(ctx, ExistVersionNameWithOSAndArchParam{
 		ResourceId:  resourceId,
 		VersionName: versionName,
@@ -181,7 +192,8 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 		Arch:        arch,
 	}); err != nil {
 		return nil, err
-	} else if exists {
+	} else if exists && ut != types.UpdatePack {
+		// a pack resource takes a stored version again to publish it again
 		return nil, errs.ErrResourceVersionNameConflict
 	}
 
@@ -203,24 +215,20 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 
 	dest := l.storageLogic.BuildVersionStorageDirPath(resourceId, ver.ID, system, arch)
 
-	ut, _, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, filename)
-	if err != nil {
-		l.logger.Error("Failed to resolve update type",
-			zap.String("resource id", resourceId),
-			zap.String("os", system),
-			zap.String("arch", arch),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
-	if ut == types.UpdateIncremental {
+	switch ut {
+	case types.UpdateIncremental:
 		fileType := types.IncrementalFileType(filename)
 		if fileType == "" {
 			text := fmt.Sprintf("incremental resource %s file ext not supported", filename)
 			return nil, errs.NewUnchecked(text)
 		}
 		filename = misc.DefaultResourceName + types.GetFileSuffix(fileType)
+	case types.UpdatePack:
+		if !types.IsPackFile(filename) {
+			text := fmt.Sprintf("pack resource %s file ext not supported, upload a git pack", filename)
+			return nil, errs.NewUnchecked(text)
+		}
+		filename = misc.PackSnapshotName + misc.PackSuffix
 	}
 
 	token, err := oss.AcquirePolicyToken(l.cleanRootStoragePath(dest), filename)
@@ -230,7 +238,7 @@ func (l *VersionLogic) CreatePreSignedUrl(ctx context.Context, param CreateVersi
 	return token, err
 }
 
-// doVerifyRequiredFileType The file must be in zip or tgz format
+// doVerifyRequiredFileType detects a zip, tar.gz or git pack by its name and first bytes
 func (l *VersionLogic) doVerifyRequiredFileType(dest string) FileDetectResult {
 	f, err := os.Open(dest)
 	if err != nil {
@@ -262,8 +270,36 @@ func (l *VersionLogic) doVerifyRequiredFileType(dest string) FileDetectResult {
 		}
 	}
 
+	if types.IsPackFile(dest) && bytes.HasPrefix(sniff, misc.PackMagicHeader) {
+		return FileDetectResult{
+			Valid:    true,
+			FileType: types.Pack,
+		}
+	}
+
 	return FileDetectResult{
 		Valid: false,
+	}
+}
+
+// doVerifyUploadFile checks that the uploaded file is in a format the update type serves,
+// and returns that format; a full update takes any file as it is.
+func (l *VersionLogic) doVerifyUploadFile(ut types.Update, source string) (types.FileType, bool) {
+	switch ut {
+	case types.UpdateIncremental:
+		val := l.doVerifyRequiredFileType(source)
+		if !val.Valid || val.FileType == types.Pack {
+			return "", false
+		}
+		return val.FileType, true
+	case types.UpdatePack:
+		val := l.doVerifyRequiredFileType(source)
+		if !val.Valid || val.FileType != types.Pack {
+			return "", false
+		}
+		return types.Pack, true
+	default:
+		return "", true
 	}
 }
 
@@ -296,23 +332,6 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", err
 	}
 
-	exist, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
-	if err != nil {
-		l.logger.Error("Failed to check storage exist",
-			zap.Error(err),
-		)
-		return "", err
-	}
-	if exist {
-		l.logger.Warn("version storage already exists",
-			zap.String("resource id", resourceId),
-			zap.String("version name", versionName),
-			zap.String("resource os", system),
-			zap.String("resource arch", arch),
-		)
-		return "", nil
-	}
-
 	ut, inferred, err := l.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, source)
 	if err != nil {
 		l.logger.Error("Failed to resolve update type",
@@ -324,10 +343,31 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", err
 	}
 
+	exist, err := l.storageLogic.CheckStorageExist(ctx, versionId, system, arch)
+	if err != nil {
+		l.logger.Error("Failed to check storage exist",
+			zap.Error(err),
+		)
+		return "", err
+	}
+	// a pack resource processes a stored version again to publish it again
+	if exist && ut != types.UpdatePack {
+		l.logger.Warn("version storage already exists",
+			zap.String("resource id", resourceId),
+			zap.String("version name", versionName),
+			zap.String("resource os", system),
+			zap.String("resource arch", arch),
+		)
+		return "", nil
+	}
+
+	// the pending key holds the status key of the upload, which lets the task free it
+	// when the upload fails
+	statusKey := ksuid.New().String()
 	mk := strings.Join([]string{misc.ProcessStoragePendingKey,
 		resourceId, strconv.Itoa(versionId), channel, system, arch,
 	}, ":")
-	result := l.rdb.SetNX(ctx, mk, misc.ProcessFlag, time.Hour*5)
+	result := l.rdb.SetNX(ctx, mk, statusKey, time.Hour*5)
 	if err := result.Err(); err != nil {
 		return "", err
 	}
@@ -335,23 +375,14 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		return "", nil
 	}
 
-	var statusKey string
 	rollback := func() {
-		keys := []string{mk}
-		if statusKey != "" {
-			keys = append(keys, misc.StatusPollingKey(statusKey))
-		}
-		l.rdb.Del(ctx, keys...)
+		l.rdb.Del(ctx, mk, misc.StatusPollingKey(statusKey))
 	}
 
-	var fileType types.FileType
-	if ut == types.UpdateIncremental {
-		val := l.doVerifyRequiredFileType(source)
-		if !val.Valid {
-			rollback()
-			return "", misc.NotAllowedFileTypeError
-		}
-		fileType = val.FileType
+	fileType, ok := l.doVerifyUploadFile(ut, source)
+	if !ok {
+		rollback()
+		return "", misc.NotAllowedFileTypeError
 	}
 
 	// Save the inferred type before queuing, and keep it if queuing fails: the task must
@@ -369,21 +400,16 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 			)
 			return "", err
 		}
-		// an admin or another upload set the platform first
-		switch {
-		case actual == ut:
-		case actual == types.UpdateIncremental:
-			// the type was inferred as full, so the file is no zip or tar.gz
-			rollback()
-			return "", misc.NotAllowedFileTypeError
-		default:
-			// a full platform takes any file as it is
-			fileType = ""
+		// an admin or another upload set the platform first: the file must suit that type,
+		// a full platform takes any file as it is
+		if actual != ut {
+			if fileType, ok = l.doVerifyUploadFile(actual, source); !ok {
+				rollback()
+				return "", misc.NotAllowedFileTypeError
+			}
 		}
 	}
 
-	// Generate a random status polling key
-	statusKey = ksuid.New().String()
 	if err := l.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusPending), 30*time.Minute).Err(); err != nil {
 		rollback()
 		return "", err
@@ -495,7 +521,8 @@ func (l *VersionLogic) doCalculatePackageHash(dest, resourceId, system, arch str
 
 func (l *VersionLogic) LoadStoreNewVersionTx(ctx context.Context, resourceId, versionName, channel string) (*ent.Version, error) {
 	var (
-		mutexKey = strings.Join([]string{misc.LoadStoreNewVersionKey, resourceId, versionName, channel}, ":")
+		// a version name is unique in all channels
+		mutexKey = strings.Join([]string{misc.LoadStoreNewVersionKey, resourceId, versionName}, ":")
 	)
 	mutex := l.sync.NewMutex(mutexKey, redsync.WithExpiry(10*time.Second))
 
@@ -676,7 +703,7 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 		return err
 	}
 
-	err = l.doCreateIncrementalUpdatePackage(ctx, PatchTaskExecuteParam{
+	param := PatchTaskExecuteParam{
 		ResourceId:           resourceId,
 		TargetOriginPackage:  targetInfo.PackagePath,
 		TargetVersionId:      target,
@@ -688,7 +715,12 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 		CurrentStorageHashes: currentInfo.FileHashes,
 		OS:                   system,
 		Arch:                 arch,
-	})
+	}
+	if ut == types.UpdatePack {
+		err = l.doCreatePackIncrementalPackage(ctx, param, currentInfo.PackCommit)
+	} else {
+		err = l.doCreateIncrementalUpdatePackage(ctx, param)
+	}
 	if err != nil {
 		return err
 	}
@@ -714,35 +746,43 @@ func patchTooLarge(patchSize, fullSize int64) bool {
 	return fullSize > 0 && float64(patchSize) >= maxPatchSizeRatio*float64(fullSize)
 }
 
+// patchSkipper records that the pair is not worth an incremental package, so its full
+// package is served without queuing the diff task again.
+func (l *VersionLogic) patchSkipper(ctx context.Context, param PatchTaskExecuteParam) func(reason string, fields ...zap.Field) {
+	var (
+		target  = param.TargetVersionId
+		current = param.CurrentVersionId
+		system  = param.OS
+		arch    = param.Arch
+	)
+	return func(reason string, fields ...zap.Field) {
+		l.logger.Info("skip incremental update package, full package is served instead",
+			append([]zap.Field{
+				zap.String("reason", reason),
+				zap.String("resource id", param.ResourceId),
+				zap.Int("target version id", target),
+				zap.Int("current version id", current),
+				zap.String("os", system),
+				zap.String("arch", arch),
+			}, fields...)...,
+		)
+		key := misc.PatchSkipKey(target, current, system, arch)
+		if err := l.rdb.Set(ctx, key, misc.ProcessFlag, patchSkipTTL).Err(); err != nil {
+			// without the flag the pair is just judged again once its generate tag expires
+			l.logger.Warn("failed to record skipped incremental update package",
+				zap.String("key", key),
+				zap.Error(err),
+			)
+		}
+	}
+}
+
 func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, param PatchTaskExecuteParam) error {
 
 	var (
-		resourceId    = param.ResourceId
-		target        = param.TargetVersionId
 		current       = param.CurrentVersionId
-		system        = param.OS
-		arch          = param.Arch
 		originPackage = param.TargetOriginPackage
-		skip          = func(reason string, fields ...zap.Field) {
-			l.logger.Info("skip incremental update package, full package is served instead",
-				append([]zap.Field{
-					zap.String("reason", reason),
-					zap.String("resource id", resourceId),
-					zap.Int("target version id", target),
-					zap.Int("current version id", current),
-					zap.String("os", system),
-					zap.String("arch", arch),
-				}, fields...)...,
-			)
-			key := misc.PatchSkipKey(target, current, system, arch)
-			if err := l.rdb.Set(ctx, key, misc.ProcessFlag, patchSkipTTL).Err(); err != nil {
-				// without the flag the pair is just judged again once its generate tag expires
-				l.logger.Warn("failed to record skipped incremental update package",
-					zap.String("key", key),
-					zap.Error(err),
-				)
-			}
-		}
+		skip          = l.patchSkipper(ctx, param)
 	)
 
 	// without the file hashes of both versions the diff would put every file
@@ -791,6 +831,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	if err != nil {
 		return fmt.Errorf("failed to create patch temp directory: %w", err)
 	}
+	defer l.doRemoveDir(tmp)
 	destPackage := filepath.Join(tmp, name)
 
 	tuple := PatchInfoTuple{
@@ -798,23 +839,29 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		DestPackage: destPackage,
 		FileType:    param.TargetFileType,
 	}
-	cleanupLocal := func() {
-		if err := os.RemoveAll(tmp); err != nil {
-			l.logger.Warn("failed to remove local patch package",
-				zap.String("path", tmp),
-				zap.Error(err),
-			)
-		}
-	}
 
 	err = patcher.GenerateV2(tuple, changes, addedDirs, deletedDirs)
 	if err != nil {
-		cleanupLocal()
 		l.logger.Error("Failed to generate patch package",
 			zap.Error(err),
 		)
 		return err
 	}
+	return l.doStoreIncrementalPackage(ctx, param, destPackage, suffix, skip)
+}
+
+// doStoreIncrementalPackage keeps a built incremental package unless it is too large: it is
+// copied to OSS and recorded as the storage of the pair. The caller removes the local file.
+func (l *VersionLogic) doStoreIncrementalPackage(ctx context.Context, param PatchTaskExecuteParam,
+	destPackage, suffix string, skip func(reason string, fields ...zap.Field),
+) error {
+	var (
+		resourceId = param.ResourceId
+		target     = param.TargetVersionId
+		current    = param.CurrentVersionId
+		system     = param.OS
+		arch       = param.Arch
+	)
 	cleanupOSS := func(path string) {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			l.logger.Warn("failed to remove oss patch package",
@@ -826,7 +873,6 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 
 	hashes, err := filehash.Calculate(destPackage)
 	if err != nil {
-		cleanupLocal()
 		l.logger.Error("Failed to calculate incremental update package hash",
 			zap.String("resource id", resourceId),
 			zap.Int("target version id", target),
@@ -839,7 +885,6 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	}
 	stat, err := os.Stat(destPackage)
 	if err != nil {
-		cleanupLocal()
 		l.logger.Error("Failed to stat incremental update package",
 			zap.String("path", destPackage),
 			zap.Error(err),
@@ -847,7 +892,6 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		return err
 	}
 	if patchTooLarge(stat.Size(), param.TargetFileSize) {
-		cleanupLocal()
 		skip("patch too large",
 			zap.Int64("patch size", stat.Size()),
 			zap.Int64("full size", param.TargetFileSize),
@@ -862,12 +906,10 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 	_, statErr := os.Stat(ossPackage)
 	ossExisted := statErr == nil
 	if err := os.MkdirAll(filepath.Dir(ossPackage), os.ModePerm); err != nil {
-		cleanupLocal()
 		return err
 	}
 	err = fileops.CopyFile(destPackage, ossPackage)
 	if err != nil {
-		cleanupLocal()
 		l.logger.Error("failed to copy local to oss",
 			zap.String("source", destPackage),
 			zap.String("destination", ossPackage),
@@ -878,7 +920,7 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 
 	err = l.repo.WithTx(ctx, func(tx *ent.Tx) (err error) {
 		_, err = l.storageLogic.CreateIncrementalUpdateStorage(ctx, tx,
-			target, current, tuple.FileType, stat.Size(),
+			target, current, param.TargetFileType, stat.Size(),
 			system, arch, ossPackage, hashes,
 		)
 		if err != nil {
@@ -895,7 +937,6 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		if !ossExisted {
 			cleanupOSS(ossPackage)
 		}
-		cleanupLocal()
 		if sqlgraph.IsUniqueConstraintError(err) {
 			// another run stored the pair first, its package is the one served
 			l.logger.Info("incremental update package already stored by another run",
@@ -912,7 +953,6 @@ func (l *VersionLogic) doCreateIncrementalUpdatePackage(ctx context.Context, par
 		)
 		return err
 	}
-	cleanupLocal()
 	return nil
 }
 

@@ -87,6 +87,7 @@ type UpdateType string
 const (
 	UpdateTypeFull        UpdateType = "full"
 	UpdateTypeIncremental UpdateType = "incremental"
+	UpdateTypePack        UpdateType = "pack"
 )
 
 func (ut UpdateType) String() string {
@@ -96,7 +97,7 @@ func (ut UpdateType) String() string {
 // UpdateTypeValidator is a validator for the "update_type" field enum values. It is called by the builders before save.
 func UpdateTypeValidator(ut UpdateType) error {
 	switch ut {
-	case UpdateTypeFull, UpdateTypeIncremental:
+	case UpdateTypeFull, UpdateTypeIncremental, UpdateTypePack:
 		return nil
 	default:
 		return fmt.Errorf("resourceplatformconfig: invalid enum value for update_type field: %q", ut)

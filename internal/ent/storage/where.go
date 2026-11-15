@@ -85,6 +85,11 @@ func FileSize(v int64) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldFileSize, v))
 }
 
+// PackCommit applies equality check predicate on the "pack_commit" field. It's identical to PackCommitEQ.
+func PackCommit(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackCommit, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldCreatedAt, v))
@@ -518,6 +523,81 @@ func FileHashesIsNil() predicate.Storage {
 // FileHashesNotNil applies the NotNil predicate on the "file_hashes" field.
 func FileHashesNotNil() predicate.Storage {
 	return predicate.Storage(sql.FieldNotNull(FieldFileHashes))
+}
+
+// PackCommitEQ applies the EQ predicate on the "pack_commit" field.
+func PackCommitEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldPackCommit, v))
+}
+
+// PackCommitNEQ applies the NEQ predicate on the "pack_commit" field.
+func PackCommitNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldPackCommit, v))
+}
+
+// PackCommitIn applies the In predicate on the "pack_commit" field.
+func PackCommitIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldPackCommit, vs...))
+}
+
+// PackCommitNotIn applies the NotIn predicate on the "pack_commit" field.
+func PackCommitNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldPackCommit, vs...))
+}
+
+// PackCommitGT applies the GT predicate on the "pack_commit" field.
+func PackCommitGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldPackCommit, v))
+}
+
+// PackCommitGTE applies the GTE predicate on the "pack_commit" field.
+func PackCommitGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldPackCommit, v))
+}
+
+// PackCommitLT applies the LT predicate on the "pack_commit" field.
+func PackCommitLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldPackCommit, v))
+}
+
+// PackCommitLTE applies the LTE predicate on the "pack_commit" field.
+func PackCommitLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldPackCommit, v))
+}
+
+// PackCommitContains applies the Contains predicate on the "pack_commit" field.
+func PackCommitContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldPackCommit, v))
+}
+
+// PackCommitHasPrefix applies the HasPrefix predicate on the "pack_commit" field.
+func PackCommitHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldPackCommit, v))
+}
+
+// PackCommitHasSuffix applies the HasSuffix predicate on the "pack_commit" field.
+func PackCommitHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldPackCommit, v))
+}
+
+// PackCommitIsNil applies the IsNil predicate on the "pack_commit" field.
+func PackCommitIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldPackCommit))
+}
+
+// PackCommitNotNil applies the NotNil predicate on the "pack_commit" field.
+func PackCommitNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldPackCommit))
+}
+
+// PackCommitEqualFold applies the EqualFold predicate on the "pack_commit" field.
+func PackCommitEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldPackCommit, v))
+}
+
+// PackCommitContainsFold applies the ContainsFold predicate on the "pack_commit" field.
+func PackCommitContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldPackCommit, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

@@ -1,6 +1,7 @@
 FROM alpine:latest
 
-RUN apk add --no-cache tzdata
+# git builds the packages of pack resources
+RUN apk add --no-cache tzdata git
 
 ENV TZ=Asia/Shanghai
 

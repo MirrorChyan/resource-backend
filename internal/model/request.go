@@ -4,7 +4,7 @@ type CreateResourceRequest struct {
 	ID          string `json:"id" validate:"required,min=3,max=64,slug"`
 	Name        string `json:"name" validate:"required"`
 	Description string `json:"description" validate:"max=255"`
-	UpdateType  string `json:"update_type" validate:"omitempty,oneof=full incremental"`
+	UpdateType  string `json:"update_type" validate:"omitempty,oneof=full incremental pack"`
 }
 
 type CreateVersionRequest struct {
@@ -66,5 +66,5 @@ type ListVersionsRequest struct {
 type SetPlatformUpdateTypeRequest struct {
 	OS         *string `json:"os" validate:"required"`
 	Arch       *string `json:"arch" validate:"required"`
-	UpdateType string  `json:"update_type" validate:"required,oneof=full incremental"`
+	UpdateType string  `json:"update_type" validate:"required,oneof=full incremental pack"`
 }

@@ -35,6 +35,8 @@ type Storage struct {
 	FileSize int64 `json:"file_size,omitempty"`
 	// only for full update
 	FileHashes map[string]string `json:"file_hashes,omitempty"`
+	// only for the full update of a pack resource: the commit of the snapshot
+	PackCommit string `json:"pack_commit,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// VersionStorages holds the value of the "version_storages" field.
@@ -88,7 +90,7 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case storage.FieldID, storage.FieldFileSize, storage.FieldVersionStorages:
 			values[i] = new(sql.NullInt64)
-		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHashSha256, storage.FieldFileType:
+		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHashSha256, storage.FieldFileType, storage.FieldPackCommit:
 			values[i] = new(sql.NullString)
 		case storage.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -164,6 +166,12 @@ func (_m *Storage) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.FileHashes); err != nil {
 					return fmt.Errorf("unmarshal field file_hashes: %w", err)
 				}
+			}
+		case storage.FieldPackCommit:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field pack_commit", values[i])
+			} else if value.Valid {
+				_m.PackCommit = value.String
 			}
 		case storage.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -253,6 +261,9 @@ func (_m *Storage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("file_hashes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.FileHashes))
+	builder.WriteString(", ")
+	builder.WriteString("pack_commit=")
+	builder.WriteString(_m.PackCommit)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

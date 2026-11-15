@@ -11,7 +11,11 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	_ "modernc.org/sqlite"
@@ -39,11 +43,14 @@ func newTestRepo(t *testing.T) (*repo.Repo, *ent.Client) {
 func newPurgeTestLogic(t *testing.T) (*StorageLogic, *ent.Client) {
 	t.Helper()
 	r, client := newTestRepo(t)
+	rdb := redis.NewClient(&redis.Options{Addr: miniredis.RunT(t).Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
 	dir := t.TempDir()
 	return &StorageLogic{
 		logger:      zap.NewNop(),
 		storageRepo: repo.NewStorage(r),
 		rawQuery:    repo.NewRawQuery(r),
+		sync:        redsync.New(goredis.NewPool(rdb)),
 		RootDir:     filepath.Join(dir, "storage"),
 		OSSDir:      filepath.Join(dir, "oss"),
 	}, client
@@ -156,4 +163,29 @@ func osMkdirWithFile(dir string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "resource.zip"), []byte("x"), 0o644)
+}
+
+// The purge waits while a pack upload holds the resource: republishing makes an old
+// version the newest, and the purge must not remove its package from what it read before.
+func TestPurgeWaitsForTheResourceLock(t *testing.T) {
+	ctx := context.Background()
+	l, client := newPurgeTestLogic(t)
+	client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+	unlock, err := l.LockResource(ctx, "res")
+	require.NoError(t, err)
+
+	done := make(chan []error, 1)
+	go func() { done <- l.doPurgeResource(ctx, "res") }()
+	select {
+	case <-done:
+		t.Fatal("the purge ran while the resource was locked")
+	case <-time.After(300 * time.Millisecond):
+	}
+	unlock()
+	select {
+	case errs := <-done:
+		require.Empty(t, errs)
+	case <-time.After(5 * time.Second):
+		t.Fatal("the purge did not run once the resource was unlocked")
+	}
 }

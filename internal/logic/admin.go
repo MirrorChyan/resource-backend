@@ -130,6 +130,9 @@ func (l *ResourceLogic) changePlatformUpdateType(ctx context.Context, id, os, ar
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
 	}
+	if err := l.checkPackSwitch(ctx, res, os, arch, ownUpdateType(row), own); err != nil {
+		return nil, err
+	}
 	if own == "" {
 		err = l.platformRepo.Delete(ctx, res.ID, os, arch)
 	} else {
@@ -146,6 +149,31 @@ func (l *ResourceLogic) changePlatformUpdateType(ctx context.Context, id, os, ar
 		Before: platformState(res, ownUpdateType(row)),
 		After:  platformState(res, own),
 	}, nil
+}
+
+// checkPackSwitch refuses to move a platform with uploads into or out of pack: a pack
+// package is a git pack archive, the others are the files themselves, so the stored
+// packages would be served and patched as what they are not. Full and incremental may
+// still switch, they keep the same full packages.
+func (l *ResourceLogic) checkPackSwitch(ctx context.Context, res *ent.Resource, os, arch string, before, after types.Update) error {
+	effective := func(own types.Update) types.Update {
+		if own != "" {
+			return own
+		}
+		return types.Update(res.UpdateType)
+	}
+	from, to := effective(before), effective(after)
+	if from == to || (from != types.UpdatePack && to != types.UpdatePack) {
+		return nil
+	}
+	uploaded, err := l.storageRepo.HasPlatform(ctx, res.ID, os, arch)
+	if err != nil {
+		return err
+	}
+	if uploaded {
+		return errs.NewUnchecked("the platform has uploads, it cannot switch between pack and another update type")
+	}
+	return nil
 }
 
 // ownUpdateType is the update type the platform row gives its platform, "" without a row.

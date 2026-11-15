@@ -14,6 +14,26 @@ import (
 )
 
 func (l *VersionLogic) doProcessUpdateRequest(ctx context.Context, param UpdateRequestParam) (*UpdateInfoTuple, error) {
+	result, err := l.doPickUpdatePackage(ctx, param)
+	if err != nil {
+		return nil, err
+	}
+	target := param.TargetVersionInfo
+	ut, err := l.resourceLogic.ResolveUpdateType(ctx, param.ResourceId, target.OS, target.Arch)
+	if err != nil {
+		return nil, err
+	}
+	if ut == types.UpdatePack {
+		// a client applies both packages of a pack resource the same way: the commit and
+		// the base it needs are in the meta.json of the package
+		result.UpdateType = types.UpdatePack.String()
+	}
+	return result, nil
+}
+
+// doPickUpdatePackage picks the incremental package from the current version when it is
+// stored, the full package otherwise, and queues the diff task for a missing pair.
+func (l *VersionLogic) doPickUpdatePackage(ctx context.Context, param UpdateRequestParam) (*UpdateInfoTuple, error) {
 	var (
 		cg = l.GetCacheGroup()
 

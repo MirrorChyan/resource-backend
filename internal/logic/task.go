@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,10 +17,21 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/archiver"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/gitpack"
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+// releasePendingKey deletes the pending key of a version only while it holds the status
+// key of the upload: once it expires, another upload may hold it.
+var releasePendingKey = redis.NewScript(`
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+	return redis.call("DEL", KEYS[1])
+end
+return 0
+`)
 
 type logger struct {
 	lg *zap.SugaredLogger
@@ -133,17 +146,6 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			return err
 		}
 
-		statusKey := payload.StatusKey
-		defer func() {
-			if retErr != nil && statusKey != "" {
-				maxRetry, _ := asynq.GetMaxRetry(ctx)
-				retryCount, _ := asynq.GetRetryCount(ctx)
-				if retryCount >= maxRetry {
-					v.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusFailed), time.Minute*30)
-				}
-			}
-		}()
-
 		var (
 			source      = payload.Source
 			system      = payload.OS
@@ -153,12 +155,74 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			channel     = payload.Channel
 			versionName = payload.VersionName
 			fileType    = payload.IncrementalType
+			statusKey   = payload.StatusKey
 		)
+
+		mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+			resourceId, strconv.Itoa(versionId), channel, system, arch,
+		}, ":")
+		defer func() {
+			if retErr == nil || statusKey == "" {
+				return
+			}
+			maxRetry, _ := asynq.GetMaxRetry(ctx)
+			retryCount, _ := asynq.GetRetryCount(ctx)
+			// a run that skips its retries is the last one too
+			if retryCount < maxRetry && !errors.Is(retErr, asynq.SkipRetry) {
+				return
+			}
+			c := context.WithoutCancel(ctx)
+			v.rdb.Set(c, misc.StatusPollingKey(statusKey), int(misc.StatusFailed), time.Minute*30)
+			// free the version and platform for another upload
+			if err := releasePendingKey.Run(c, v.rdb, []string{mk}, statusKey).Err(); err != nil {
+				l.Warn("failed to release the pending key of a failed upload",
+					zap.String("key", mk),
+					zap.Error(err),
+				)
+			}
+		}()
+
+		// an admin may have moved the platform into or out of pack since the upload was
+		// queued, and the package would be served as what it is not
+		ut, _, err := v.resourceLogic.resolveUploadUpdateType(ctx, resourceId, system, arch, source)
+		if err != nil {
+			return err
+		}
+		if (ut == types.UpdatePack) != (fileType == types.Pack) {
+			l.Warn("upload rejected, the update type of its platform changed",
+				zap.String("resource id", resourceId),
+				zap.String("version name", versionName),
+				zap.String("update type", ut.String()),
+				zap.String("file type", string(fileType)),
+			)
+			return fmt.Errorf("the platform serves %s updates now, not this upload: %w", ut, asynq.SkipRetry)
+		}
 
 		var (
 			dest   string
 			hashes map[string]string
 		)
+
+		if fileType == types.Pack {
+			err := v.DoProcessPackStorage(ctx, resourceId, versionId, versionName, channel, system, arch, source)
+			if errors.Is(err, gitpack.ErrInvalid) {
+				l.Warn("pack snapshot rejected",
+					zap.String("resource id", resourceId),
+					zap.String("version name", versionName),
+					zap.Error(err),
+				)
+				// trying again cannot help
+				return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
+			}
+			if err != nil {
+				return err
+			}
+			v.rdb.Del(ctx, mk)
+			if statusKey != "" {
+				v.rdb.Set(ctx, misc.StatusPollingKey(statusKey), int(misc.StatusCompleted), time.Minute*30)
+			}
+			return nil
+		}
 
 		if fileType != "" {
 			// Incremental: copy source to local storage, unpack, compute file hashes
@@ -212,7 +276,6 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 				}
 			}
 
-			var err error
 			hashes, err = filehash.GetAll(extractDir)
 			if err != nil {
 				l.Error("failed to calculate file hashes",
@@ -226,7 +289,7 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 			dest = source
 		}
 
-		err := v.DoProcessStorage(ctx,
+		err = v.DoProcessStorage(ctx,
 			resourceId,
 			versionId, versionName,
 			channel, system, arch, dest,
@@ -247,9 +310,6 @@ func doHandleCalculatePackageHash(l *zap.Logger, v *VersionLogic) func(ctx conte
 		}
 
 		// Delete the process pending key
-		mk := strings.Join([]string{misc.ProcessStoragePendingKey,
-			resourceId, strconv.Itoa(versionId), channel, system, arch,
-		}, ":")
 		v.rdb.Del(ctx, mk)
 
 		// Update status polling key to completed
