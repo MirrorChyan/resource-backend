@@ -83,6 +83,10 @@ type StorageInfoCreatePayload struct {
 	StatusKey   string
 
 	IncrementalType types.FileType
+
+	// AcceptedAt is when the callback accepted the upload, in unix milliseconds; 0 in
+	// tasks queued before it existed
+	AcceptedAt int64
 }
 
 type IncrementalUpdateInfo struct {

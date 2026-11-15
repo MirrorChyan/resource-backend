@@ -462,3 +462,46 @@ func TestFailedStorageTaskFreesThePlatform(t *testing.T) {
 		})
 	}
 }
+
+// A storage task that succeeds frees the pending key it holds, or the flag uploads
+// accepted before it held, but not a key another upload holds now.
+func TestStoredUploadFreesOnlyItsPendingKey(t *testing.T) {
+	for _, c := range []struct {
+		held string
+		kept bool
+	}{{"", false}, {misc.ProcessFlag, false}, {"another", true}} {
+		t.Run("held by "+c.held, func(t *testing.T) {
+			ctx := context.Background()
+			l, client := newPatchTestLogic(t)
+			l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
+			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+			ver := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+			require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))
+			require.NoError(t, os.WriteFile(filepath.Join(l.storageLogic.OSSDir, "app.apk"), []byte("installer"), 0o644))
+			statusKey, err := l.ProcessCreateVersionCallback(ctx, model.CreateVersionCallBackParam{
+				ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: "app.apk",
+			})
+			require.NoError(t, err)
+			mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+				"res", strconv.Itoa(ver.ID), "stable", "android", "arm64",
+			}, ":")
+			if c.held != "" {
+				require.NoError(t, l.rdb.Set(ctx, mk, c.held, time.Hour).Err())
+			}
+
+			queued := pendingUploads(t, l)
+			require.Len(t, queued, 1)
+			require.NoError(t, doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(queued[0].Type, queued[0].Payload)))
+			status, err := l.GetProcessingStatus(ctx, statusKey)
+			require.NoError(t, err)
+			require.Equal(t, misc.StatusCompleted, status)
+			held, err := l.rdb.Get(ctx, mk).Result()
+			if c.kept {
+				require.NoError(t, err)
+				require.Equal(t, c.held, held)
+			} else {
+				require.ErrorIs(t, err, redis.Nil)
+			}
+		})
+	}
+}

@@ -425,6 +425,7 @@ func (l *VersionLogic) ProcessCreateVersionCallback(ctx context.Context, param C
 		Channel:         channel,
 		StatusKey:       statusKey,
 		IncrementalType: fileType,
+		AcceptedAt:      time.Now().UnixMilli(),
 	}
 
 	buf, err := sonic.Marshal(payload)
@@ -1291,6 +1292,9 @@ func (l *VersionLogic) getIncrementalInfoOrEmpty(ctx context.Context, target, cu
 	return *val, err
 }
 
+// renewMutex extends the mutex every second until ctx is done. A failed extension is
+// tried again on the next tick: a short redis outage must not let the lock expire while
+// its holder still works, and once it has expired, extending fails harmlessly.
 func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -1298,10 +1302,7 @@ func renewMutex(ctx context.Context, mutex *redsync.Mutex) {
 	for {
 		select {
 		case <-ticker.C:
-			ok, err := mutex.Extend()
-			if !ok || err != nil {
-				return
-			}
+			_, _ = mutex.ExtendContext(ctx)
 		case <-ctx.Done():
 			return
 		}

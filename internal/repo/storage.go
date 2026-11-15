@@ -112,6 +112,7 @@ func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
 	size int64,
 	objects map[string]string,
 	commit string,
+	createdAt time.Time,
 ) (*ent.Storage, error) {
 	return r.db.Storage.Create().
 		SetUpdateType(storage.UpdateTypeFull).
@@ -123,6 +124,7 @@ func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
 		SetFileSize(size).
 		SetFileHashes(objects).
 		SetPackCommit(commit).
+		SetCreatedAt(createdAt).
 		SetVersionID(verID).
 		Save(ctx)
 }
@@ -134,23 +136,37 @@ type RestoredPackage struct {
 	Size int64
 }
 
-// RepublishStorage makes the full storage the newest of its platform, as the latest
-// version and the purge both go by the time a storage was created. It gives the storage
-// its package again when pkg is set, and moves the version to channel when it is set,
-// all at once: no channel is to see the version without a package, or in between.
-func (r *Storage) RepublishStorage(ctx context.Context, id, verID int, channel *version.Channel, pkg *RestoredPackage) error {
-	return r.WithTx(ctx, func(tx *ent.Tx) error {
+// RepublishStorage publishes the full storage again as of at, when its upload was
+// accepted: the latest version and the purge both go by the time a storage was created,
+// which only moves forward, so a task run late or again cannot move the branch back. It
+// gives the storage its package again when pkg is set, and moves the version to channel
+// when it is set, all at once: no channel is to see the version without a package, or in
+// between. moved reports whether the storage took the time.
+func (r *Storage) RepublishStorage(ctx context.Context, id, verID int, at time.Time,
+	channel *version.Channel, pkg *RestoredPackage,
+) (moved bool, err error) {
+	err = r.WithTx(ctx, func(tx *ent.Tx) error {
 		if channel != nil {
 			if err := tx.Version.UpdateOneID(verID).SetChannel(*channel).Exec(ctx); err != nil {
 				return err
 			}
 		}
-		update := tx.Storage.UpdateOneID(id).SetCreatedAt(time.Now())
 		if pkg != nil {
-			update.SetPackagePath(pkg.Path).SetPackageHashSha256(pkg.Hash).SetFileSize(pkg.Size)
+			err := tx.Storage.UpdateOneID(id).
+				SetPackagePath(pkg.Path).SetPackageHashSha256(pkg.Hash).SetFileSize(pkg.Size).
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
 		}
-		return update.Exec(ctx)
+		n, err := tx.Storage.Update().
+			Where(storage.ID(id), storage.CreatedAtLT(at)).
+			SetCreatedAt(at).
+			Save(ctx)
+		moved = n > 0
+		return err
 	})
+	return moved, err
 }
 
 // ListPurgedIncrementalStorages lists the incremental storages to the version whose

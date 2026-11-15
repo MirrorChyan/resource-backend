@@ -1,6 +1,6 @@
 # Git Pack 热更新方案
 
-> 状态：设计中，分支 `feat/git-pack-update`
+> 状态：已实现（#101）。本文按实现更新，上传用 [git-pack-uploading-action](https://github.com/MirrorChyan/git-pack-uploading-action)。
 
 ## 1. 背景
 
@@ -44,18 +44,22 @@ NIKKEAutoScript、ZenlessZoneZero-OneDragon 这类 Python 项目分两层更新�
 
 ### 4.2 版本名
 
-版本名用 committer 时间，按提交本身记录的时区，格式为 `20060102150405`。`internal/pkg/vercomp` 的 `DateTimeParser` 已支持这种格式。
+版本名用 committer 时间，换算到 UTC，格式为 `20060102150405`（`gitpack.Snapshot.VersionName`）。用 UTC 是为了不受提交者所在时区影响：同一时刻在不同时区的两个提交，本地时间可能相差几个小时，按本地时间排的名字会颠倒先后。`internal/pkg/vercomp` 的 `DateTimeParser` 已支持这种格式。
 
-客户端只有 HEAD，要靠它自己算出当前版本名，才能调用 `/latest`，所以 CI 和客户端必须用同一个规则计算：
+客户端只有 HEAD，要靠它自己算出当前版本名，才能调用 `/latest`，所以 CI、服务端和客户端必须用同一个规则计算：
 
-- git：`git log -1 --format=%cd --date=format:%Y%m%d%H%M%S <commit>`
-- pygit2：`datetime.fromtimestamp(c.commit_time, timezone(timedelta(minutes=c.commit_time_offset))).strftime('%Y%m%d%H%M%S')`
+- git：读 `git cat-file commit <commit>` 中 `committer` 行的 unix 时间戳，按 UTC 格式化。不要用 `git log`/`git show`：它们会读取父提交，而客户端导入快照后，在写入 shallow 之前，仓库里没有父提交。
+- pygit2：`datetime.fromtimestamp(c.commit_time, timezone.utc).strftime('%Y%m%d%H%M%S')`
 
-限制：同一秒内有两个提交时版本名会重复，第二个上传会被拒绝，CI 会报错。
+服务端导入时会核对：版本名必须等于包里那个提交的 committer 时间（UTC），否则拒绝。
+
+限制：同一秒内有两个提交时版本名会重复。服务端已有这个版本时，要求再次上传的是同一个提交，否则拒绝，CI 会报错。
 
 ### 4.3 channel
 
 channel 和分支的对应关系在 CI 里配置，比如 master 或 main 对应 stable，dev 或 test 对应 beta。服务端不需要知道分支。
+
+一个版本只属于一个 channel。把已有版本上传到更稳定的 channel（比如 beta 的提交合进 master 后上传到 stable）时，版本移到那个 channel；上传到更不稳定的 channel 时什么都不变，因为不稳定 channel 的用户本来就能拿到更稳定 channel 的版本，而移动版本会改变更稳定 channel 的最新版本。
 
 ## 5. CI 上传
 
@@ -64,21 +68,30 @@ channel 和分支的对应关系在 CI 里配置，比如 master 或 main 对应
 ```yaml
 on:
   push:
-    branches: [master, dev]
+    branches: [master]
+  workflow_dispatch:
+concurrency:
+  group: mirrorchyan-pack
+  cancel-in-progress: false
 jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4          # depth=1 即可
-      - run: |
-          echo "NAME=$(git log -1 --format=%cd --date=format:%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
-          git rev-list --objects --no-walk HEAD | git pack-objects --stdout > snapshot.pack
-      # 走现有上传流程：POST /resources/:rid/versions 拿到预签名地址，
-      # 上传后调用 POST /resources/:rid/versions/callback，带上 NAME 和 channel。
-      # 也可以用 MirrorChyan/uploading-action，它需要支持 pack 类型。
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: MirrorChyan/git-pack-uploading-action@v1
+        with:
+          mirrorchyan_rid: your-resource-id
+          upload_token: ${{ secrets.MIRRORCHYAN_UPLOAD_TOKEN }}
+          branch: master
 ```
 
-包里恰好只有一个 commit，服务端从包里就能取出它的 SHA，CI 不需要另外上传。
+action 走现有的上传流程（`POST /resources/:rid/versions` 拿上传地址，上传后调用 `/callback`，再轮询处理状态），快照是 `git rev-list --objects --no-walk HEAD | git pack-objects --stdout`。包里恰好只有一个 commit，服务端从包里就能取出它的 SHA，CI 不需要另外上传。
+
+- 只上传分支当前最新的提交：HEAD 已经不是 `origin` 上该分支的最新提交时跳过，重跑旧任务不会把旧提交发布成最新。
+- `concurrency` 让上传串行执行，后一个等前一个处理完。
+- 用 `GITHUB_TOKEN` 推送或合并产生的提交不会触发 `push`，有这类自动提交时再加 `workflow_run` 或 `schedule`。
 
 ## 6. 服务端
 
@@ -92,19 +105,31 @@ pack-<sha>.idx
 meta.json        {"commit": "<目标 commit>", "base": "<客户端当前 commit，全量包为空>"}
 ```
 
-pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服务端生成。客户端把这两个文件放进 `.git/objects/pack/` 就能用。
+pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服务端生成。客户端用 `git index-pack --stdin` 导入 `.pack`（会重新生成索引），也可以把这两个文件直接放进 `.git/objects/pack/`。
 
 ### 6.2 导入（处理存储的任务）
 
 上传回调触发处理存储的任务，在本地临时目录中执行以下步骤：
 
-1. 上传校验：`doVerifyRequiredFileType` 新增对 pack 文件的识别，文件后缀为 `.pack`，文件头为 `PACK`。
-2. 在临时 bare 仓库里执行 `git index-pack`，校验包的完整性并生成 `.idx`。
-3. 确认包里恰好有 1 个 commit，记为 C；`git rev-list --objects --no-walk <C>` 必须能完整遍历，即树和文件都齐全。
-4. 把 `git ls-tree -r -t <C>` 的结果，加上根树，写进这个版本的 `file_hashes`，格式为"路径 → 对象 ID"。同一列在 zip 资源里存的是文件的 sha256，按资源类型区分含义。
-5. 把 `pack`、`idx` 和 `meta.json`（`base` 为空）打成 zip，复制到 ossfs，作为这个版本的全量包。
+1. 上传校验：`doVerifyRequiredFileType` 新增对 pack 文件的识别，文件后缀为 `.pack`，文件头为 `PACK`。只有 pack 资源（或设为 pack 的平台）才把 `.pack` 当作快照，其他资源仍按普通文件处理。
+2. 在临时 bare 仓库里执行 `git index-pack --fsck-objects --stdin`，校验包的完整性和对象格式并生成 `.idx`。不用 `--strict`：它要求包里的提交连通，而快照没有父提交。
+3. 确认包里恰好有 1 个 commit，记为 C；版本名必须等于 C 的 committer 时间（UTC，读 `git cat-file commit`）；`git rev-list --objects --no-walk <C>` 必须能完整遍历，即树和文件都齐全。
+4. 把 `git ls-tree -r -t <C>` 的结果，加上根树（键为 `.`），写进这个版本的 `file_hashes`，格式为"路径 → 对象 ID"；C 写进新列 `pack_commit`。同一列 `file_hashes` 在 zip 资源里存的是文件的 sha256，按资源类型区分含义。
+5. 把 `pack`、`idx` 和 `meta.json`（`base` 为空）打成 zip，复制到 ossfs，作为这个版本的全量包。文件名带内容哈希（`snapshot-<哈希前缀>.zip`）。
 
-### 6.3 生成增量（生成增量的任务）
+第 2、3 步不通过时快照不合法，任务不再重试，状态立即置为失败，并释放处理中的标记，同一版本可以马上重新上传。
+
+### 6.3 重新发布
+
+再次上传已有的版本时，服务端不报名称冲突，而是把它重新发布为最新版本。分支 force-push 回到旧提交，就是这样生效的。
+
+- 快照必须是这个版本原来的提交，否则拒绝（同一秒的另一个提交）。
+- 最新版本是上传被接受（回调）最晚的那个，按 Storage 的 `created_at` 排序，取回调时的时间，而且只往后移。任务晚执行、或被重复执行时，不会盖过在它之后被接受的上传，分支不会被拨回去。
+- 全量包已被定时清理时，重新生成全量包，并删除指向这个版本、已随清理失效的增量包记录，以及对应的缓存和生成标记，这些版本对之后会重新生成。
+- 按 4.3 的规则处理 channel。
+- 导入和定时清理都持有同一把资源锁：重新发布会让旧版本成为最新，清理不能按重新发布之前读到的结果删除它的包。
+
+### 6.4 生成增量（生成增量的任务）
 
 每个版本对的任务都不保留本地状态，哪个实例都能执行，不需要常驻的本地仓库，也不需要专门的队列。
 
@@ -120,7 +145,7 @@ pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服�
 - 文件名带内容哈希，形如 `<current>-<哈希前缀>`，不同次生成的文件不会互相覆盖；
 - 任务重复执行时，发现已有记录就提前返回。
 
-### 6.4 跨版本
+### 6.5 跨版本
 
 - 用户在 A、最新版本是 E 时，直接生成 A→E 这一对的增量包，中间版本不参与，隔几个版本都一样。
 - 生成时只读取目标版本 E 的快照（最新版本不会被清理），以及 A 在数据库里的 `file_hashes`，不需要 A 的快照文件。
@@ -128,13 +153,13 @@ pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服�
 - 因此，只要 A 的数据库记录和它的 `file_hashes` 还在，就能生成增量。能往回跨多远，取决于 `file_hashes` 保留多久。
 - 跨得越远，增量包越大。达到全量的 80% 时改发全量快照，客户端的应用步骤不变。
 
-### 6.5 `/latest`
+### 6.6 `/latest`
 
 - 请求方式不变：`GET /resources/:rid/latest?current_version=&channel=&cdk=`。
 - 响应只有一处变化：全量包和增量包都返回 `update_type: "pack"`，不新增字段。目标 commit 写在包里的 `meta.json` 中。
 - 增量包还没生成时，和 zip 资源一样先返回全量快照，同时投递生成任务。
 
-### 6.6 运行环境
+### 6.7 运行环境
 
 `Dockerfile` 需要安装 git：`apk add --no-cache git`。
 
@@ -142,24 +167,23 @@ pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服�
 
 ### 7.1 通用步骤
 
-1. 用 4.2 的规则从 HEAD 算出当前版本名，请求 `/latest`。还没有仓库时，不传当前版本。
+1. 用 4.2 的规则从 HEAD 算出当前版本名，请求 `/latest`。还没有仓库时，不传当前版本。判断有无更新只比较版本名是否相等：分支回退时，最新版本会比当前版本旧。
 2. 下载 zip，校验 sha256，解压到临时目录。
 3. `meta.base` 不为空、但和当前 HEAD 不一致时，改成不带当前版本重新请求，拿全量包。
-4. 把 `pack` 和 `idx` 放进 `.git/objects/pack/`；还没有仓库时先 `git init`。
-5. 把 `meta.commit` 追加进 `.git/shallow`，把它记为浅克隆边界，本地历史会从当前版本直接跳到目标版本。
-6. 把分支指向 `meta.commit`，然后 checkout。
+4. `git index-pack --stdin` 导入 `.pack`，再用 `git rev-list --objects --no-walk <meta.commit>` 确认目标提交的树和文件都齐了；还没有仓库时先 `git init`。
+5. 目标提交的父提交本地不全时，把 `meta.commit` 追加进 shallow 文件（`git rev-parse --git-path shallow`），把它记为浅克隆边界，本地历史会从当前版本直接跳到目标版本。父提交都在时（比如从上一个版本更新）不用写。
+6. 把远程分支指向 `meta.commit`，然后接上项目现有的检出流程。
 
-任何一步失败，就退回项目原来的 git 代码源。
+失败时提示原因（尤其是 CDK 错误码 7001–7005）。用户选了 Mirror酱 时，是否退回 git 代码源由项目决定：悄悄退回会让用户以为自己在用 Mirror酱，NIKKEAutoScript 的接入选择不退回。
 
 ### 7.2 NIKKEAutoScript（调用 git.exe）
 
-- **配置**：在 `deploy.yaml` 中新增 CDK 和更新源开关。
-- **启动时**（`deploy/starter.py` 中 `Starter.prepare` 调用 `git_update` 的位置）：
-  - 按 7.1 的步骤执行；
-  - 第 6 步用 `git update-ref refs/remotes/origin/<Branch> <commit>`，然后接上它现有的 `git reset --hard origin/<Branch>` 和 `pip_install`；
-  - 首次安装时，`git init` 之后再执行 `git remote add origin <Repository>`，保证以后退回 GitHub 也能用。
-- **运行中的定时检查**（`module/webui/updater.py` 的 `_do_check_update`）：改为调用 `/latest`，不再执行 `git fetch`。代码里残留的 `GitOverCdn` 分支（`goc_client.get_status()`）就是放这段逻辑的位置。
-- **更新提示**：改用 `/latest` 返回的 release note。跳到浅克隆边界之后，`git log before..after` 只能列出 1 个 commit。
+接入由项目开发者完成，接入说明另行提供，参考实现在 [Aliothmoon/NIKKEAutoScript 的 feat/mirrorchyan-pack-update 分支](https://github.com/Aliothmoon/NIKKEAutoScript/tree/feat/mirrorchyan-pack-update)：
+
+- **配置**：在 `deploy.yaml` 中新增更新源（git 或 Mirror酱）和 CDK，在 WebUI 的更新页设置。
+- **更新**（`deploy/git.py`）：按 7.1 的步骤执行，第 6 步用 `git update-ref refs/remotes/origin/<Branch> <commit>`，然后接上它现有的 `git reset --hard origin/<Branch>` 和 `pip_install`。
+- **运行中的定时检查**（`module/webui/updater.py` 的 `_do_check_update`）：选了 Mirror酱 时改为调用 `/latest`，不再执行 `git fetch`。
+- **更新记录**：写入浅克隆边界后，`git log` 只能看到目标提交。更新时记下 `refs/mirrorchyan/previous/<commit>` → 更新前的 HEAD，展示历史时沿它接着往前找；回退时不记，只保留最近 20 条。
 
 ### 7.3 ZenlessZoneZero-OneDragon（使用 pygit2）
 
@@ -169,7 +193,7 @@ pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服�
      - `pack` 和 `idx` 放进 `objects/pack/`；
      - `objects/info/alternates` 指向正式仓库的对象目录，这样当前版本的对象在临时仓库里也能看到；
      - 建 `refs/heads/<branch>`，指向 `meta.commit`；
-     - `shallow` 文件 = 正式仓库现有的 shallow 内容，再加上 `meta.commit`。
+     - `shallow` 文件 = 正式仓库现有的 shallow 内容；`meta.commit` 的父提交不全时再加上它。
   3. 交给现有的 `_import_fetch_result`。它会通过本地路径导入对象，同步 shallow，失败时回滚。
 - **之后的流程不变**：模块清单兼容性检查（不兼容时返回 `RUNTIME_INCOMPATIBLE`）、checkout 和 `uv sync` 都照旧。
 - **失败处理**：Mirror酱 源失败，就按代码源不可用处理，继续尝试 GitHub、CNB、Gitee。
@@ -188,22 +212,20 @@ pack 不是 thin pack，每个对象的差量基础都在包里，`.idx` 由服�
 - 检查更新走 `/latest` 这个 JSON 接口，有缓存，不会对 git 服务做协商请求。
 - 增量包是非 thin pack，改过的文件整个压缩后发送，体积和现有的 zip 增量包相当。
 
-## 10. 服务端改动清单
+## 10. 服务端实现位置
 
-| 位置 | 改动 |
+| 位置 | 内容 |
 |---|---|
-| `internal/model/types`、Resource | 新增 `pack` 更新类型 |
-| `doVerifyRequiredFileType` | 识别 pack 文件 |
-| 处理存储的任务 | pack 类型按 6.2 导入，生成全量包 |
-| 生成增量的任务 | pack 类型按 6.3 生成；新建 `internal/pkg/gitpack` 封装 git 命令 |
+| `internal/model/types`、Schema | `pack` 更新类型；Storage 新列 `pack_commit` |
+| `doVerifyRequiredFileType`、`resolveUploadUpdateType` | 识别 pack 文件；只在 pack 资源上把 `.pack` 推断为 pack |
+| `internal/pkg/gitpack` | 封装 git 命令：导入快照、生成增量 |
+| `internal/logic/pack.go` | 按 6.2 导入、按 6.3 重新发布、按 6.4 生成增量 |
 | `doProcessUpdateRequest` | pack 资源返回 `update_type: pack` |
+| `checkPackSwitch` | 有上传的平台不能在 pack 与全量/增量之间切换 |
 | `Dockerfile` | 安装 git |
-| 接入文档或脚本 | CI 上传步骤、客户端应用步骤 |
 
-## 11. 第一版不做、待定事项
+## 11. 不做、待定事项
 
-- 包还没生成时返回 `pending` 和 `retry_after`。第一版先回退为全量快照。
+- 包还没生成时返回 `pending` 和 `retry_after`。现在先回退为全量快照。
 - 发版时按用户数，给用户最多的几个旧版本提前生成增量包。这需要按版本统计用户数；`collect` 目前收到了 `currentVersion`，但没有存下来。
-- `MirrorChyan/uploading-action` 支持上传 pack 文件。
 - 不支持 git 子模块：子模块的对象不在快照里。
-- 最终失败时写入带原因的跳过标记，并释放去重键。这件事和 zip 增量共用，另行处理。

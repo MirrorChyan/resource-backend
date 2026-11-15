@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
@@ -21,15 +22,18 @@ import (
 )
 
 // A pack resource serves a git branch: each version is the snapshot of a commit, named
-// after its committer time, and the latest version is the one stored last. Uploading a
-// stored version again publishes it again, which is how the branch moves back to an
-// older commit; the version must then be the same commit.
+// after its committer time, and the latest version is the one whose upload was accepted
+// last. Uploading a stored version again publishes it again, which is how the branch
+// moves back to an older commit; the version must then be the same commit.
 
-// DoProcessPackStorage imports the snapshot uploaded for a version of a pack resource.
-// Errors wrapping gitpack.ErrInvalid reject the upload for good.
+// DoProcessPackStorage imports the snapshot uploaded for a version of a pack resource,
+// publishing it as of acceptedAt, when the upload was accepted: a task that runs late or
+// again does not publish over an upload accepted after it. Errors wrapping
+// gitpack.ErrInvalid reject the upload for good.
 func (l *VersionLogic) DoProcessPackStorage(ctx context.Context,
 	resourceId string, versionId int,
 	versionName, channel, system, arch, source string,
+	acceptedAt time.Time,
 ) error {
 	snapshot, err := gitpack.Import(ctx, source, "")
 	if err != nil {
@@ -55,9 +59,9 @@ func (l *VersionLogic) DoProcessPackStorage(ctx context.Context,
 	stored, err := l.storageLogic.GetFullUpdateStorage(ctx, versionId, system, arch)
 	switch {
 	case err == nil:
-		err = l.doRepublishPackVersion(ctx, stored, snapshot, resourceId, versionId, versionName, channel, system, arch)
+		err = l.doRepublishPackVersion(ctx, stored, snapshot, resourceId, versionId, versionName, channel, system, arch, acceptedAt)
 	case ent.IsNotFound(err):
-		err = l.doStorePackVersion(ctx, snapshot, resourceId, versionId, system, arch)
+		err = l.doStorePackVersion(ctx, snapshot, resourceId, versionId, system, arch, acceptedAt)
 		if err == nil {
 			l.logger.Info("pack version stored",
 				zap.String("resource id", resourceId),
@@ -77,13 +81,14 @@ func (l *VersionLogic) DoProcessPackStorage(ctx context.Context,
 }
 
 func (l *VersionLogic) doStorePackVersion(ctx context.Context, snapshot *gitpack.Snapshot,
-	resourceId string, versionId int, system, arch string,
+	resourceId string, versionId int, system, arch string, acceptedAt time.Time,
 ) error {
 	path, hash, size, err := l.doWritePackArchive(snapshot, resourceId, versionId, system, arch)
 	if err != nil {
 		return err
 	}
-	_, err = l.storageLogic.CreatePackStorage(ctx, versionId, system, arch, path, hash, size, snapshot.Objects, snapshot.Commit)
+	_, err = l.storageLogic.CreatePackStorage(ctx, versionId, system, arch, path, hash, size,
+		snapshot.Objects, snapshot.Commit, acceptedAt)
 	if err != nil {
 		l.doRemoveFile(path)
 		return err
@@ -96,7 +101,7 @@ func (l *VersionLogic) doStorePackVersion(ctx context.Context, snapshot *gitpack
 // channel get the versions of the more stable channels too, and moving the version would
 // change what those channels serve.
 func (l *VersionLogic) doRepublishPackVersion(ctx context.Context, stored *ent.Storage, snapshot *gitpack.Snapshot,
-	resourceId string, versionId int, versionName, channel, system, arch string,
+	resourceId string, versionId int, versionName, channel, system, arch string, acceptedAt time.Time,
 ) error {
 	if stored.PackCommit != snapshot.Commit {
 		// two commits of the same second share a name
@@ -138,7 +143,8 @@ func (l *VersionLogic) doRepublishPackVersion(ctx context.Context, stored *ent.S
 		}
 		restored = &repo.RestoredPackage{Path: path, Hash: hash, Size: size}
 	}
-	if err := l.storageLogic.RepublishStorage(ctx, stored.ID, versionId, promote, restored); err != nil {
+	moved, err := l.storageLogic.RepublishStorage(ctx, stored.ID, versionId, acceptedAt, promote, restored)
+	if err != nil {
 		if restored != nil {
 			l.doRemoveFile(restored.Path)
 		}
@@ -149,6 +155,8 @@ func (l *VersionLogic) doRepublishPackVersion(ctx context.Context, stored *ent.S
 		zap.String("resource id", resourceId),
 		zap.String("version name", versionName),
 		zap.String("channel", channel),
+		// false when an upload of the version accepted later has published it already
+		zap.Bool("moved forward", moved),
 		zap.Bool("promoted", promote != nil),
 		zap.Bool("restored", restored != nil),
 		zap.Int("dropped incremental packages", dropped),

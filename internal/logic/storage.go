@@ -153,13 +153,15 @@ func (l *StorageLogic) UpdateStoragePackageHash(ctx context.Context, id int, has
 
 func (l *StorageLogic) CreatePackStorage(ctx context.Context, verID int,
 	os, arch, path, hash string, size int64,
-	objects map[string]string, commit string,
+	objects map[string]string, commit string, createdAt time.Time,
 ) (*ent.Storage, error) {
-	return l.storageRepo.CreatePackStorage(ctx, verID, os, arch, path, hash, size, objects, commit)
+	return l.storageRepo.CreatePackStorage(ctx, verID, os, arch, path, hash, size, objects, commit, createdAt)
 }
 
-func (l *StorageLogic) RepublishStorage(ctx context.Context, id, verID int, channel *version.Channel, pkg *repo.RestoredPackage) error {
-	return l.storageRepo.RepublishStorage(ctx, id, verID, channel, pkg)
+func (l *StorageLogic) RepublishStorage(ctx context.Context, id, verID int, at time.Time,
+	channel *version.Channel, pkg *repo.RestoredPackage,
+) (bool, error) {
+	return l.storageRepo.RepublishStorage(ctx, id, verID, at, channel, pkg)
 }
 
 func (l *StorageLogic) ListPurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]*ent.Storage, error) {

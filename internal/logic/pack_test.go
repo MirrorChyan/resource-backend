@@ -109,11 +109,26 @@ func uploadPack(t *testing.T, l *VersionLogic, name string, snapshot []byte) (mi
 func uploadPackTo(t *testing.T, l *VersionLogic, name, channel string, snapshot []byte) (misc.PollingStatus, error) {
 	t.Helper()
 	ctx := context.Background()
+	statusKey, task, err := acceptPack(t, l, name, channel, snapshot)
+	if err != nil {
+		return 0, err
+	}
+	taskErr := doHandleCalculatePackageHash(l.logger, l)(ctx, task)
+	status, err := l.GetProcessingStatus(ctx, statusKey)
+	require.NoError(t, err)
+	return status, taskErr
+}
+
+// acceptPack runs an upload through signing and the callback, and returns the storage
+// task it queued.
+func acceptPack(t *testing.T, l *VersionLogic, name, channel string, snapshot []byte) (string, *asynq.Task, error) {
+	t.Helper()
+	ctx := context.Background()
 	token, err := l.CreatePreSignedUrl(ctx, model.CreateVersionParam{
 		ResourceID: "res", Name: name, Channel: channel, Filename: "res-" + name + ".pack",
 	})
 	if err != nil {
-		return 0, err
+		return "", nil, err
 	}
 	require.Equal(t, "snapshot.pack", token.Name)
 	source := filepath.Join(l.storageLogic.OSSDir, token.Key)
@@ -129,10 +144,7 @@ func uploadPackTo(t *testing.T, l *VersionLogic, name, channel string, snapshot 
 	queued := pendingUploads(t, l)
 	require.NotEmpty(t, queued)
 	last := queued[len(queued)-1]
-	taskErr := doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(last.Type, last.Payload))
-	status, err := l.GetProcessingStatus(ctx, statusKey)
-	require.NoError(t, err)
-	return status, taskErr
+	return statusKey, asynq.NewTask(last.Type, last.Payload), nil
 }
 
 func latestName(t *testing.T, l *VersionLogic) string {
@@ -522,4 +534,40 @@ func TestQueuedUploadRejectedAfterPackSwitch(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// The latest version is the one whose upload was accepted last, not the one processed
+// last: a task that runs late, or runs again, cannot move the branch back.
+func TestPackLateTasksDoNotMoveTheBranchBack(t *testing.T) {
+	ctx := context.Background()
+	l, _ := newPackTestLogic(t, types.UpdatePack)
+	r := newPackRepo(t)
+	_, n1, s1 := r.commit("2026-11-01T10:00:00+08:00", map[string]string{"a.txt": "1"})
+	_, n2, s2 := r.commit("2026-11-01T11:00:00+08:00", map[string]string{"a.txt": "2"})
+	run := func(task *asynq.Task) {
+		t.Helper()
+		require.NoError(t, doHandleCalculatePackageHash(l.logger, l)(ctx, task))
+	}
+
+	// n1 is accepted first, but its task is held up until n2 is through
+	_, late, err := acceptPack(t, l, n1, "stable", s1)
+	require.NoError(t, err)
+	time.Sleep(5 * time.Millisecond)
+	status, err := uploadPack(t, l, n2, s2)
+	require.NoError(t, err)
+	require.Equal(t, misc.StatusCompleted, status)
+
+	run(late)
+	require.Equal(t, n2, latestName(t, l), "stored late, n1 stays behind n2")
+	run(late)
+	require.Equal(t, n2, latestName(t, l), "published again late, n1 stays behind n2")
+
+	// an upload of n1 accepted now moves the branch back
+	status, err = uploadPack(t, l, n1, s1)
+	require.NoError(t, err)
+	require.Equal(t, misc.StatusCompleted, status)
+	require.Equal(t, n1, latestName(t, l))
+	// and the late task, run once more, does not undo that
+	run(late)
+	require.Equal(t, n1, latestName(t, l))
 }

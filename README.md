@@ -6,6 +6,7 @@ A high-performance Go-based resource distribution backend service for managing v
 
 - **Versioned Resource Management** - Manage software resources with semantic versioning or datetime-based versioning
 - **Full & Incremental Updates** - Support both complete package distribution and delta updates
+- **Git Pack Updates** - Serve a git branch to clients that update their repository from it (`pack` resources)
 - **Multi-Region CDN** - Weighted region-based distribution with configurable CDN/direct download ratios
 - **Release Channels** - Separate stable/beta/alpha channels for gradual rollouts
 - **Platform Support** - Multi-platform (OS/Arch) package management
@@ -51,6 +52,8 @@ instance:
   only_local: true  # Set to false for cluster mode
 
 database:
+  # driver: sqlite        # with path, runs on a local file for development; mysql by default
+  # path: "dev.db"
   host: "localhost"
   port: 3306
   username: "root"
@@ -126,6 +129,8 @@ GET /resources/:rid/latest?channel=stable&system=windows&arch=amd64&current=1.0.
 }
 ```
 
+`update_type` is `full` or `incremental`, or `pack` for both packages of a [pack resource](#git-pack-resources).
+
 #### Download Resource
 ```http
 GET /resources/download/:key
@@ -156,6 +161,8 @@ POST /admin/resources
 }
 ```
 
+`update_type` is `full`, `incremental` (the default) or `pack`.
+
 #### Platform Update Types
 ```http
 GET    /admin/resources/:rid/platforms
@@ -167,7 +174,8 @@ A platform with its own update type uses it; any other platform uses the resourc
 For a platform with neither a prior upload nor its own setting, the first upload automatically
 selects incremental updates for `.zip` and `.tar.gz` (case-insensitive), and full updates for
 all other filenames (e.g. `.exe`, `.dmg`, `.apk`). Only ZIP and TAR.GZ currently support incremental
-processing; `.7z`, `.tar`, and `.tgz` are delivered as full packages.
+processing; `.7z`, `.tar`, and `.tgz` are delivered as full packages. A `.pack` file selects pack
+updates on a pack resource only; on any other resource it is a full package, as before.
 The upload callback saves this selection as a platform setting after file-type validation;
 requesting an upload URL alone does not save it. The setting is saved before the processing task
 is queued and stays if queuing fails: a retried callback of the same package goes through, a
@@ -180,7 +188,28 @@ file hashes fall back to full downloads.
 `GET` lists the platforms packages were uploaded for and the ones with their own update type,
 each with the type in effect and its `source` (`inherit` / `override`). `PUT` and `DELETE` return the
 platform's update type `before` and `after` the change; `DELETE` returns the platform to the resource's.
+A platform with uploads cannot switch between pack and full or incremental, whose packages are of
+another kind; full and incremental may switch.
 `os` / `arch` take the same aliases as the version endpoints (e.g. `x64` → `amd64`).
+
+#### Git Pack Resources
+
+A resource with `update_type: pack` serves a git branch, for clients that update their repository
+from it; os and arch are left empty. Each version is the snapshot of a commit (a non-thin git pack
+of the commit and its whole tree, without history), named after its committer time in UTC
+(`%Y%m%d%H%M%S`), so a client computes its version from HEAD alone. Snapshots are uploaded with
+[git-pack-uploading-action](https://github.com/MirrorChyan/git-pack-uploading-action).
+
+- The full package is a zip of the snapshot (`pack-<sha>.pack`, `.idx`, and `meta.json` with
+  `{"commit": ..., "base": ""}`); a patch holds the objects of the target the current version
+  lacks, with `base` set to the commit it builds on. `/latest` serves both as `update_type: pack`.
+- Uploading a stored version again republishes it as the latest, which is how a branch moves back;
+  the snapshot must be of the same commit. The latest version is the one whose upload was accepted
+  last. Uploading a version to a more stable channel moves it there; to a less stable one changes
+  nothing.
+- The server needs `git`, which the Docker image installs.
+
+See [docs/git-pack-update.md](docs/git-pack-update.md) for the design and the client steps.
 
 #### Create Version
 ```http
@@ -254,7 +283,7 @@ internal/ent (ORM entities)
 - `id` - Resource identifier
 - `name` - Display name
 - `description` - Description
-- `update_type` - Default update strategy (full/incremental)
+- `update_type` - Default update strategy (full/incremental/pack)
 
 **ResourcePlatformConfig** (Per-platform settings of a resource)
 - `resource_id`, `os`, `arch` - The platform, unique per resource; `""` is the platform-independent package, not a wildcard
@@ -275,8 +304,9 @@ internal/ent (ORM entities)
 - `package_hash_sha256` - Package checksum
 - `file_type` - Archive format (zip, tgz, etc.)
 - `file_size` - Size in bytes
-- `file_hashes` - Hash map of files (for full updates)
+- `file_hashes` - Hash map of files (for full updates); for pack resources, the object IDs of the snapshot's tree by path
 - `old_version` - Source version (for incremental updates)
+- `pack_commit` - The commit of the snapshot (full packages of pack resources)
 
 ### Configuration Modes
 
