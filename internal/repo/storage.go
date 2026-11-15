@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
@@ -102,6 +103,90 @@ func (r *Storage) ListPlatforms(ctx context.Context, rid string) ([]model.Platfo
 
 func (r *Storage) UpdateStoragePackageHash(ctx context.Context, id int, hash string) error {
 	return r.db.Storage.UpdateOneID(id).SetPackageHashSha256(hash).Exec(ctx)
+}
+
+// CreatePackStorage records the package of a version of a pack resource: an archive of the
+// snapshot, the IDs of its objects and its commit.
+func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
+	os, arch, path, hash string,
+	size int64,
+	objects map[string]string,
+	commit string,
+	createdAt time.Time,
+) (*ent.Storage, error) {
+	return r.db.Storage.Create().
+		SetUpdateType(storage.UpdateTypeFull).
+		SetOs(os).
+		SetArch(arch).
+		SetPackagePath(path).
+		SetPackageHashSha256(hash).
+		SetFileType(string(types.Zip)).
+		SetFileSize(size).
+		SetFileHashes(objects).
+		SetPackCommit(commit).
+		SetCreatedAt(createdAt).
+		SetVersionID(verID).
+		Save(ctx)
+}
+
+// RestoredPackage is the package written again for a storage the purge emptied.
+type RestoredPackage struct {
+	Path string
+	Hash string
+	Size int64
+}
+
+// RepublishStorage publishes the full storage again as of at, when its upload was
+// accepted: the latest version and the purge both go by the time a storage was created,
+// which only moves forward, so a task run late or again cannot move the branch back. It
+// gives the storage its package again when pkg is set, and moves the version to channel
+// when it is set, all at once: no channel is to see the version without a package, or in
+// between. moved reports whether the storage took the time.
+func (r *Storage) RepublishStorage(ctx context.Context, id, verID int, at time.Time,
+	channel *version.Channel, pkg *RestoredPackage,
+) (moved bool, err error) {
+	err = r.WithTx(ctx, func(tx *ent.Tx) error {
+		if channel != nil {
+			if err := tx.Version.UpdateOneID(verID).SetChannel(*channel).Exec(ctx); err != nil {
+				return err
+			}
+		}
+		if pkg != nil {
+			err := tx.Storage.UpdateOneID(id).
+				SetPackagePath(pkg.Path).SetPackageHashSha256(pkg.Hash).SetFileSize(pkg.Size).
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		n, err := tx.Storage.Update().
+			Where(storage.ID(id), storage.CreatedAtLT(at)).
+			SetCreatedAt(at).
+			Save(ctx)
+		moved = n > 0
+		return err
+	})
+	return moved, err
+}
+
+// ListPurgedIncrementalStorages lists the incremental storages to the version whose
+// packages the purge removed, with the versions they start from.
+func (r *Storage) ListPurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]*ent.Storage, error) {
+	return r.db.Storage.Query().
+		Where(
+			storage.HasVersionWith(version.ID(verID)),
+			storage.UpdateTypeEQ(storage.UpdateTypeIncremental),
+			storage.Os(os),
+			storage.Arch(arch),
+			storage.PackagePathIsNil(),
+		).
+		WithOldVersion().
+		All(ctx)
+}
+
+func (r *Storage) DeleteStorages(ctx context.Context, ids ...int) error {
+	_, err := r.db.Storage.Delete().Where(storage.IDIn(ids...)).Exec(ctx)
+	return err
 }
 
 func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVerID int, os, arch string) (*ent.Storage, error) {

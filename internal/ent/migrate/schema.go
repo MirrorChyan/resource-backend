@@ -27,7 +27,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "os", Type: field.TypeString, Size: 32, Default: ""},
 		{Name: "arch", Type: field.TypeString, Size: 32, Default: ""},
-		{Name: "update_type", Type: field.TypeEnum, Enums: []string{"full", "incremental"}},
+		{Name: "update_type", Type: field.TypeEnum, Enums: []string{"full", "incremental", "pack"}},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "resource_id", Type: field.TypeString},
@@ -64,6 +64,7 @@ var (
 		{Name: "file_type", Type: field.TypeString, Nullable: true},
 		{Name: "file_size", Type: field.TypeInt64, Default: 0},
 		{Name: "file_hashes", Type: field.TypeJSON, Nullable: true},
+		{Name: "pack_commit", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "storage_old_version", Type: field.TypeInt, Nullable: true},
 		{Name: "version_storages", Type: field.TypeInt},
@@ -76,13 +77,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "storages_versions_old_version",
-				Columns:    []*schema.Column{StoragesColumns[10]},
+				Columns:    []*schema.Column{StoragesColumns[11]},
 				RefColumns: []*schema.Column{VersionsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "storages_versions_storages",
-				Columns:    []*schema.Column{StoragesColumns[11]},
+				Columns:    []*schema.Column{StoragesColumns[12]},
 				RefColumns: []*schema.Column{VersionsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -91,7 +92,7 @@ var (
 			{
 				Name:    "storage_version_os_arch_type_old_version",
 				Unique:  true,
-				Columns: []*schema.Column{StoragesColumns[11], StoragesColumns[2], StoragesColumns[3], StoragesColumns[1], StoragesColumns[10]},
+				Columns: []*schema.Column{StoragesColumns[12], StoragesColumns[2], StoragesColumns[3], StoragesColumns[1], StoragesColumns[11]},
 			},
 		},
 	}

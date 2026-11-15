@@ -6,8 +6,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/go-redsync/redsync/v4"
@@ -415,5 +417,91 @@ func TestUploadInitializationPreservesConcurrentSetting(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, inferred)
 		require.Equal(t, types.UpdateFull, got)
+	}
+}
+
+// An upload whose storage task fails for good frees its version and platform for the
+// next upload, unless its pending key expired and another upload holds it now.
+func TestFailedStorageTaskFreesThePlatform(t *testing.T) {
+	for _, taken := range []bool{false, true} {
+		t.Run("taken "+strconv.FormatBool(taken), func(t *testing.T) {
+			ctx := context.Background()
+			l, client := newPatchTestLogic(t)
+			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+			ver := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+			source := filepath.Join(l.storageLogic.OSSDir, "app.apk")
+			require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))
+			require.NoError(t, os.WriteFile(source, []byte("installer"), 0o644))
+			statusKey, err := l.ProcessCreateVersionCallback(ctx, model.CreateVersionCallBackParam{
+				ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: "app.apk",
+			})
+			require.NoError(t, err)
+			mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+				"res", strconv.Itoa(ver.ID), "stable", "android", "arm64",
+			}, ":")
+			if taken {
+				require.NoError(t, l.rdb.Set(ctx, mk, "another", time.Hour).Err())
+			}
+
+			// the package is gone by the time the task runs
+			require.NoError(t, os.Remove(source))
+			queued := pendingUploads(t, l)
+			require.Len(t, queued, 1)
+			require.Error(t, doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(queued[0].Type, queued[0].Payload)))
+
+			status, err := l.GetProcessingStatus(ctx, statusKey)
+			require.NoError(t, err)
+			require.Equal(t, misc.StatusFailed, status)
+			held, err := l.rdb.Get(ctx, mk).Result()
+			if taken {
+				require.NoError(t, err)
+				require.Equal(t, "another", held)
+			} else {
+				require.ErrorIs(t, err, redis.Nil)
+			}
+		})
+	}
+}
+
+// A storage task that succeeds frees the pending key it holds, or the flag uploads
+// accepted before it held, but not a key another upload holds now.
+func TestStoredUploadFreesOnlyItsPendingKey(t *testing.T) {
+	for _, c := range []struct {
+		held string
+		kept bool
+	}{{"", false}, {misc.ProcessFlag, false}, {"another", true}} {
+		t.Run("held by "+c.held, func(t *testing.T) {
+			ctx := context.Background()
+			l, client := newPatchTestLogic(t)
+			l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
+			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
+			ver := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
+			require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))
+			require.NoError(t, os.WriteFile(filepath.Join(l.storageLogic.OSSDir, "app.apk"), []byte("installer"), 0o644))
+			statusKey, err := l.ProcessCreateVersionCallback(ctx, model.CreateVersionCallBackParam{
+				ResourceID: "res", Name: "v1", OS: "android", Arch: "arm64", Channel: "stable", Key: "app.apk",
+			})
+			require.NoError(t, err)
+			mk := strings.Join([]string{misc.ProcessStoragePendingKey,
+				"res", strconv.Itoa(ver.ID), "stable", "android", "arm64",
+			}, ":")
+			if c.held != "" {
+				require.NoError(t, l.rdb.Set(ctx, mk, c.held, time.Hour).Err())
+			}
+
+			queued := pendingUploads(t, l)
+			require.Len(t, queued, 1)
+			require.NoError(t, doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(queued[0].Type, queued[0].Payload)))
+			status, err := l.GetProcessingStatus(ctx, statusKey)
+			require.NoError(t, err)
+			require.Equal(t, misc.StatusCompleted, status)
+			held, err := l.rdb.Get(ctx, mk).Result()
+			if c.kept {
+				require.NoError(t, err)
+				require.Equal(t, c.held, held)
+			} else {
+				require.ErrorIs(t, err, redis.Nil)
+			}
+		})
 	}
 }

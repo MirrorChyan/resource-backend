@@ -1,0 +1,304 @@
+package logic
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
+	. "github.com/MirrorChyan/resource-backend/internal/model"
+	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/fileops"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/gitpack"
+	"github.com/MirrorChyan/resource-backend/internal/repo"
+	"go.uber.org/zap"
+)
+
+// A pack resource serves a git branch: each version is the snapshot of a commit, named
+// after its committer time, and the latest version is the one whose upload was accepted
+// last. Uploading a stored version again publishes it again, which is how the branch
+// moves back to an older commit; the version must then be the same commit.
+
+// DoProcessPackStorage imports the snapshot uploaded for a version of a pack resource,
+// publishing it as of acceptedAt, when the upload was accepted: a task that runs late or
+// again does not publish over an upload accepted after it. Errors wrapping
+// gitpack.ErrInvalid reject the upload for good.
+func (l *VersionLogic) DoProcessPackStorage(ctx context.Context,
+	resourceId string, versionId int,
+	versionName, channel, system, arch, source string,
+	acceptedAt time.Time,
+) error {
+	snapshot, err := gitpack.Import(ctx, source, "")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := snapshot.Close(); err != nil {
+			l.logger.Warn("failed to remove snapshot repository", zap.Error(err))
+		}
+	}()
+
+	if name := snapshot.VersionName(); name != versionName {
+		return fmt.Errorf("%w: commit %s makes version %s, not %s", gitpack.ErrInvalid, snapshot.Commit, name, versionName)
+	}
+
+	// the purge must not remove the package of a version this makes the newest
+	unlock, err := l.storageLogic.LockResource(ctx, resourceId)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	stored, err := l.storageLogic.GetFullUpdateStorage(ctx, versionId, system, arch)
+	switch {
+	case err == nil:
+		err = l.doRepublishPackVersion(ctx, stored, snapshot, resourceId, versionId, versionName, channel, system, arch, acceptedAt)
+	case ent.IsNotFound(err):
+		err = l.doStorePackVersion(ctx, snapshot, resourceId, versionId, system, arch, acceptedAt)
+		if err == nil {
+			l.logger.Info("pack version stored",
+				zap.String("resource id", resourceId),
+				zap.String("version name", versionName),
+				zap.String("commit", snapshot.Commit),
+			)
+			go l.doWebhookNotify(resourceId, versionName, channel, system, arch)
+		}
+	}
+	if err != nil {
+		return err
+	}
+
+	l.cacheGroup.FullUpdateStorageCache.Delete(l.cacheGroup.GetCacheKey(strconv.Itoa(versionId), system, arch))
+	l.doPostCreateResources(resourceId)
+	return nil
+}
+
+func (l *VersionLogic) doStorePackVersion(ctx context.Context, snapshot *gitpack.Snapshot,
+	resourceId string, versionId int, system, arch string, acceptedAt time.Time,
+) error {
+	path, hash, size, err := l.doWritePackArchive(snapshot, resourceId, versionId, system, arch)
+	if err != nil {
+		return err
+	}
+	_, err = l.storageLogic.CreatePackStorage(ctx, versionId, system, arch, path, hash, size,
+		snapshot.Objects, snapshot.Commit, acceptedAt)
+	if err != nil {
+		l.doRemoveFile(path)
+		return err
+	}
+	return nil
+}
+
+// doRepublishPackVersion publishes a stored version again in channel. The version moves
+// to channel when that is more stable, and stays when it is less stable: the users of a
+// channel get the versions of the more stable channels too, and moving the version would
+// change what those channels serve.
+func (l *VersionLogic) doRepublishPackVersion(ctx context.Context, stored *ent.Storage, snapshot *gitpack.Snapshot,
+	resourceId string, versionId int, versionName, channel, system, arch string, acceptedAt time.Time,
+) error {
+	if stored.PackCommit != snapshot.Commit {
+		// two commits of the same second share a name
+		return fmt.Errorf("%w: the version is commit %q already, not %s", gitpack.ErrInvalid, stored.PackCommit, snapshot.Commit)
+	}
+
+	ver, err := l.versionRepo.GetVersionByName(ctx, resourceId, versionName)
+	if err != nil {
+		return err
+	}
+	var promote *version.Channel
+	switch to, from := channelRank(channel), channelRank(ver.Channel.String()); {
+	case to > from:
+		l.logger.Warn("pack version is in a more stable channel already, keep it there",
+			zap.String("resource id", resourceId),
+			zap.String("version name", versionName),
+			zap.String("version channel", ver.Channel.String()),
+			zap.String("upload channel", channel),
+		)
+		return nil
+	case to < from:
+		c := l.GetVersionChannel(channel)
+		promote = &c
+	}
+
+	// done before the version is served again, and on every republish, so that one which
+	// failed halfway is completed by the next
+	dropped, err := l.doDropPurgedPatches(ctx, resourceId, versionId, system, arch)
+	if err != nil {
+		return err
+	}
+
+	var restored *repo.RestoredPackage
+	if !packageExists(stored.PackagePath) {
+		// the purge removed the package
+		path, hash, size, err := l.doWritePackArchive(snapshot, resourceId, versionId, system, arch)
+		if err != nil {
+			return err
+		}
+		restored = &repo.RestoredPackage{Path: path, Hash: hash, Size: size}
+	}
+	moved, err := l.storageLogic.RepublishStorage(ctx, stored.ID, versionId, acceptedAt, promote, restored)
+	if err != nil {
+		if restored != nil {
+			l.doRemoveFile(restored.Path)
+		}
+		return err
+	}
+
+	l.logger.Info("publish pack version again",
+		zap.String("resource id", resourceId),
+		zap.String("version name", versionName),
+		zap.String("channel", channel),
+		// false when an upload of the version accepted later has published it already
+		zap.Bool("moved forward", moved),
+		zap.Bool("promoted", promote != nil),
+		zap.Bool("restored", restored != nil),
+		zap.Int("dropped incremental packages", dropped),
+	)
+	return nil
+}
+
+// doDropPurgedPatches drops the incremental packages to the version that the purge
+// removed, so that the pairs are built again. The tags of their queued builds go first:
+// once the rows are gone, nothing tells a retry which tags are left.
+func (l *VersionLogic) doDropPurgedPatches(ctx context.Context, resourceId string, versionId int, system, arch string) (int, error) {
+	rows, err := l.storageLogic.ListPurgedIncrementalStorages(ctx, versionId, system, arch)
+	if err != nil || len(rows) == 0 {
+		return 0, err
+	}
+	ids := make([]int, 0, len(rows))
+	from := make([]int, 0, len(rows))
+	tags := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+		if row.Edges.OldVersion != nil {
+			current := row.Edges.OldVersion.ID
+			from = append(from, current)
+			tags = append(tags, misc.PatchGenerateTagKey(resourceId, versionId, current, system, arch))
+		}
+	}
+	if len(tags) > 0 {
+		if err := l.rdb.Del(ctx, tags...).Err(); err != nil {
+			return 0, err
+		}
+	}
+	if err := l.storageLogic.DeleteStorages(ctx, ids...); err != nil {
+		return 0, err
+	}
+	for _, current := range from {
+		l.cacheGroup.IncrementalUpdateInfoCache.Delete(
+			l.cacheGroup.GetCacheKey(strconv.Itoa(versionId), strconv.Itoa(current), system, arch),
+		)
+	}
+	return len(rows), nil
+}
+
+func packageExists(path string) bool {
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// channelRank orders the channels from the most stable one.
+func channelRank(channel string) int {
+	switch channel {
+	case types.ChannelBeta.String():
+		return 1
+	case types.ChannelAlpha.String():
+		return 2
+	default:
+		return 0
+	}
+}
+
+// doWritePackArchive writes the package of the snapshot to OSS. The name carries the
+// content hash: a package written again differs in bytes, and must not take the URL
+// a CDN may still have the old one under.
+func (l *VersionLogic) doWritePackArchive(snapshot *gitpack.Snapshot,
+	resourceId string, versionId int, system, arch string,
+) (path, hash string, size int64, err error) {
+	tmp, err := os.MkdirTemp("", "pack-")
+	if err != nil {
+		return "", "", 0, err
+	}
+	defer l.doRemoveDir(tmp)
+
+	local := filepath.Join(tmp, misc.PackSnapshotName+misc.ZipSuffix)
+	if err := snapshot.WriteArchive(local); err != nil {
+		return "", "", 0, err
+	}
+	hash, err = filehash.Calculate(local)
+	if err != nil {
+		return "", "", 0, err
+	}
+	stat, err := os.Stat(local)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	dir := l.storageLogic.BuildVersionStorageDirPath(resourceId, versionId, system, arch)
+	name := misc.PackSnapshotName + "-" + hash[:16] + misc.ZipSuffix
+	path = filepath.Join(l.storageLogic.OSSDir, l.cleanRootStoragePath(dir), name)
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return "", "", 0, err
+	}
+	if err := fileops.CopyFile(local, path); err != nil {
+		l.logger.Error("failed to copy pack package to oss",
+			zap.String("destination", path),
+			zap.Error(err),
+		)
+		return "", "", 0, err
+	}
+	return path, hash, stat.Size(), nil
+}
+
+// doCreatePackIncrementalPackage builds the incremental package of a pack resource: the
+// objects of the target's snapshot that the current version does not have.
+func (l *VersionLogic) doCreatePackIncrementalPackage(ctx context.Context, param PatchTaskExecuteParam, currentCommit string) error {
+	skip := l.patchSkipper(ctx, param)
+	if len(param.CurrentStorageHashes) == 0 || currentCommit == "" {
+		skip("the current version has no snapshot")
+		return nil
+	}
+	if param.TargetOriginPackage == "" {
+		return errors.New("the package of the target version is gone")
+	}
+
+	tmp, err := os.MkdirTemp("", "patch-")
+	if err != nil {
+		return fmt.Errorf("failed to create patch temp directory: %w", err)
+	}
+	defer l.doRemoveDir(tmp)
+
+	dest := filepath.Join(tmp, strconv.Itoa(param.CurrentVersionId)+misc.ZipSuffix)
+	if err := gitpack.Diff(ctx, param.TargetOriginPackage, param.CurrentStorageHashes, currentCommit, dest, tmp); err != nil {
+		l.logger.Error("failed to build pack incremental package",
+			zap.String("resource id", param.ResourceId),
+			zap.Int("target version id", param.TargetVersionId),
+			zap.Int("current version id", param.CurrentVersionId),
+			zap.Error(err),
+		)
+		return err
+	}
+	return l.doStoreIncrementalPackage(ctx, param, dest, misc.ZipSuffix, skip)
+}
+
+func (l *VersionLogic) doRemoveFile(path string) {
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		l.logger.Warn("failed to remove file", zap.String("path", path), zap.Error(err))
+	}
+}
+
+func (l *VersionLogic) doRemoveDir(path string) {
+	if err := os.RemoveAll(path); err != nil {
+		l.logger.Warn("failed to remove directory", zap.String("path", path), zap.Error(err))
+	}
+}

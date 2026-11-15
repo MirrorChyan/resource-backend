@@ -10,12 +10,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
+	"github.com/MirrorChyan/resource-backend/internal/ent/version"
+	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/bytedance/sonic"
+	"github.com/go-redsync/redsync/v4"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -25,6 +29,7 @@ type StorageLogic struct {
 	storageRepo  *repo.Storage
 	resourceRepo *repo.Resource
 	rawQuery     *repo.RawQuery
+	sync         *redsync.Redsync
 	RootDir      string
 	OSSDir       string
 }
@@ -34,6 +39,7 @@ func NewStorageLogic(
 	storageRepo *repo.Storage,
 	resourceRepo *repo.Resource,
 	rawQuery *repo.RawQuery,
+	sync *redsync.Redsync,
 ) *StorageLogic {
 	// change to configurable, this is only a temporary solution
 	dir, err := os.Getwd()
@@ -45,6 +51,7 @@ func NewStorageLogic(
 		resourceRepo: resourceRepo,
 		storageRepo:  storageRepo,
 		rawQuery:     rawQuery,
+		sync:         sync,
 		RootDir:      filepath.Join(dir, "storage"),
 		OSSDir:       filepath.Join(dir, "oss"),
 	}
@@ -144,6 +151,54 @@ func (l *StorageLogic) UpdateStoragePackageHash(ctx context.Context, id int, has
 	return l.storageRepo.UpdateStoragePackageHash(ctx, id, hash)
 }
 
+func (l *StorageLogic) CreatePackStorage(ctx context.Context, verID int,
+	os, arch, path, hash string, size int64,
+	objects map[string]string, commit string, createdAt time.Time,
+) (*ent.Storage, error) {
+	return l.storageRepo.CreatePackStorage(ctx, verID, os, arch, path, hash, size, objects, commit, createdAt)
+}
+
+func (l *StorageLogic) RepublishStorage(ctx context.Context, id, verID int, at time.Time,
+	channel *version.Channel, pkg *repo.RestoredPackage,
+) (bool, error) {
+	return l.storageRepo.RepublishStorage(ctx, id, verID, at, channel, pkg)
+}
+
+func (l *StorageLogic) ListPurgedIncrementalStorages(ctx context.Context, verID int, os, arch string) ([]*ent.Storage, error) {
+	return l.storageRepo.ListPurgedIncrementalStorages(ctx, verID, os, arch)
+}
+
+func (l *StorageLogic) DeleteStorages(ctx context.Context, ids ...int) error {
+	return l.storageRepo.DeleteStorages(ctx, ids...)
+}
+
+// LockResource serializes the changes to which packages of a resource are the newest:
+// the purge removes the packages of all but the newest versions, and republishing a pack
+// version makes an older one the newest, so neither may act on what the other just read.
+// The lock is held until unlock is called.
+func (l *StorageLogic) LockResource(ctx context.Context, resourceId string) (unlock func(), err error) {
+	mutex := l.sync.NewMutex(misc.ResourceStorageLockKey(resourceId),
+		redsync.WithExpiry(10*time.Second),
+		// purging a resource or writing a package may take minutes
+		redsync.WithTries(600),
+		redsync.WithRetryDelay(time.Second),
+	)
+	if err := mutex.LockContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to lock the storages of resource %s: %w", resourceId, err)
+	}
+	renew, stop := context.WithCancel(context.Background())
+	go renewMutex(renew, mutex)
+	return func() {
+		stop()
+		if ok, err := mutex.Unlock(); !ok || err != nil {
+			l.logger.Warn("failed to unlock the storages of resource",
+				zap.String("resource id", resourceId),
+				zap.Error(err),
+			)
+		}
+	}, nil
+}
+
 func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 	resource, err := l.resourceRepo.GetFullResource(ctx)
 	if err != nil {
@@ -180,8 +235,14 @@ func (l *StorageLogic) ClearOldStorages(ctx context.Context) error {
 }
 
 func (l *StorageLogic) doPurgeResource(ctx context.Context, resourceId string) []error {
-	info, err := l.rawQuery.GetReadyToPurgeInfo(resourceId)
 	var el []error
+	unlock, err := l.LockResource(ctx, resourceId)
+	if err != nil {
+		return append(el, err)
+	}
+	defer unlock()
+
+	info, err := l.rawQuery.GetReadyToPurgeInfo(resourceId)
 	switch {
 	case err != nil:
 		return append(el, err)

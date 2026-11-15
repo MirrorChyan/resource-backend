@@ -34,6 +34,7 @@ func (ResourcePlatformConfig) Fields() []ent.Field {
 			Values(
 				types.UpdateFull.String(),
 				types.UpdateIncremental.String(),
+				types.UpdatePack.String(),
 			),
 		field.Time("created_at").
 			Default(time.Now).

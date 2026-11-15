@@ -23,7 +23,8 @@ type QueryLatestResponseData struct {
 	Channel       string `json:"channel"`
 	OS            string `json:"os"`
 	Arch          string `json:"arch"`
-	// UpdateType is the type of the update, it can be "full" or "incremental"
+	// UpdateType is the type of the update: "full" or "incremental", or "pack" for both
+	// packages of a pack resource, which tell themselves apart by their meta.json
 	UpdateType     string `json:"update_type,omitempty"`
 	CustomData     string `json:"custom_data,omitempty"`
 	ReleaseNote    string `json:"release_note"`

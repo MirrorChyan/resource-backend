@@ -31,6 +31,8 @@ const (
 	FieldFileSize = "file_size"
 	// FieldFileHashes holds the string denoting the file_hashes field in the database.
 	FieldFileHashes = "file_hashes"
+	// FieldPackCommit holds the string denoting the pack_commit field in the database.
+	FieldPackCommit = "pack_commit"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldVersionStorages holds the string denoting the version_storages field in the database.
@@ -68,6 +70,7 @@ var Columns = []string{
 	FieldFileType,
 	FieldFileSize,
 	FieldFileHashes,
+	FieldPackCommit,
 	FieldCreatedAt,
 	FieldVersionStorages,
 }
@@ -168,6 +171,11 @@ func ByFileType(opts ...sql.OrderTermOption) OrderOption {
 // ByFileSize orders the results by the file_size field.
 func ByFileSize(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFileSize, opts...).ToFunc()
+}
+
+// ByPackCommit orders the results by the pack_commit field.
+func ByPackCommit(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPackCommit, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

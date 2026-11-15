@@ -34,7 +34,7 @@ func NewHandlerSet(logger *zap.Logger, client *ent.Client, db *sqlx.DB, redisCli
 	version := repo.NewVersion(repoRepo)
 	rawQuery := repo.NewRawQuery(repoRepo)
 	distributeLogic := dispense.NewDistributeLogic(logger, redisClient)
-	storageLogic := logic.NewStorageLogic(logger, storage, resource, rawQuery)
+	storageLogic := logic.NewStorageLogic(logger, storage, resource, rawQuery, redsyncRedsync)
 	versionLogic := logic.NewVersionLogic(logger, repoRepo, version, rawQuery, versionComparator, distributeLogic, resourceLogic, storageLogic, redisClient, redsyncRedsync, taskQueue, multiCacheGroup)
 	versionHandler := handler.NewVersionHandler(logger, resourceLogic, versionLogic, versionComparator)
 	storageHandler := handler.NewStorageHandler(logger, storageLogic)

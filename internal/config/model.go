@@ -31,6 +31,9 @@ type (
 		Level string `mapstructure:"level"`
 	}
 	DatabaseConfig struct {
+		// Driver is mysql (the default) or sqlite, which only reads Path
+		Driver   string `mapstructure:"driver"`
+		Path     string `mapstructure:"path"`
 		Host     string `mapstructure:"host"`
 		Port     int    `mapstructure:"port"`
 		Username string `mapstructure:"username"`
