@@ -9,7 +9,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -64,14 +64,14 @@ func normalizePage(page, size int) (int, int) {
 	return page, size
 }
 
-func (h *AdminHandler) ListResources(c *fiber.Ctx) error {
+func (h *AdminHandler) ListResources(c fiber.Ctx) error {
 	var req ListResourcesRequest
 	if err := validator.ValidateQuery(c, &req); err != nil {
 		return err
 	}
 
 	var (
-		ctx        = c.UserContext()
+		ctx        = c.Context()
 		page, size = normalizePage(req.Page, req.PageSize)
 	)
 	items, total, err := h.resourceLogic.ListResources(ctx, (page-1)*size, size, req.ID, req.Name)
@@ -95,9 +95,9 @@ func (h *AdminHandler) ListResources(c *fiber.Ctx) error {
 	return c.JSON(response.Success(&PageData{List: list, Total: total, Page: page, PageSize: size}))
 }
 
-func (h *AdminHandler) GetResource(c *fiber.Ctx) error {
+func (h *AdminHandler) GetResource(c fiber.Ctx) error {
 	var (
-		ctx = c.UserContext()
+		ctx = c.Context()
 		rid = c.Params(ResourceKey)
 	)
 
@@ -121,14 +121,14 @@ func (h *AdminHandler) GetResource(c *fiber.Ctx) error {
 	}))
 }
 
-func (h *AdminHandler) ListVersions(c *fiber.Ctx) error {
+func (h *AdminHandler) ListVersions(c fiber.Ctx) error {
 	var req ListVersionsRequest
 	if err := validator.ValidateQuery(c, &req); err != nil {
 		return err
 	}
 
 	var (
-		ctx = c.UserContext()
+		ctx = c.Context()
 		rid = c.Params(ResourceKey)
 	)
 
@@ -168,15 +168,15 @@ func (h *AdminHandler) ListVersions(c *fiber.Ctx) error {
 	return c.JSON(response.Success(&PageData{List: list, Total: total, Page: page, PageSize: size}))
 }
 
-func (h *AdminHandler) ListPlatformUpdateTypes(c *fiber.Ctx) error {
-	data, err := h.resourceLogic.ListPlatformUpdateTypes(c.UserContext(), c.Params(ResourceKey))
+func (h *AdminHandler) ListPlatformUpdateTypes(c fiber.Ctx) error {
+	data, err := h.resourceLogic.ListPlatformUpdateTypes(c.Context(), c.Params(ResourceKey))
 	if err != nil {
 		return err
 	}
 	return c.JSON(response.Success(data))
 }
 
-func (h *AdminHandler) SetPlatformUpdateType(c *fiber.Ctx) error {
+func (h *AdminHandler) SetPlatformUpdateType(c fiber.Ctx) error {
 	var req SetPlatformUpdateTypeRequest
 	if err := validator.ValidateBody(c, &req); err != nil {
 		return err
@@ -187,7 +187,7 @@ func (h *AdminHandler) SetPlatformUpdateType(c *fiber.Ctx) error {
 	}
 
 	rid := c.Params(ResourceKey)
-	change, err := h.resourceLogic.SetPlatformUpdateType(c.UserContext(), rid, os, arch, types.Update(req.UpdateType))
+	change, err := h.resourceLogic.SetPlatformUpdateType(c.Context(), rid, os, arch, types.Update(req.UpdateType))
 	if err != nil {
 		return err
 	}
@@ -195,9 +195,9 @@ func (h *AdminHandler) SetPlatformUpdateType(c *fiber.Ctx) error {
 	return c.JSON(response.Success(change))
 }
 
-func (h *AdminHandler) DeletePlatformUpdateType(c *fiber.Ctx) error {
+func (h *AdminHandler) DeletePlatformUpdateType(c fiber.Ctx) error {
 	// "" names the platform-independent package, so a missing os or arch must not default to it
-	if args := c.Context().QueryArgs(); !args.Has("os") || !args.Has("arch") {
+	if args := c.RequestCtx().QueryArgs(); !args.Has("os") || !args.Has("arch") {
 		return errs.ErrInvalidParams
 	}
 	os, arch := c.Query("os"), c.Query("arch")
@@ -206,7 +206,7 @@ func (h *AdminHandler) DeletePlatformUpdateType(c *fiber.Ctx) error {
 	}
 
 	rid := c.Params(ResourceKey)
-	change, err := h.resourceLogic.DeletePlatformUpdateType(c.UserContext(), rid, os, arch)
+	change, err := h.resourceLogic.DeletePlatformUpdateType(c.Context(), rid, os, arch)
 	if err != nil {
 		return err
 	}

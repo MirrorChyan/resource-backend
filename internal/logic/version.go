@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/valyala/fasthttp"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -1156,14 +1156,13 @@ func (l *VersionLogic) GetDistributeLocation(ctx context.Context, rk string) (st
 
 	var (
 		conf    = GConfig
-		agent   = fiber.AcquireAgent()
-		request = agent.Request()
+		request = fasthttp.AcquireRequest()
 		resp    = fasthttp.AcquireResponse()
 		result  CDKAuthResponse
 	)
 
 	defer func() {
-		fiber.ReleaseAgent(agent)
+		fasthttp.ReleaseRequest(request)
 		fasthttp.ReleaseResponse(resp)
 	}()
 
@@ -1171,15 +1170,10 @@ func (l *VersionLogic) GetDistributeLocation(ctx context.Context, rk string) (st
 	request.Header.SetMethod(fiber.MethodPost)
 	request.Header.SetContentType(fiber.MIMEApplicationJSON)
 	request.SetBody(body)
+	// one connection per call, as fiber v2's Agent did: a POST is not retried on a stale keep-alive connection
+	request.SetConnectionClose()
 
-	if err := agent.Parse(); err != nil {
-		l.logger.Error("Failed to parse request",
-			zap.Error(err),
-		)
-		return "", err
-	}
-
-	if err := agent.Do(request, resp); err != nil {
+	if err := fasthttp.Do(request, resp); err != nil {
 		l.logger.Error("Failed to send request",
 			zap.Error(err),
 		)

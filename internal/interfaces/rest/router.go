@@ -4,8 +4,8 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/interfaces/rest/handler"
 	"github.com/MirrorChyan/resource-backend/internal/wire"
 	"github.com/bytedance/sonic"
-	"github.com/gofiber/contrib/fiberzap/v2"
-	"github.com/gofiber/fiber/v2"
+	fiberzap "github.com/gofiber/contrib/v3/zap"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -14,9 +14,21 @@ const BodyLimit = 1000 * 1024 * 1024
 func NewRouter() *fiber.App {
 
 	router := fiber.New(fiber.Config{
-		AppName:     "resource-backend",
-		BodyLimit:   BodyLimit,
+		AppName:   "resource-backend",
+		BodyLimit: BodyLimit,
+
+		// The gateway reaches the service over a private network. Without
+		// EnableIPValidation, c.IP() returns the raw X-Forwarded-For value as v2 did.
+		TrustProxy:  true,
 		ProxyHeader: fiber.HeaderXForwardedFor,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Loopback: true,
+			Private:  true,
+		},
+
+		// A generated HEAD route runs the whole GET chain, which on
+		// /resources/:rid/latest records DAU and dispenses a download key.
+		DisableHeadAutoRegister: true,
 
 		JSONEncoder: sonic.Marshal,
 		JSONDecoder: sonic.Unmarshal,

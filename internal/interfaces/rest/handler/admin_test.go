@@ -13,7 +13,7 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/alicebob/miniredis/v2"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -72,7 +72,7 @@ func doAdminRequest[T any](t *testing.T, app *fiber.App, method, target, body st
 	if body != "" {
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	}
-	resp, err := app.Test(req, -1)
+	resp, err := app.Test(req, fiber.TestConfig{Timeout: 0})
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 	var out adminTestResponse[T]

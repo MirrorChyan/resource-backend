@@ -6,7 +6,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/validator"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ResourceHandler struct {
@@ -24,7 +24,7 @@ func (h *ResourceHandler) Register(r fiber.Router) {
 	r.Post("/admin/resources", h.Create)
 }
 
-func (h *ResourceHandler) Create(c *fiber.Ctx) error {
+func (h *ResourceHandler) Create(c fiber.Ctx) error {
 
 	var req CreateResourceRequest
 	if err := validator.ValidateBody(c, &req); err != nil {
@@ -36,7 +36,7 @@ func (h *ResourceHandler) Create(c *fiber.Ctx) error {
 		t = types.UpdateIncremental.String()
 	}
 
-	res, err := h.resourceLogic.Create(c.UserContext(), CreateResourceParam{
+	res, err := h.resourceLogic.Create(c.Context(), CreateResourceParam{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 const ResourceKey = "rid"

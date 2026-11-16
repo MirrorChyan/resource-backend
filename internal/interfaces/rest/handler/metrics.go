@@ -1,8 +1,7 @@
 package handler
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
+	"github.com/gofiber/fiber/v3"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -14,5 +13,5 @@ func NewMetricsHandler() *MetricsHandler {
 }
 
 func (h *MetricsHandler) Register(r fiber.Router) {
-	r.All("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
+	r.All("/metrics", promhttp.Handler())
 }

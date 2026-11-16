@@ -3,7 +3,7 @@ package handler
 import (
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -26,9 +26,9 @@ func (h *StorageHandler) Register(r fiber.Router) {
 	r.Get("/storages/purge", h.Purge)
 }
 
-func (h *StorageHandler) Purge(ctx *fiber.Ctx) error {
+func (h *StorageHandler) Purge(ctx fiber.Ctx) error {
 
-	err := h.storageLogic.ClearOldStorages(ctx.UserContext())
+	err := h.storageLogic.ClearOldStorages(ctx.Context())
 
 	if err != nil {
 		h.logger.Error("failed to clear old storages",

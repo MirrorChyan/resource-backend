@@ -6,7 +6,7 @@ import (
 
 	"github.com/MirrorChyan/resource-backend/internal/application"
 	"github.com/MirrorChyan/resource-backend/internal/config"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func NewAdapter(restServer *fiber.App) application.Adapter {

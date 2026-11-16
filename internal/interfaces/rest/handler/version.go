@@ -22,7 +22,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/logic"
 	. "github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -219,7 +219,7 @@ func bindPlatform(os, arch *string) error {
 	return nil
 }
 
-func (h *VersionHandler) Create(c *fiber.Ctx) error {
+func (h *VersionHandler) Create(c fiber.Ctx) error {
 
 	resourceId := c.Params(ResourceKey)
 
@@ -232,7 +232,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 		return err
 	}
 
-	token, err := h.versionLogic.CreatePreSignedUrl(c.UserContext(), CreateVersionParam{
+	token, err := h.versionLogic.CreatePreSignedUrl(c.Context(), CreateVersionParam{
 		ResourceID: resourceId,
 		Name:       req.Name,
 		OS:         req.OS,
@@ -247,7 +247,7 @@ func (h *VersionHandler) Create(c *fiber.Ctx) error {
 	return c.JSON(response.Success(token))
 }
 
-func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
+func (h *VersionHandler) CreateVersionCallBack(c fiber.Ctx) error {
 
 	resourceId := c.Params(ResourceKey)
 
@@ -260,7 +260,7 @@ func (h *VersionHandler) CreateVersionCallBack(c *fiber.Ctx) error {
 		return err
 	}
 
-	statusKey, err := h.versionLogic.ProcessCreateVersionCallback(c.UserContext(), CreateVersionCallBackParam{
+	statusKey, err := h.versionLogic.ProcessCreateVersionCallback(c.Context(), CreateVersionCallBackParam{
 		ResourceID: resourceId,
 		Name:       req.Name,
 		OS:         req.OS,
@@ -295,14 +295,13 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 
 	var (
 		conf    = config.GConfig
-		agent   = fiber.AcquireAgent()
-		request = agent.Request()
+		request = fasthttp.AcquireRequest()
 		resp    = fasthttp.AcquireResponse()
 		result  ValidateResponse
 	)
 
 	defer func() {
-		fiber.ReleaseAgent(agent)
+		fasthttp.ReleaseRequest(request)
 		fasthttp.ReleaseResponse(resp)
 	}()
 
@@ -310,15 +309,10 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 	request.Header.SetMethod(fiber.MethodPost)
 	request.Header.SetContentType(fiber.MIMEApplicationJSON)
 	request.SetBody(body)
+	// one connection per call, as fiber v2's Agent did: a POST is not retried on a stale keep-alive connection
+	request.SetConnectionClose()
 
-	if err := agent.Parse(); err != nil {
-		h.logger.Error("Failed to parse request",
-			zap.Error(err),
-		)
-		return 0, err
-	}
-
-	if err := agent.Do(request, resp); err != nil {
+	if err := fasthttp.Do(request, resp); err != nil {
 		h.logger.Error("Failed to send request",
 			zap.Error(err),
 		)
@@ -356,7 +350,7 @@ func (h *VersionHandler) doValidateCDK(info *GetLatestVersionRequest, resourceId
 	return result.Data, nil
 }
 
-func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersionRequest, error) {
+func (h *VersionHandler) doHandleGetLatestParam(c fiber.Ctx) (*GetLatestVersionRequest, error) {
 
 	var req GetLatestVersionRequest
 	if err := validator.ValidateQuery(c, &req); err != nil {
@@ -373,7 +367,7 @@ func (h *VersionHandler) doHandleGetLatestParam(c *fiber.Ctx) (*GetLatestVersion
 	return &req, nil
 }
 
-func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
+func (h *VersionHandler) GetLatest(c fiber.Ctx) error {
 
 	param, err := h.doHandleGetLatestParam(c)
 	if err != nil {
@@ -381,7 +375,7 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	}
 
 	var (
-		ctx            = c.UserContext()
+		ctx            = c.Context()
 		ip             = c.IP()
 		resourceId     = param.ResourceID
 		currentVersion = param.CurrentVersion
@@ -475,10 +469,10 @@ func (h *VersionHandler) GetLatest(c *fiber.Ctx) error {
 	return c.JSON(response.Success(data))
 }
 
-func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
+func (h *VersionHandler) RedirectToDownload(c fiber.Ctx) error {
 	var (
 		rk  = c.Params("key")
-		ctx = c.UserContext()
+		ctx = c.Context()
 	)
 
 	url, err := h.versionLogic.GetDistributeLocation(ctx, rk)
@@ -492,13 +486,13 @@ func (h *VersionHandler) RedirectToDownload(c *fiber.Ctx) error {
 		zap.String("distribute key", rk),
 		zap.String("download url", url),
 	)
-	return c.Redirect(url)
+	return c.Redirect().Status(fiber.StatusFound).To(url)
 }
 
-func (h *VersionHandler) HeadDownloadInfo(c *fiber.Ctx) error {
+func (h *VersionHandler) HeadDownloadInfo(c fiber.Ctx) error {
 	var (
 		rk  = c.Params("key")
-		ctx = c.UserContext()
+		ctx = c.Context()
 	)
 
 	info, err := h.versionLogic.GetDownloadInfo(ctx, rk)
@@ -537,9 +531,9 @@ var (
 
 // doPrepareVersionMetaUpdate runs the prelude shared by UpdateReleaseNote and
 // UpdateCustomData: the resource existence check and the request body parse.
-func (h *VersionHandler) doPrepareVersionMetaUpdate(c *fiber.Ctx, resourceId string) (*UpdateVersionMetaRequest, error) {
+func (h *VersionHandler) doPrepareVersionMetaUpdate(c fiber.Ctx, resourceId string) (*UpdateVersionMetaRequest, error) {
 
-	resExist, err := h.resourceLogic.Exists(c.UserContext(), resourceId)
+	resExist, err := h.resourceLogic.Exists(c.Context(), resourceId)
 	switch {
 	case err != nil:
 		h.logger.Error("Failed to check if resource exists",
@@ -556,7 +550,7 @@ func (h *VersionHandler) doPrepareVersionMetaUpdate(c *fiber.Ctx, resourceId str
 	}
 
 	req := &UpdateVersionMetaRequest{}
-	if err := c.BodyParser(req); err != nil {
+	if err := c.Bind().Body(req); err != nil {
 		h.logger.Error("failed to parse request body",
 			zap.Error(err),
 			zap.String("input", string(c.Body())),
@@ -601,10 +595,10 @@ func (h *VersionHandler) doReportVersionMetaUpdateErr(what, resourceId, versionN
 	return errs.NewUnexpected("internal server error", err)
 }
 
-func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
+func (h *VersionHandler) UpdateReleaseNote(c fiber.Ctx) error {
 
 	var (
-		ctx        = c.UserContext()
+		ctx        = c.Context()
 		resourceId = c.Params(ResourceKey)
 	)
 
@@ -632,10 +626,10 @@ func (h *VersionHandler) UpdateReleaseNote(c *fiber.Ctx) error {
 	return c.JSON(response.Success(nil))
 }
 
-func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
+func (h *VersionHandler) UpdateCustomData(c fiber.Ctx) error {
 
 	var (
-		ctx        = c.UserContext()
+		ctx        = c.Context()
 		resourceId = c.Params(ResourceKey)
 	)
 
@@ -665,13 +659,13 @@ func (h *VersionHandler) UpdateCustomData(c *fiber.Ctx) error {
 	return c.JSON(response.Success(nil))
 }
 
-func (h *VersionHandler) GetVersionStatus(c *fiber.Ctx) error {
+func (h *VersionHandler) GetVersionStatus(c fiber.Ctx) error {
 	var req GetVersionStatusRequest
 	if err := validator.ValidateQuery(c, &req); err != nil {
 		return err
 	}
 
-	ctx := c.UserContext()
+	ctx := c.Context()
 
 	status, err := h.versionLogic.GetProcessingStatus(ctx, req.Key)
 	if err != nil {

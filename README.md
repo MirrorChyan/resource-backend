@@ -17,7 +17,7 @@ A high-performance Go-based resource distribution backend service for managing v
 
 ## Tech Stack
 
-- **Framework**: Fiber v2 (high-performance HTTP framework)
+- **Framework**: Fiber v3 (high-performance HTTP framework)
 - **Database**: MySQL with Ent ORM (Facebook's entity framework)
 - **Cache**: Redis + Ristretto (in-memory)
 - **Task Queue**: Asynq (Redis-backed)

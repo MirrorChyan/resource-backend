@@ -9,7 +9,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
 	"github.com/bytedance/sonic"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -18,7 +18,7 @@ const (
 )
 
 func NewValidateUploader() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		token := c.Get("Authorization")
 		if token == "" {
 			resp := response.BusinessError("missing Authorization header")

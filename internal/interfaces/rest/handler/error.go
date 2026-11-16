@@ -3,11 +3,11 @@ package handler
 import (
 	"github.com/MirrorChyan/resource-backend/internal/pkg/errs"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/restserver/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
-func Error(c *fiber.Ctx, err error) error {
+func Error(c fiber.Ctx, err error) error {
 
 	switch e := err.(type) {
 

@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type HeathCheckHandler struct {
@@ -12,7 +12,7 @@ func NewHeathCheckHandlerHandler() *HeathCheckHandler {
 }
 
 func (h *HeathCheckHandler) Register(r fiber.Router) {
-	r.Get("/health", func(ctx *fiber.Ctx) error {
+	r.Get("/health", func(ctx fiber.Ctx) error {
 		return ctx.SendString("OK")
 	})
 }

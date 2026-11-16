@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -35,7 +35,7 @@ func NewDailyActiveUserRecorder(rdb *redis.Client) fiber.Handler {
 		}
 	}()
 
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		ch <- strings.Clone(c.IP())
 		return c.Next()
 	}

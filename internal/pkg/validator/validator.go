@@ -10,7 +10,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 var (
@@ -86,18 +86,18 @@ func convertValidationErrors(ves validator.ValidationErrors) []*ValidationError 
 	return errors
 }
 
-func ValidateBody(c *fiber.Ctx, dest any) error {
+func ValidateBody(c fiber.Ctx, dest any) error {
 
-	if err := c.BodyParser(dest); err != nil {
+	if err := c.Bind().Body(dest); err != nil {
 		return errs.ErrInvalidParams
 	}
 
 	return ValidateStruct(dest)
 }
 
-func ValidateQuery(c *fiber.Ctx, dest any) error {
+func ValidateQuery(c fiber.Ctx, dest any) error {
 
-	if err := c.QueryParser(dest); err != nil {
+	if err := c.Bind().Query(dest); err != nil {
 		return errs.ErrInvalidParams
 	}
 
