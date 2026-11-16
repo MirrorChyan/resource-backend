@@ -3,6 +3,7 @@ package dispense
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -44,14 +45,26 @@ func (d *DistributeLogic) Distribute(info *model.DistributeInfo) (string, error)
 }
 
 func getAuthURL(info *model.DistributeInfo) string {
-	prefix := config.GConfig.Extra.CdnPrefix
-	pk := config.GConfig.Auth.PrivateKey
-	ts := strconv.FormatInt(time.Now().Unix(), 10)
-	rand := ksuid.New().String()
-	rel := "/" + info.RelPath
+	return signURL(
+		config.GConfig.Extra.CdnPrefix,
+		config.GConfig.Auth.PrivateKey,
+		info.RelPath,
+		info.Filesize,
+		time.Now().Unix(),
+		ksuid.New().String(),
+	)
+}
 
-	token := md5.Sum([]byte(strings.Join([]string{rel, ts, rand, "0", pk}, "-")))
-	ak := strings.Join([]string{ts, rand, "0", hex.EncodeToString(token[:])}, "-")
+// signURL builds a CDN URL carrying an auth_key. The CDN hashes the request
+// path byte for byte, without decoding it, and clients percent-encode a
+// non-ASCII path they are redirected to, so the path is escaped before it is
+// both signed and sent: signing the raw path fails such a file with 403.
+func signURL(prefix, pk, relPath string, filesize, ts int64, nonce string) string {
+	rel := (&url.URL{Path: "/" + relPath}).EscapedPath()
+	t := strconv.FormatInt(ts, 10)
 
-	return prefix + rel + "?auth_key=" + ak + "&r=" + strconv.FormatInt(info.Filesize, 10)
+	token := md5.Sum([]byte(strings.Join([]string{rel, t, nonce, "0", pk}, "-")))
+	ak := strings.Join([]string{t, nonce, "0", hex.EncodeToString(token[:])}, "-")
+
+	return prefix + rel + "?auth_key=" + ak + "&r=" + strconv.FormatInt(filesize, 10)
 }
