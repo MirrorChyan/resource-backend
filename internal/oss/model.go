@@ -2,7 +2,7 @@ package oss
 
 const (
 	expireTime = int64(3600)
-	bodyLimit  = 1600 * 1024 * 1024
+	bodyLimit  = 2560 * 1024 * 1024
 )
 
 type ConfigStruct struct {
