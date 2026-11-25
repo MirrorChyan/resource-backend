@@ -57,7 +57,7 @@ func TestUploadPlatformUpdateType(t *testing.T) {
 			ctx := context.Background()
 			l, client := newPatchTestLogic(t)
 			l.sync = redsync.New(goredis.NewPool(l.rdb))
-			l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
+			l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1, 1024)
 			res := client.Resource.Create().SetID("res").SetName("res").SetDescription("").
 				SetUpdateType(c.def.String()).SaveX(ctx)
 			if c.own != "" {
@@ -159,8 +159,8 @@ func pendingUploads(t *testing.T, l *VersionLogic) []*asynq.TaskInfo {
 func TestQueuedUploadsKeepAcceptedMode(t *testing.T) {
 	ctx := context.Background()
 	l, client := newPatchTestLogic(t)
-	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
-	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](-1)
+	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1, 1024)
+	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](-1, 1024)
 	client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
 	first := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
 	second := client.Version.Create().SetResourceID("res").SetName("v2").SetNumber(2).SaveX(ctx)
@@ -473,7 +473,7 @@ func TestStoredUploadFreesOnlyItsPendingKey(t *testing.T) {
 		t.Run("held by "+c.held, func(t *testing.T) {
 			ctx := context.Background()
 			l, client := newPatchTestLogic(t)
-			l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
+			l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1, 1024)
 			client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
 			ver := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
 			require.NoError(t, os.MkdirAll(l.storageLogic.OSSDir, 0o755))

@@ -47,8 +47,8 @@ func newAdminTestApp(t *testing.T) *fiber.App {
 	resourceLogic := logic.NewResourceLogic(zap.NewNop(),
 		repo.NewResource(r), repo.NewPlatformConfig(r), repo.NewStorage(r),
 		rdb, &cache.MultiCacheGroup{
-			ResourceInfoCache:       cache.NewCache[string, *ent.Resource](-1),
-			PlatformUpdateTypeCache: cache.NewCache[string, map[model.Platform]types.Update](-1),
+			ResourceInfoCache:       cache.NewCache[string, *ent.Resource](-1, 1024),
+			PlatformUpdateTypeCache: cache.NewCache[string, map[model.Platform]types.Update](-1, 1024),
 		},
 	)
 

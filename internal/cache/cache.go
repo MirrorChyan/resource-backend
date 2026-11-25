@@ -23,8 +23,9 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	return c.cache.Get(key)
 }
 
+// SetWithTTL stores value for ttl; it weighs what the cache was made to weigh its values.
 func (c *Cache[K, V]) SetWithTTL(key K, value V, ttl time.Duration) bool {
-	return c.cache.SetWithTTL(key, value, 1, ttl)
+	return c.cache.SetWithTTL(key, value, 0, ttl)
 }
 
 func (c *Cache[K, V]) ComputeIfAbsent(key K, f func() (V, error)) (*V, error) {
@@ -44,9 +45,9 @@ func (c *Cache[K, V]) ComputeIfAbsent(key K, f func() (V, error)) (*V, error) {
 		delete(c.loading, key)
 		if store {
 			if c.ttl == -1 {
-				c.cache.Set(key, value, 1)
+				c.cache.Set(key, value, 0)
 			} else {
-				c.cache.SetWithTTL(key, value, 1, c.ttl)
+				c.cache.SetWithTTL(key, value, 0, c.ttl)
 			}
 		}
 		c.mu.Unlock()
@@ -85,12 +86,44 @@ func (c *Cache[K, V]) EvictAll() {
 	c.cache.Clear()
 }
 
-func NewCache[K string, V any](ttl time.Duration) *Cache[K, V] {
-	cache, _ := ristretto.NewCache(&ristretto.Config[K, V]{
-		NumCounters: 2048,
-		MaxCost:     2048,
-		BufferItems: 128,
+// stats are the counters of the cache; EvictAll starts them again from zero.
+func (c *Cache[K, V]) stats() *ristretto.Metrics {
+	return c.cache.Metrics
+}
+
+func (c *Cache[K, V]) maxCost() int64 {
+	return c.cache.MaxCost()
+}
+
+// NewCache returns a cache of maxEntries entries at most. Entries live for ttl, or until
+// they are dropped or evicted when ttl is -1.
+func NewCache[K string, V any](ttl time.Duration, maxEntries int64) *Cache[K, V] {
+	return newCache[K, V](ttl, maxEntries, maxEntries, func(V) int64 { return 1 })
+}
+
+// NewWeightedCache returns a cache whose entries weigh what cost estimates of their values,
+// maxCost at most in all. keys is the number of entries it holds when full, which sizes the
+// counters it decides what to keep by.
+func NewWeightedCache[K string, V any](ttl time.Duration, maxCost, keys int64, cost func(V) int64) *Cache[K, V] {
+	return newCache[K, V](ttl, maxCost, keys, cost)
+}
+
+func newCache[K string, V any](ttl time.Duration, maxCost, keys int64, cost func(V) int64) *Cache[K, V] {
+	cache, err := ristretto.NewCache(&ristretto.Config[K, V]{
+		// ristretto advises ten counters per entry of a full cache
+		NumCounters: keys * 10,
+		MaxCost:     maxCost,
+		BufferItems: 64,
+		// values are set with a cost of 0 for ristretto to weigh them with cost; it must not
+		// add the size of its own entry to that weight, which made a cache of 2048 entries
+		// hold 35
+		Cost:               cost,
+		IgnoreInternalCost: true,
+		Metrics:            true,
 	})
+	if err != nil {
+		panic(err)
+	}
 	return &Cache[K, V]{
 		cache:   cache,
 		group:   &singleflight.Group{},
