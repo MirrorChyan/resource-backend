@@ -92,9 +92,9 @@ func newPackTestLogic(t *testing.T, ut types.Update) (*VersionLogic, *ent.Client
 	l.rawQuery = repo.NewRawQuery(l.repo)
 	l.storageLogic.rawQuery = l.rawQuery
 	l.comparator = vercomp.NewComparator()
-	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1)
+	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1, 1024)
 	// caching for real: a republished version must not be served from a stale entry
-	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](time.Hour)
+	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](time.Hour, 1024)
 	client.Resource.Create().SetID("res").SetName("res").SetDescription("").
 		SetUpdateType(ut.String()).SaveX(context.Background())
 	return l, client

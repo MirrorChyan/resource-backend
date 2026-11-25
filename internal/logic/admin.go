@@ -198,8 +198,8 @@ func platformState(res *ent.Resource, own types.Update) PlatformUpdateTypeState 
 func (l *ResourceLogic) evictPlatformUpdateTypes(ctx context.Context, id string) {
 	l.cg.PlatformUpdateTypeCache.Delete(l.cg.GetCacheKey(id))
 	if err := cache.PublishPlatformUpdateTypeEvict(ctx, l.rdb, id); err != nil {
-		// the entry never expires: the other instances keep the old update types
-		// until the next evict or restart
+		// the other instances keep the old update types until the entry expires
+		// within a day, the next evict or restart
 		l.logger.Warn("failed to publish platform update type cache evict",
 			zap.String("resource id", id),
 			zap.Error(err),

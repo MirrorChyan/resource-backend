@@ -22,10 +22,10 @@ import (
 // newTestCacheGroup returns the caches the logic under test reads.
 func newTestCacheGroup() *cache.MultiCacheGroup {
 	return &cache.MultiCacheGroup{
-		VersionNameIdCache:         cache.NewCache[string, int](-1),
-		IncrementalUpdateInfoCache: cache.NewCache[string, *model.IncrementalUpdateInfo](time.Hour),
-		ResourceInfoCache:          cache.NewCache[string, *ent.Resource](-1),
-		PlatformUpdateTypeCache:    cache.NewCache[string, map[model.Platform]types.Update](-1),
+		VersionNameIdCache:         cache.NewCache[string, int](-1, 1024),
+		IncrementalUpdateInfoCache: cache.NewCache[string, *model.IncrementalUpdateInfo](time.Hour, 1024),
+		ResourceInfoCache:          cache.NewCache[string, *ent.Resource](-1, 1024),
+		PlatformUpdateTypeCache:    cache.NewCache[string, map[model.Platform]types.Update](-1, 1024),
 	}
 }
 
