@@ -1264,13 +1264,21 @@ func nowRFC3339() string {
 	return time.Now().Format(time.RFC3339)
 }
 
-// byteRateLimiter paces reads at a dynamically adjustable MB/s rate and wakes
-// immediately on context cancellation or rate changes.
+// byteRateLimiter paces reads at a dynamically adjustable MB/s rate. It keeps the time
+// by which the bytes admitted so far are paid for, so the time a caller spends on its
+// work between two waits counts towards the pace: the rate set is the rate reached
+// whenever the work keeps up with it. Idle time builds up at most maxRateCredit of
+// credit, bounding the burst after a slow row or a pause. Wait wakes immediately on
+// context cancellation or rate changes.
 type byteRateLimiter struct {
 	mu     sync.Mutex
 	rateMB float64
+	paidTo time.Time
 	notify chan struct{}
 }
+
+// maxRateCredit bounds how far behind the current time the pace may fall.
+const maxRateCredit = time.Second
 
 func newByteRateLimiter(rateMB float64) *byteRateLimiter {
 	if rateMB < MinRateMB || rateMB > MaxRateMB {
@@ -1278,6 +1286,7 @@ func newByteRateLimiter(rateMB float64) *byteRateLimiter {
 	}
 	return &byteRateLimiter{
 		rateMB: rateMB,
+		paidTo: time.Now(),
 		notify: make(chan struct{}),
 	}
 }
@@ -1296,37 +1305,41 @@ func (l *byteRateLimiter) SetRateMB(rateMB float64) {
 	l.mu.Unlock()
 }
 
+// Wait blocks until n more bytes fit the rate. A rate change while waiting applies to
+// the bytes being waited for.
 func (l *byteRateLimiter) Wait(ctx context.Context, n int) error {
 	if n <= 0 {
 		return ctx.Err()
 	}
-	remaining := float64(n)
-	for remaining > 0 {
+	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		l.mu.Lock()
-		bps := l.rateMB * 1024 * 1024
+		now := time.Now()
+		if floor := now.Add(-maxRateCredit); l.paidTo.Before(floor) {
+			l.paidTo = floor
+		}
+		cost := time.Duration(float64(n) / (l.rateMB * 1024 * 1024) * float64(time.Second))
+		due := l.paidTo.Add(cost)
+		wait := due.Sub(now)
+		if wait <= 0 {
+			l.paidTo = due
+			l.mu.Unlock()
+			return nil
+		}
 		ch := l.notify
 		l.mu.Unlock()
 
-		need := time.Duration(remaining / bps * float64(time.Second))
-		if need <= 0 {
-			return nil
-		}
-		start := time.Now()
-		timer := time.NewTimer(need)
+		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
 			return ctx.Err()
-		case <-timer.C:
-			return nil
 		case <-ch:
+			// the rate changed: work out when the bytes are due again
 			timer.Stop()
-			elapsed := time.Since(start).Seconds()
-			remaining -= elapsed * bps
+		case <-timer.C:
 		}
 	}
-	return nil
 }
