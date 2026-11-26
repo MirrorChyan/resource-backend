@@ -74,3 +74,22 @@ func TestRateLimiterStopsOnCancel(t *testing.T) {
 	require.ErrorIs(t, l.Wait(ctx, 10<<20), context.Canceled)
 	require.Less(t, time.Since(start), 500*time.Millisecond)
 }
+
+// Bytes that cost more than maxRateCredit are waited out once, not again and again: at
+// 1 MiB/s, 1.5 MiB is due 1.5 s after the pace started.
+func TestRateLimiterWaitsOutACostLongerThanTheCredit(t *testing.T) {
+	l := newByteRateLimiter(1)
+	done := make(chan time.Duration, 1)
+	go func() {
+		start := time.Now()
+		_ = l.Wait(context.Background(), 3<<19)
+		done <- time.Since(start)
+	}()
+	select {
+	case took := <-done:
+		require.Greater(t, took, 1300*time.Millisecond)
+		require.Less(t, took, 2000*time.Millisecond)
+	case <-time.After(4 * time.Second):
+		t.Fatal("Wait did not return")
+	}
+}

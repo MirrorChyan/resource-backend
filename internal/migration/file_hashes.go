@@ -1305,32 +1305,33 @@ func (l *byteRateLimiter) SetRateMB(rateMB float64) {
 	l.mu.Unlock()
 }
 
-// Wait blocks until n more bytes fit the rate. A rate change while waiting applies to
-// the bytes being waited for.
+// Wait blocks until n more bytes fit the rate. Their cost is counted from where the
+// pace stood when Wait was called, so a cost longer than maxRateCredit is waited out
+// in full; a rate change while waiting applies to the bytes being waited for.
 func (l *byteRateLimiter) Wait(ctx context.Context, n int) error {
 	if n <= 0 {
 		return ctx.Err()
 	}
+	l.mu.Lock()
+	start := l.paidTo
+	if floor := time.Now().Add(-maxRateCredit); start.Before(floor) {
+		start = floor
+	}
+	l.mu.Unlock()
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		l.mu.Lock()
-		now := time.Now()
-		if floor := now.Add(-maxRateCredit); l.paidTo.Before(floor) {
-			l.paidTo = floor
-		}
-		cost := time.Duration(float64(n) / (l.rateMB * 1024 * 1024) * float64(time.Second))
-		due := l.paidTo.Add(cost)
-		wait := due.Sub(now)
-		if wait <= 0 {
-			l.paidTo = due
-			l.mu.Unlock()
-			return nil
-		}
+		due := start.Add(time.Duration(float64(n) / (l.rateMB * 1024 * 1024) * float64(time.Second)))
+		l.paidTo = due
 		ch := l.notify
 		l.mu.Unlock()
 
+		wait := time.Until(due)
+		if wait <= 0 {
+			return nil
+		}
 		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
@@ -1340,6 +1341,7 @@ func (l *byteRateLimiter) Wait(ctx context.Context, n int) error {
 			// the rate changed: work out when the bytes are due again
 			timer.Stop()
 		case <-timer.C:
+			return nil
 		}
 	}
 }
