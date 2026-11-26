@@ -18,6 +18,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -32,6 +33,8 @@ type Client struct {
 	ResourcePlatformConfig *ResourcePlatformConfigClient
 	// Storage is the client for interacting with the Storage builders.
 	Storage *StorageClient
+	// StorageFileHash is the client for interacting with the StorageFileHash builders.
+	StorageFileHash *StorageFileHashClient
 	// Version is the client for interacting with the Version builders.
 	Version *VersionClient
 }
@@ -48,6 +51,7 @@ func (c *Client) init() {
 	c.Resource = NewResourceClient(c.config)
 	c.ResourcePlatformConfig = NewResourcePlatformConfigClient(c.config)
 	c.Storage = NewStorageClient(c.config)
+	c.StorageFileHash = NewStorageFileHashClient(c.config)
 	c.Version = NewVersionClient(c.config)
 }
 
@@ -144,6 +148,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Resource:               NewResourceClient(cfg),
 		ResourcePlatformConfig: NewResourcePlatformConfigClient(cfg),
 		Storage:                NewStorageClient(cfg),
+		StorageFileHash:        NewStorageFileHashClient(cfg),
 		Version:                NewVersionClient(cfg),
 	}, nil
 }
@@ -167,6 +172,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Resource:               NewResourceClient(cfg),
 		ResourcePlatformConfig: NewResourcePlatformConfigClient(cfg),
 		Storage:                NewStorageClient(cfg),
+		StorageFileHash:        NewStorageFileHashClient(cfg),
 		Version:                NewVersionClient(cfg),
 	}, nil
 }
@@ -199,6 +205,7 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Resource.Use(hooks...)
 	c.ResourcePlatformConfig.Use(hooks...)
 	c.Storage.Use(hooks...)
+	c.StorageFileHash.Use(hooks...)
 	c.Version.Use(hooks...)
 }
 
@@ -208,6 +215,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Resource.Intercept(interceptors...)
 	c.ResourcePlatformConfig.Intercept(interceptors...)
 	c.Storage.Intercept(interceptors...)
+	c.StorageFileHash.Intercept(interceptors...)
 	c.Version.Intercept(interceptors...)
 }
 
@@ -220,6 +228,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ResourcePlatformConfig.mutate(ctx, m)
 	case *StorageMutation:
 		return c.Storage.mutate(ctx, m)
+	case *StorageFileHashMutation:
+		return c.StorageFileHash.mutate(ctx, m)
 	case *VersionMutation:
 		return c.Version.mutate(ctx, m)
 	default:
@@ -681,6 +691,22 @@ func (c *StorageClient) QueryOldVersion(_m *Storage) *VersionQuery {
 	return query
 }
 
+// QueryFileHash queries the file_hash edge of a Storage.
+func (c *StorageClient) QueryFileHash(_m *Storage) *StorageFileHashQuery {
+	query := (&StorageFileHashClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(storage.Table, storage.FieldID, id),
+			sqlgraph.To(storagefilehash.Table, storagefilehash.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, storage.FileHashTable, storage.FileHashColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *StorageClient) Hooks() []Hook {
 	return c.hooks.Storage
@@ -703,6 +729,155 @@ func (c *StorageClient) mutate(ctx context.Context, m *StorageMutation) (Value, 
 		return (&StorageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Storage mutation op: %q", m.Op())
+	}
+}
+
+// StorageFileHashClient is a client for the StorageFileHash schema.
+type StorageFileHashClient struct {
+	config
+}
+
+// NewStorageFileHashClient returns a client for the StorageFileHash from the given config.
+func NewStorageFileHashClient(c config) *StorageFileHashClient {
+	return &StorageFileHashClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `storagefilehash.Hooks(f(g(h())))`.
+func (c *StorageFileHashClient) Use(hooks ...Hook) {
+	c.hooks.StorageFileHash = append(c.hooks.StorageFileHash, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `storagefilehash.Intercept(f(g(h())))`.
+func (c *StorageFileHashClient) Intercept(interceptors ...Interceptor) {
+	c.inters.StorageFileHash = append(c.inters.StorageFileHash, interceptors...)
+}
+
+// Create returns a builder for creating a StorageFileHash entity.
+func (c *StorageFileHashClient) Create() *StorageFileHashCreate {
+	mutation := newStorageFileHashMutation(c.config, OpCreate)
+	return &StorageFileHashCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of StorageFileHash entities.
+func (c *StorageFileHashClient) CreateBulk(builders ...*StorageFileHashCreate) *StorageFileHashCreateBulk {
+	return &StorageFileHashCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *StorageFileHashClient) MapCreateBulk(slice any, setFunc func(*StorageFileHashCreate, int)) *StorageFileHashCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &StorageFileHashCreateBulk{err: fmt.Errorf("calling to StorageFileHashClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*StorageFileHashCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &StorageFileHashCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for StorageFileHash.
+func (c *StorageFileHashClient) Update() *StorageFileHashUpdate {
+	mutation := newStorageFileHashMutation(c.config, OpUpdate)
+	return &StorageFileHashUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *StorageFileHashClient) UpdateOne(_m *StorageFileHash) *StorageFileHashUpdateOne {
+	mutation := newStorageFileHashMutation(c.config, OpUpdateOne, withStorageFileHash(_m))
+	return &StorageFileHashUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *StorageFileHashClient) UpdateOneID(id int) *StorageFileHashUpdateOne {
+	mutation := newStorageFileHashMutation(c.config, OpUpdateOne, withStorageFileHashID(id))
+	return &StorageFileHashUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for StorageFileHash.
+func (c *StorageFileHashClient) Delete() *StorageFileHashDelete {
+	mutation := newStorageFileHashMutation(c.config, OpDelete)
+	return &StorageFileHashDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *StorageFileHashClient) DeleteOne(_m *StorageFileHash) *StorageFileHashDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *StorageFileHashClient) DeleteOneID(id int) *StorageFileHashDeleteOne {
+	builder := c.Delete().Where(storagefilehash.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &StorageFileHashDeleteOne{builder}
+}
+
+// Query returns a query builder for StorageFileHash.
+func (c *StorageFileHashClient) Query() *StorageFileHashQuery {
+	return &StorageFileHashQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeStorageFileHash},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a StorageFileHash entity by its id.
+func (c *StorageFileHashClient) Get(ctx context.Context, id int) (*StorageFileHash, error) {
+	return c.Query().Where(storagefilehash.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *StorageFileHashClient) GetX(ctx context.Context, id int) *StorageFileHash {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryStorage queries the storage edge of a StorageFileHash.
+func (c *StorageFileHashClient) QueryStorage(_m *StorageFileHash) *StorageQuery {
+	query := (&StorageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(storagefilehash.Table, storagefilehash.FieldID, id),
+			sqlgraph.To(storage.Table, storage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, storagefilehash.StorageTable, storagefilehash.StorageColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *StorageFileHashClient) Hooks() []Hook {
+	return c.hooks.StorageFileHash
+}
+
+// Interceptors returns the client interceptors.
+func (c *StorageFileHashClient) Interceptors() []Interceptor {
+	return c.inters.StorageFileHash
+}
+
+func (c *StorageFileHashClient) mutate(ctx context.Context, m *StorageFileHashMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&StorageFileHashCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&StorageFileHashUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&StorageFileHashUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&StorageFileHashDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown StorageFileHash mutation op: %q", m.Op())
 	}
 }
 
@@ -874,9 +1049,10 @@ func (c *VersionClient) mutate(ctx context.Context, m *VersionMutation) (Value, 
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Resource, ResourcePlatformConfig, Storage, Version []ent.Hook
+		Resource, ResourcePlatformConfig, Storage, StorageFileHash, Version []ent.Hook
 	}
 	inters struct {
-		Resource, ResourcePlatformConfig, Storage, Version []ent.Interceptor
+		Resource, ResourcePlatformConfig, Storage, StorageFileHash,
+		Version []ent.Interceptor
 	}
 )

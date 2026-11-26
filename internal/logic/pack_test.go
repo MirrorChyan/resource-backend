@@ -94,7 +94,7 @@ func newPackTestLogic(t *testing.T, ut types.Update) (*VersionLogic, *ent.Client
 	l.comparator = vercomp.NewComparator()
 	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1, 1024)
 	// caching for real: a republished version must not be served from a stale entry
-	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](time.Hour, 1024)
+	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *model.FullStorage](time.Hour, 1024)
 	client.Resource.Create().SetID("res").SetName("res").SetDescription("").
 		SetUpdateType(ut.String()).SaveX(context.Background())
 	return l, client
@@ -182,8 +182,11 @@ func TestPackUploads(t *testing.T) {
 	stored, err := l.storageLogic.GetFullUpdateStorage(ctx, versionID(t, client, n1), "", "")
 	require.NoError(t, err)
 	require.Equal(t, c1, stored.PackCommit)
-	require.Contains(t, stored.FileHashes, gitpack.RootTreeKey)
-	require.Contains(t, stored.FileHashes, "d/b.txt")
+	require.Empty(t, stored.FileHashes)
+	hashes, err := l.storageLogic.GetFileHashes(ctx, stored.ID)
+	require.NoError(t, err)
+	require.Contains(t, hashes, gitpack.RootTreeKey)
+	require.Contains(t, hashes, "d/b.txt")
 	require.FileExists(t, stored.PackagePath)
 	meta, err := gitpack.ReadMeta(stored.PackagePath)
 	require.NoError(t, err)

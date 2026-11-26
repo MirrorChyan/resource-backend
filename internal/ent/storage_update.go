@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/predicate"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -242,6 +243,25 @@ func (_u *StorageUpdate) SetOldVersion(v *Version) *StorageUpdate {
 	return _u.SetOldVersionID(v.ID)
 }
 
+// SetFileHashID sets the "file_hash" edge to the StorageFileHash entity by ID.
+func (_u *StorageUpdate) SetFileHashID(id int) *StorageUpdate {
+	_u.mutation.SetFileHashID(id)
+	return _u
+}
+
+// SetNillableFileHashID sets the "file_hash" edge to the StorageFileHash entity by ID if the given value is not nil.
+func (_u *StorageUpdate) SetNillableFileHashID(id *int) *StorageUpdate {
+	if id != nil {
+		_u = _u.SetFileHashID(*id)
+	}
+	return _u
+}
+
+// SetFileHash sets the "file_hash" edge to the StorageFileHash entity.
+func (_u *StorageUpdate) SetFileHash(v *StorageFileHash) *StorageUpdate {
+	return _u.SetFileHashID(v.ID)
+}
+
 // Mutation returns the StorageMutation object of the builder.
 func (_u *StorageUpdate) Mutation() *StorageMutation {
 	return _u.mutation
@@ -256,6 +276,12 @@ func (_u *StorageUpdate) ClearVersion() *StorageUpdate {
 // ClearOldVersion clears the "old_version" edge to the Version entity.
 func (_u *StorageUpdate) ClearOldVersion() *StorageUpdate {
 	_u.mutation.ClearOldVersion()
+	return _u
+}
+
+// ClearFileHash clears the "file_hash" edge to the StorageFileHash entity.
+func (_u *StorageUpdate) ClearFileHash() *StorageUpdate {
+	_u.mutation.ClearFileHash()
 	return _u
 }
 
@@ -410,6 +436,35 @@ func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FileHashCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   storage.FileHashTable,
+			Columns: []string{storage.FileHashColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefilehash.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FileHashIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   storage.FileHashTable,
+			Columns: []string{storage.FileHashColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefilehash.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -650,6 +705,25 @@ func (_u *StorageUpdateOne) SetOldVersion(v *Version) *StorageUpdateOne {
 	return _u.SetOldVersionID(v.ID)
 }
 
+// SetFileHashID sets the "file_hash" edge to the StorageFileHash entity by ID.
+func (_u *StorageUpdateOne) SetFileHashID(id int) *StorageUpdateOne {
+	_u.mutation.SetFileHashID(id)
+	return _u
+}
+
+// SetNillableFileHashID sets the "file_hash" edge to the StorageFileHash entity by ID if the given value is not nil.
+func (_u *StorageUpdateOne) SetNillableFileHashID(id *int) *StorageUpdateOne {
+	if id != nil {
+		_u = _u.SetFileHashID(*id)
+	}
+	return _u
+}
+
+// SetFileHash sets the "file_hash" edge to the StorageFileHash entity.
+func (_u *StorageUpdateOne) SetFileHash(v *StorageFileHash) *StorageUpdateOne {
+	return _u.SetFileHashID(v.ID)
+}
+
 // Mutation returns the StorageMutation object of the builder.
 func (_u *StorageUpdateOne) Mutation() *StorageMutation {
 	return _u.mutation
@@ -664,6 +738,12 @@ func (_u *StorageUpdateOne) ClearVersion() *StorageUpdateOne {
 // ClearOldVersion clears the "old_version" edge to the Version entity.
 func (_u *StorageUpdateOne) ClearOldVersion() *StorageUpdateOne {
 	_u.mutation.ClearOldVersion()
+	return _u
+}
+
+// ClearFileHash clears the "file_hash" edge to the StorageFileHash entity.
+func (_u *StorageUpdateOne) ClearFileHash() *StorageUpdateOne {
+	_u.mutation.ClearFileHash()
 	return _u
 }
 
@@ -848,6 +928,35 @@ func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(version.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FileHashCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   storage.FileHashTable,
+			Columns: []string{storage.FileHashColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefilehash.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FileHashIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   storage.FileHashTable,
+			Columns: []string{storage.FileHashColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefilehash.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

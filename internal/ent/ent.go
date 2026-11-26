@@ -15,6 +15,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -79,6 +80,7 @@ func checkColumn(t, c string) error {
 			resource.Table:               resource.ValidColumn,
 			resourceplatformconfig.Table: resourceplatformconfig.ValidColumn,
 			storage.Table:                storage.ValidColumn,
+			storagefilehash.Table:        storagefilehash.ValidColumn,
 			version.Table:                version.ValidColumn,
 		})
 	})

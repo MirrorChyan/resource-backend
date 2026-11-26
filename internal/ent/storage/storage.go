@@ -41,6 +41,8 @@ const (
 	EdgeVersion = "version"
 	// EdgeOldVersion holds the string denoting the old_version edge name in mutations.
 	EdgeOldVersion = "old_version"
+	// EdgeFileHash holds the string denoting the file_hash edge name in mutations.
+	EdgeFileHash = "file_hash"
 	// Table holds the table name of the storage in the database.
 	Table = "storages"
 	// VersionTable is the table that holds the version relation/edge.
@@ -57,6 +59,13 @@ const (
 	OldVersionInverseTable = "versions"
 	// OldVersionColumn is the table column denoting the old_version relation/edge.
 	OldVersionColumn = "storage_old_version"
+	// FileHashTable is the table that holds the file_hash relation/edge.
+	FileHashTable = "storage_file_hashes"
+	// FileHashInverseTable is the table name for the StorageFileHash entity.
+	// It exists in this package in order to avoid circular dependency with the "storagefilehash" package.
+	FileHashInverseTable = "storage_file_hashes"
+	// FileHashColumn is the table column denoting the file_hash relation/edge.
+	FileHashColumn = "storage_id"
 )
 
 // Columns holds all SQL columns for storage fields.
@@ -201,6 +210,13 @@ func ByOldVersionField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newOldVersionStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByFileHashField orders the results by file_hash field.
+func ByFileHashField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newFileHashStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newVersionStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -213,5 +229,12 @@ func newOldVersionStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OldVersionInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, false, OldVersionTable, OldVersionColumn),
+	)
+}
+func newFileHashStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(FileHashInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, FileHashTable, FileHashColumn),
 	)
 }

@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -13,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/predicate"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -25,6 +27,7 @@ type StorageQuery struct {
 	predicates     []predicate.Storage
 	withVersion    *VersionQuery
 	withOldVersion *VersionQuery
+	withFileHash   *StorageFileHashQuery
 	withFKs        bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -99,6 +102,28 @@ func (_q *StorageQuery) QueryOldVersion() *VersionQuery {
 			sqlgraph.From(storage.Table, storage.FieldID, selector),
 			sqlgraph.To(version.Table, version.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, storage.OldVersionTable, storage.OldVersionColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryFileHash chains the current query on the "file_hash" edge.
+func (_q *StorageQuery) QueryFileHash() *StorageFileHashQuery {
+	query := (&StorageFileHashClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(storage.Table, storage.FieldID, selector),
+			sqlgraph.To(storagefilehash.Table, storagefilehash.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, storage.FileHashTable, storage.FileHashColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -300,6 +325,7 @@ func (_q *StorageQuery) Clone() *StorageQuery {
 		predicates:     append([]predicate.Storage{}, _q.predicates...),
 		withVersion:    _q.withVersion.Clone(),
 		withOldVersion: _q.withOldVersion.Clone(),
+		withFileHash:   _q.withFileHash.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -325,6 +351,17 @@ func (_q *StorageQuery) WithOldVersion(opts ...func(*VersionQuery)) *StorageQuer
 		opt(query)
 	}
 	_q.withOldVersion = query
+	return _q
+}
+
+// WithFileHash tells the query-builder to eager-load the nodes that are connected to
+// the "file_hash" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *StorageQuery) WithFileHash(opts ...func(*StorageFileHashQuery)) *StorageQuery {
+	query := (&StorageFileHashClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withFileHash = query
 	return _q
 }
 
@@ -407,9 +444,10 @@ func (_q *StorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stor
 		nodes       = []*Storage{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withVersion != nil,
 			_q.withOldVersion != nil,
+			_q.withFileHash != nil,
 		}
 	)
 	if _q.withOldVersion != nil {
@@ -445,6 +483,12 @@ func (_q *StorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stor
 	if query := _q.withOldVersion; query != nil {
 		if err := _q.loadOldVersion(ctx, query, nodes, nil,
 			func(n *Storage, e *Version) { n.Edges.OldVersion = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withFileHash; query != nil {
+		if err := _q.loadFileHash(ctx, query, nodes, nil,
+			func(n *Storage, e *StorageFileHash) { n.Edges.FileHash = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -509,6 +553,33 @@ func (_q *StorageQuery) loadOldVersion(ctx context.Context, query *VersionQuery,
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *StorageQuery) loadFileHash(ctx context.Context, query *StorageFileHashQuery, nodes []*Storage, init func(*Storage), assign func(*Storage, *StorageFileHash)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Storage)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(storagefilehash.FieldStorageID)
+	}
+	query.Where(predicate.StorageFileHash(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(storage.FileHashColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.StorageID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "storage_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

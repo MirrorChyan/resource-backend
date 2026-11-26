@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -96,6 +97,29 @@ var (
 			},
 		},
 	}
+	// StorageFileHashesColumns holds the columns for the "storage_file_hashes" table.
+	StorageFileHashesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "format", Type: field.TypeUint8},
+		{Name: "data", Type: field.TypeBytes, SchemaType: map[string]string{"mysql": "longblob"}},
+		{Name: "raw_size", Type: field.TypeInt},
+		{Name: "entries", Type: field.TypeInt},
+		{Name: "storage_id", Type: field.TypeInt, Unique: true},
+	}
+	// StorageFileHashesTable holds the schema information for the "storage_file_hashes" table.
+	StorageFileHashesTable = &schema.Table{
+		Name:       "storage_file_hashes",
+		Columns:    StorageFileHashesColumns,
+		PrimaryKey: []*schema.Column{StorageFileHashesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "storage_file_hashes_storages_file_hash",
+				Columns:    []*schema.Column{StorageFileHashesColumns[5]},
+				RefColumns: []*schema.Column{StoragesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// VersionsColumns holds the columns for the "versions" table.
 	VersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -126,6 +150,7 @@ var (
 		ResourcesTable,
 		ResourcePlatformConfigsTable,
 		StoragesTable,
+		StorageFileHashesTable,
 		VersionsTable,
 	}
 )
@@ -134,5 +159,9 @@ func init() {
 	ResourcePlatformConfigsTable.ForeignKeys[0].RefTable = ResourcesTable
 	StoragesTable.ForeignKeys[0].RefTable = VersionsTable
 	StoragesTable.ForeignKeys[1].RefTable = VersionsTable
+	StorageFileHashesTable.ForeignKeys[0].RefTable = StoragesTable
+	StorageFileHashesTable.Annotation = &entsql.Annotation{
+		Table: "storage_file_hashes",
+	}
 	VersionsTable.ForeignKeys[0].RefTable = ResourcesTable
 }

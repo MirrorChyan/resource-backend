@@ -706,19 +706,19 @@ func (l *VersionLogic) GenerateIncrementalPackage(ctx context.Context, resourceI
 
 	param := PatchTaskExecuteParam{
 		ResourceId:           resourceId,
-		TargetOriginPackage:  targetInfo.PackagePath,
+		TargetOriginPackage:  targetInfo.storage.PackagePath,
 		TargetVersionId:      target,
 		CurrentVersionId:     current,
-		TargetFileType:       targetInfo.FileType,
-		TargetFileSize:       targetInfo.FileSize,
-		CurrentFileType:      currentInfo.FileType,
-		TargetStorageHashes:  targetInfo.FileHashes,
-		CurrentStorageHashes: currentInfo.FileHashes,
+		TargetFileType:       targetInfo.storage.FileType,
+		TargetFileSize:       targetInfo.storage.FileSize,
+		CurrentFileType:      currentInfo.storage.FileType,
+		TargetStorageHashes:  targetInfo.fileHashes,
+		CurrentStorageHashes: currentInfo.fileHashes,
 		OS:                   system,
 		Arch:                 arch,
 	}
 	if ut == types.UpdatePack {
-		err = l.doCreatePackIncrementalPackage(ctx, param, currentInfo.PackCommit)
+		err = l.doCreatePackIncrementalPackage(ctx, param, currentInfo.storage.PackCommit)
 	} else {
 		err = l.doCreateIncrementalUpdatePackage(ctx, param)
 	}
@@ -1238,7 +1238,12 @@ func (l *VersionLogic) GetDownloadInfo(ctx context.Context, rk string) (map[stri
 	}, nil
 }
 
-func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, system string, arch string) (*ent.Storage, *ent.Storage, error) {
+type fullStorageWithHashes struct {
+	storage    *ent.Storage
+	fileHashes map[string]string
+}
+
+func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, current int, system string, arch string) (*fullStorageWithHashes, *fullStorageWithHashes, error) {
 
 	targetStorage, err := l.getFullUpdateStorageByCache(ctx, target, system, arch)
 	if err != nil {
@@ -1253,20 +1258,40 @@ func (l *VersionLogic) fetchStorageInfoTuple(ctx context.Context, target, curren
 	return targetStorage, currentStorage, nil
 }
 
-func (l *VersionLogic) getFullUpdateStorageByCache(ctx context.Context, versionId int, os, arch string) (*ent.Storage, error) {
+func (l *VersionLogic) getFullUpdateStorageByCache(ctx context.Context, versionId int, os, arch string) (*fullStorageWithHashes, error) {
 	cg := l.cacheGroup
 	cacheKey := cg.GetCacheKey(
 		strconv.Itoa(versionId),
 		os,
 		arch,
 	)
-	val, err := cg.FullUpdateStorageCache.ComputeIfAbsent(cacheKey, func() (*ent.Storage, error) {
-		return l.storageLogic.GetFullUpdateStorage(ctx, versionId, os, arch)
+	var (
+		decoded map[string]string
+		loaded  bool
+	)
+	val, err := cg.FullUpdateStorageCache.ComputeIfAbsent(cacheKey, func() (*FullStorage, error) {
+		full, hashes, err := l.storageLogic.GetFullUpdateStorageWithHashes(ctx, versionId, os, arch)
+		if err != nil {
+			return nil, err
+		}
+		decoded = hashes
+		loaded = true
+		return full, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return *val, err
+	full := *val
+	if !loaded {
+		decoded, err = filehash.DecodeHashes(full.HashFormat, full.HashData)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &fullStorageWithHashes{
+		storage:    full.Storage,
+		fileHashes: decoded,
+	}, nil
 }
 
 func (l *VersionLogic) getIncrementalInfoOrEmpty(ctx context.Context, target, current int, os, arch string) (*IncrementalUpdateInfo, error) {

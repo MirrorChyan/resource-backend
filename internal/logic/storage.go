@@ -16,6 +16,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
+	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/repo"
 	"github.com/bytedance/sonic"
@@ -110,6 +111,14 @@ func (l *StorageLogic) CheckStorageExist(ctx context.Context, verID int, os, arc
 
 func (l *StorageLogic) GetFullUpdateStorage(ctx context.Context, versionId int, os, arch string) (*ent.Storage, error) {
 	return l.storageRepo.GetFullUpdateStorage(ctx, versionId, os, arch)
+}
+
+func (l *StorageLogic) GetFullUpdateStorageWithHashes(ctx context.Context, versionId int, os, arch string) (*model.FullStorage, map[string]string, error) {
+	return l.storageRepo.GetFullUpdateStorageWithHashes(ctx, versionId, os, arch)
+}
+
+func (l *StorageLogic) GetFileHashes(ctx context.Context, storageID int) (map[string]string, error) {
+	return l.storageRepo.GetFileHashes(ctx, storageID)
 }
 
 func (l *StorageLogic) GetIncrementalUpdateStorage(ctx context.Context, targerVerID, currentVerID int, os, arch string) (*ent.Storage, error) {

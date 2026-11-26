@@ -121,10 +121,13 @@ func TestUploadPlatformUpdateType(t *testing.T) {
 			require.NoError(t, doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(queued[0].Type, queued[0].Payload)))
 			stored, err := l.storageLogic.GetFullUpdateStorage(ctx, payload.VersionId, param.OS, param.Arch)
 			require.NoError(t, err)
+			require.Empty(t, stored.FileHashes)
+			hashes, err := l.storageLogic.GetFileHashes(ctx, stored.ID)
+			require.NoError(t, err)
 			if c.want == types.UpdateIncremental {
-				require.Contains(t, stored.FileHashes, "app.txt")
+				require.Contains(t, hashes, "app.txt")
 			} else {
-				require.Empty(t, stored.FileHashes)
+				require.Empty(t, hashes)
 				require.Equal(t, source, stored.PackagePath)
 			}
 			status, err := l.GetProcessingStatus(ctx, statusKey)
@@ -160,7 +163,7 @@ func TestQueuedUploadsKeepAcceptedMode(t *testing.T) {
 	ctx := context.Background()
 	l, client := newPatchTestLogic(t)
 	l.cacheGroup.MultiVersionInfoCache = cache.NewCache[string, *model.MultiVersionInfo](-1, 1024)
-	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *ent.Storage](-1, 1024)
+	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *model.FullStorage](-1, 1024)
 	client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
 	first := client.Version.Create().SetResourceID("res").SetName("v1").SetNumber(1).SaveX(ctx)
 	second := client.Version.Create().SetResourceID("res").SetName("v2").SetNumber(2).SaveX(ctx)
@@ -195,7 +198,9 @@ func TestQueuedUploadsKeepAcceptedMode(t *testing.T) {
 	// The existing missing-hash guard skips patches and serves full packages safely.
 	target, err := l.storageLogic.GetFullUpdateStorage(ctx, second.ID, param.OS, param.Arch)
 	require.NoError(t, err)
-	require.Empty(t, target.FileHashes)
+	targetHashes, err := l.storageLogic.GetFileHashes(ctx, target.ID)
+	require.NoError(t, err)
+	require.Empty(t, targetHashes)
 	require.NoError(t, l.GenerateIncrementalPackage(ctx, "res", second.ID, first.ID, param.OS, param.Arch))
 	got, err := l.doProcessUpdateRequest(ctx, model.UpdateRequestParam{
 		ResourceId: "res", CurrentVersionName: "v1",

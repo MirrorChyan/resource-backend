@@ -20,7 +20,7 @@ type MultiCacheGroup struct {
 	// key: resourceId:versionName -> versionId
 	VersionNameIdCache *Cache[string, int]
 	// key: versionId:os:arch
-	FullUpdateStorageCache *Cache[string, *ent.Storage]
+	FullUpdateStorageCache *Cache[string, *model.FullStorage]
 
 	// key: targetVersionId:currentVersionId:os:arch / cache empty
 	IncrementalUpdateInfoCache *Cache[string, *model.IncrementalUpdateInfo]
@@ -76,9 +76,9 @@ func NewVersionCacheGroup(rdb *redis.Client) *MultiCacheGroup {
 // directly, or an evict message an instance missed, then shows within a day.
 func newVersionCacheGroup() *MultiCacheGroup {
 	return &MultiCacheGroup{
-		// read by the patch builds only. A storage holds the hashes of all files of its
-		// package, from KiBs to MiBs, so the cache is bounded by their estimated size.
-		FullUpdateStorageCache: NewWeightedCache[string, *ent.Storage](72*time.Hour, 64<<20, 1024, storageCost),
+		// read by the patch builds only. Each entry holds the storage row and the
+		// compressed file hashes of its package, bounded by their estimated size.
+		FullUpdateStorageCache: NewWeightedCache[string, *model.FullStorage](72*time.Hour, 64<<20, 1024, storageCost),
 		// the versions clients update from, as many as there are versions at most
 		VersionNameIdCache: NewCache[string, int](24*time.Hour, 16384),
 		// the version pairs clients ask for within the week a patch is waited for
@@ -102,18 +102,17 @@ func (g *MultiCacheGroup) Collector() prometheus.Collector {
 	}
 }
 
-// storageCost estimates the bytes a storage takes in memory, mostly its file hashes: their
-// strings and up to 80 bytes of map entry and allocation each, as measured on maps decoded
-// from JSON, which take 1.4 to 1.6 times their JSON.
-func storageCost(s *ent.Storage) int64 {
+// storageCost estimates the bytes a full storage takes in memory: the storage metadata
+// plus its compressed file hashes.
+func storageCost(s *model.FullStorage) int64 {
 	n := int64(512)
 	if s == nil {
 		return n
 	}
-	n += int64(len(s.Os) + len(s.Arch) + len(s.PackagePath) + len(s.PackageHashSha256) + len(s.FileType) + len(s.PackCommit))
-	for k, v := range s.FileHashes {
-		n += int64(len(k) + len(v) + 80)
+	if st := s.Storage; st != nil {
+		n += int64(len(st.Os) + len(st.Arch) + len(st.PackagePath) + len(st.PackageHashSha256) + len(st.FileType) + len(st.PackCommit))
 	}
+	n += int64(len(s.HashData))
 	return n
 }
 
