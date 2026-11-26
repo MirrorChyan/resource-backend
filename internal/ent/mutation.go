@@ -1369,7 +1369,6 @@ type StorageMutation struct {
 	file_type           *string
 	file_size           *int64
 	addfile_size        *int64
-	file_hashes         *map[string]string
 	pack_commit         *string
 	created_at          *time.Time
 	clearedFields       map[string]struct{}
@@ -1793,55 +1792,6 @@ func (m *StorageMutation) ResetFileSize() {
 	m.addfile_size = nil
 }
 
-// SetFileHashes sets the "file_hashes" field.
-func (m *StorageMutation) SetFileHashes(value map[string]string) {
-	m.file_hashes = &value
-}
-
-// FileHashes returns the value of the "file_hashes" field in the mutation.
-func (m *StorageMutation) FileHashes() (r map[string]string, exists bool) {
-	v := m.file_hashes
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldFileHashes returns the old "file_hashes" field's value of the Storage entity.
-// If the Storage object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldFileHashes(ctx context.Context) (v map[string]string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldFileHashes is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldFileHashes requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldFileHashes: %w", err)
-	}
-	return oldValue.FileHashes, nil
-}
-
-// ClearFileHashes clears the value of the "file_hashes" field.
-func (m *StorageMutation) ClearFileHashes() {
-	m.file_hashes = nil
-	m.clearedFields[storage.FieldFileHashes] = struct{}{}
-}
-
-// FileHashesCleared returns if the "file_hashes" field was cleared in this mutation.
-func (m *StorageMutation) FileHashesCleared() bool {
-	_, ok := m.clearedFields[storage.FieldFileHashes]
-	return ok
-}
-
-// ResetFileHashes resets all changes to the "file_hashes" field.
-func (m *StorageMutation) ResetFileHashes() {
-	m.file_hashes = nil
-	delete(m.clearedFields, storage.FieldFileHashes)
-}
-
 // SetPackCommit sets the "pack_commit" field.
 func (m *StorageMutation) SetPackCommit(s string) {
 	m.pack_commit = &s
@@ -2115,7 +2065,7 @@ func (m *StorageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StorageMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 10)
 	if m.update_type != nil {
 		fields = append(fields, storage.FieldUpdateType)
 	}
@@ -2136,9 +2086,6 @@ func (m *StorageMutation) Fields() []string {
 	}
 	if m.file_size != nil {
 		fields = append(fields, storage.FieldFileSize)
-	}
-	if m.file_hashes != nil {
-		fields = append(fields, storage.FieldFileHashes)
 	}
 	if m.pack_commit != nil {
 		fields = append(fields, storage.FieldPackCommit)
@@ -2171,8 +2118,6 @@ func (m *StorageMutation) Field(name string) (ent.Value, bool) {
 		return m.FileType()
 	case storage.FieldFileSize:
 		return m.FileSize()
-	case storage.FieldFileHashes:
-		return m.FileHashes()
 	case storage.FieldPackCommit:
 		return m.PackCommit()
 	case storage.FieldCreatedAt:
@@ -2202,8 +2147,6 @@ func (m *StorageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldFileType(ctx)
 	case storage.FieldFileSize:
 		return m.OldFileSize(ctx)
-	case storage.FieldFileHashes:
-		return m.OldFileHashes(ctx)
 	case storage.FieldPackCommit:
 		return m.OldPackCommit(ctx)
 	case storage.FieldCreatedAt:
@@ -2267,13 +2210,6 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFileSize(v)
-		return nil
-	case storage.FieldFileHashes:
-		v, ok := value.(map[string]string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetFileHashes(v)
 		return nil
 	case storage.FieldPackCommit:
 		v, ok := value.(string)
@@ -2350,9 +2286,6 @@ func (m *StorageMutation) ClearedFields() []string {
 	if m.FieldCleared(storage.FieldFileType) {
 		fields = append(fields, storage.FieldFileType)
 	}
-	if m.FieldCleared(storage.FieldFileHashes) {
-		fields = append(fields, storage.FieldFileHashes)
-	}
 	if m.FieldCleared(storage.FieldPackCommit) {
 		fields = append(fields, storage.FieldPackCommit)
 	}
@@ -2378,9 +2311,6 @@ func (m *StorageMutation) ClearField(name string) error {
 		return nil
 	case storage.FieldFileType:
 		m.ClearFileType()
-		return nil
-	case storage.FieldFileHashes:
-		m.ClearFileHashes()
 		return nil
 	case storage.FieldPackCommit:
 		m.ClearPackCommit()
@@ -2413,9 +2343,6 @@ func (m *StorageMutation) ResetField(name string) error {
 		return nil
 	case storage.FieldFileSize:
 		m.ResetFileSize()
-		return nil
-	case storage.FieldFileHashes:
-		m.ResetFileHashes()
 		return nil
 	case storage.FieldPackCommit:
 		m.ResetPackCommit()

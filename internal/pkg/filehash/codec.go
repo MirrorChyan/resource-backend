@@ -1,7 +1,6 @@
 package filehash
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/bytedance/sonic"
@@ -24,19 +23,8 @@ type EncodedHashes struct {
 	Entries int
 }
 
-// RawHashKind classifies a legacy storages.file_hashes column value.
-type RawHashKind int
-
-const (
-	RawHashSQLNull RawHashKind = iota
-	RawHashJSONNull
-	RawHashEmptyObject
-	RawHashNonEmpty
-)
-
 var (
 	zstdDefaultEncoder *zstd.Encoder
-	zstdBetterEncoder  *zstd.Encoder
 	zstdDecoder        *zstd.Decoder
 )
 
@@ -45,10 +33,6 @@ func init() {
 	zstdDefaultEncoder, err = zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedDefault))
 	if err != nil {
 		panic(fmt.Errorf("init zstd default encoder: %w", err))
-	}
-	zstdBetterEncoder, err = zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedBetterCompression))
-	if err != nil {
-		panic(fmt.Errorf("init zstd better encoder: %w", err))
 	}
 	zstdDecoder, err = zstd.NewReader(nil, zstd.WithDecoderMaxMemory(MaxDecoderMemory))
 	if err != nil {
@@ -84,16 +68,6 @@ func EncodeHashes(hashes map[string]string) (*EncodedHashes, error) {
 	}, nil
 }
 
-// CompressRawJSON compresses raw JSON bytes with either SpeedDefault or
-// SpeedBetterCompression; used by the sampling stats mode.
-func CompressRawJSON(raw []byte, better bool) []byte {
-	enc := zstdDefaultEncoder
-	if better {
-		enc = zstdBetterEncoder
-	}
-	return enc.EncodeAll(raw, make([]byte, 0, len(raw)/2))
-}
-
 // DecodeHashes decompresses and unmarshals stored file hashes.
 // A zero format with empty data represents the absence of hashes and returns (nil, nil).
 func DecodeHashes(format uint8, data []byte) (map[string]string, error) {
@@ -115,30 +89,4 @@ func DecodeHashes(format uint8, data []byte) (map[string]string, error) {
 		return nil, nil
 	}
 	return m, nil
-}
-
-// ParseRawHashesJSON parses a legacy storages.file_hashes value, distinguishing
-// SQL NULL, JSON null, empty JSON object, and non-empty maps.
-func ParseRawHashesJSON(raw []byte, valid bool) (map[string]string, RawHashKind, error) {
-	if !valid {
-		return nil, RawHashSQLNull, nil
-	}
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 {
-		return nil, RawHashSQLNull, nil
-	}
-	if bytes.Equal(trimmed, []byte("null")) {
-		return nil, RawHashJSONNull, nil
-	}
-	var m map[string]string
-	if err := sonic.ConfigStd.Unmarshal(trimmed, &m); err != nil {
-		return nil, 0, fmt.Errorf("unmarshal raw file hashes: %w", err)
-	}
-	if m == nil {
-		return nil, RawHashJSONNull, nil
-	}
-	if len(m) == 0 {
-		return nil, RawHashEmptyObject, nil
-	}
-	return m, RawHashNonEmpty, nil
 }

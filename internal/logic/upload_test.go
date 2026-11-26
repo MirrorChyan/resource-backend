@@ -121,7 +121,6 @@ func TestUploadPlatformUpdateType(t *testing.T) {
 			require.NoError(t, doHandleCalculatePackageHash(l.logger, l)(ctx, asynq.NewTask(queued[0].Type, queued[0].Payload)))
 			stored, err := l.storageLogic.GetFullUpdateStorage(ctx, payload.VersionId, param.OS, param.Arch)
 			require.NoError(t, err)
-			require.Empty(t, stored.FileHashes)
 			hashes, err := l.storageLogic.GetFileHashes(ctx, stored.ID)
 			require.NoError(t, err)
 			if c.want == types.UpdateIncremental {

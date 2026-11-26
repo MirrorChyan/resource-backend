@@ -16,6 +16,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 	"github.com/jmoiron/sqlx"
+	"github.com/klauspost/compress/zstd"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
@@ -72,9 +73,9 @@ func seedVersions(t *testing.T, client *ent.Client) (*ent.Version, *ent.Version)
 	return v1, v2
 }
 
-func TestDualWriteAndEmptyHashesSkipNewTable(t *testing.T) {
+func TestCreateStoresHashesInTheTableAndSkipsEmpty(t *testing.T) {
 	ctx := context.Background()
-	stRepo, client, dx, _ := newRepoTestEnv(t)
+	stRepo, client, _, _ := newRepoTestEnv(t)
 	v1, v2 := seedVersions(t, client)
 
 	hashes := map[string]string{
@@ -94,15 +95,7 @@ func TestDualWriteAndEmptyHashesSkipNewTable(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, hashes, decoded)
 
-	// Legacy column was also written in Step 1.
-	var legacyJSON sql.NullString
-	require.NoError(t, dx.QueryRowContext(ctx, "SELECT file_hashes FROM storages WHERE id = ?", full.ID).Scan(&legacyJSON))
-	require.True(t, legacyJSON.Valid)
-	legacyMap, _, err := filehash.ParseRawHashesJSON([]byte(legacyJSON.String), legacyJSON.Valid)
-	require.NoError(t, err)
-	require.Equal(t, hashes, legacyMap)
-
-	// Pack storage dual-writes as well.
+	// A pack storage stores its objects the same way.
 	packObjs := map[string]string{".": strings.Repeat("1", 40), "a.txt": strings.Repeat("2", 40)}
 	packSt, err := stRepo.CreatePackStorage(ctx, v2.ID, "", "", "/p/pack.zip", "h2", 200, packObjs, strings.Repeat("c", 40), time.Now())
 	require.NoError(t, err)
@@ -127,22 +120,21 @@ func TestDualWriteAndEmptyHashesSkipNewTable(t *testing.T) {
 	require.False(t, stillThere)
 }
 
-func TestGetFileHashesPriorityFallbackEmptyAndCorrupt(t *testing.T) {
+func TestGetFileHashesNewMissAndCorrupt(t *testing.T) {
 	ctx := context.Background()
-	stRepo, client, dx, _ := newRepoTestEnv(t)
+	stRepo, client, _, _ := newRepoTestEnv(t)
 	v1, v2 := seedVersions(t, client)
 
 	readCounter := func(label string) float64 {
 		return testutil.ToFloat64(FileHashesReadsCounter().WithLabelValues(label))
 	}
 
-	// 1. New table takes priority over legacy column.
+	// 1. A row in storage_file_hashes is read and decoded.
 	st1 := client.Storage.Create().
 		SetVersion(v1).
 		SetUpdateType(storage.UpdateTypeFull).
 		SetOs("windows").
 		SetArch("amd64").
-		SetFileHashes(map[string]string{"old.txt": "old"}).
 		SaveX(ctx)
 	newMap := map[string]string{"new.txt": "new"}
 	enc, err := filehash.EncodeHashes(newMap)
@@ -161,51 +153,26 @@ func TestGetFileHashesPriorityFallbackEmptyAndCorrupt(t *testing.T) {
 	require.Equal(t, newMap, got)
 	require.Equal(t, beforeNew+1, readCounter(FileHashesReadNew))
 
-	// 2. Fallback to legacy column when new table has no row; returns compressed format=1 for cache.
+	// 2. A storage without a row has no hashes: nil, nothing to cache, counted as a miss.
 	st2 := client.Storage.Create().
 		SetVersion(v2).
 		SetUpdateType(storage.UpdateTypeFull).
 		SetOs("windows").
 		SetArch("amd64").
-		SetFileHashes(map[string]string{"legacy.txt": "abc"}).
 		SaveX(ctx)
 
-	beforeFallback := readCounter(FileHashesReadFallbackOld)
+	beforeMiss := readCounter(FileHashesReadMiss)
 	full, hashes, err := stRepo.GetFullUpdateStorageWithHashes(ctx, v2.ID, "windows", "amd64")
 	require.NoError(t, err)
 	require.Equal(t, st2.ID, full.Storage.ID)
-	require.Equal(t, map[string]string{"legacy.txt": "abc"}, hashes)
-	require.Equal(t, filehash.FormatZstdJSON, full.HashFormat)
-	require.NotEmpty(t, full.HashData)
-	require.Empty(t, full.Storage.FileHashes)
-	require.Equal(t, beforeFallback+1, readCounter(FileHashesReadFallbackOld))
+	require.Nil(t, hashes)
+	require.Zero(t, full.HashFormat)
+	require.Nil(t, full.HashData)
+	require.Equal(t, beforeMiss+1, readCounter(FileHashesReadMiss))
 
-	// 3. Empty legacy values: SQL NULL, JSON null, JSON {} all return (nil, nil) and increment miss.
-	for _, tc := range []struct {
-		os  string
-		sql string
-	}{
-		{"snull", "NULL"},
-		{"jnull", "'null'"},
-		{"empty", "'{}'"},
-	} {
-		st := client.Storage.Create().
-			SetVersion(v1).
-			SetUpdateType(storage.UpdateTypeFull).
-			SetOs(tc.os).
-			SetArch("amd64").
-			SaveX(ctx)
-		_, err := dx.ExecContext(ctx, "UPDATE storages SET file_hashes = "+tc.sql+" WHERE id = ?", st.ID)
-		require.NoError(t, err)
-
-		beforeMiss := readCounter(FileHashesReadMiss)
-		got, err := stRepo.GetFileHashes(ctx, st.ID)
-		require.NoError(t, err)
-		require.Nil(t, got)
-		require.Equal(t, beforeMiss+1, readCounter(FileHashesReadMiss))
-	}
-
-	// 4. Corrupted new table rows return error and increment error counter.
+	// 3. Corrupted rows return an error and increment the error counter.
+	zenc, err := zstd.NewWriter(nil)
+	require.NoError(t, err)
 	for _, tc := range []struct {
 		os     string
 		format uint8
@@ -213,7 +180,7 @@ func TestGetFileHashesPriorityFallbackEmptyAndCorrupt(t *testing.T) {
 	}{
 		{"badfmt", 99, []byte("abc")},
 		{"badzstd", filehash.FormatZstdJSON, []byte("not-zstd")},
-		{"badjson", filehash.FormatZstdJSON, filehash.CompressRawJSON([]byte("{broken"), false)},
+		{"badjson", filehash.FormatZstdJSON, zenc.EncodeAll([]byte("{broken"), nil)},
 	} {
 		st := client.Storage.Create().
 			SetVersion(v2).
@@ -236,14 +203,12 @@ func TestGetFileHashesPriorityFallbackEmptyAndCorrupt(t *testing.T) {
 	}
 }
 
-func TestQueriesExcludeFileHashesAndKeepOldVersionEdge(t *testing.T) {
+// The queries that do not need the hashes leave storage_file_hashes alone, and
+// ListPurgedIncrementalStorages still loads Edges.OldVersion.
+func TestStorageQueriesDoNotReadFileHashes(t *testing.T) {
 	ctx := context.Background()
 	stRepo, client, _, rec := newRepoTestEnv(t)
 	v1, v2 := seedVersions(t, client)
-
-	// Verify dynamic column list covers every Storage column except file_hashes.
-	require.NotContains(t, storageColumnsWithoutFileHashes, storage.FieldFileHashes)
-	require.Len(t, storageColumnsWithoutFileHashes, len(storage.Columns)-1)
 
 	full, err := stRepo.CreateFullUpdateStorage(ctx, v2.ID, "windows", "amd64", "/p/full.zip", "hf", types.Zip, 100, map[string]string{"a": "b"})
 	require.NoError(t, err)
@@ -280,7 +245,6 @@ func TestQueriesExcludeFileHashesAndKeepOldVersionEdge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, full.ID, gotFull.ID)
 	require.Equal(t, "/p/full.zip", gotFull.PackagePath)
-	require.Empty(t, gotFull.FileHashes)
 	assertNoFileHashesInSQL("GetFullUpdateStorage")
 
 	// 2. GetIncrementalUpdateStorage

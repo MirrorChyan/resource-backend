@@ -515,16 +515,6 @@ func FileSizeLTE(v int64) predicate.Storage {
 	return predicate.Storage(sql.FieldLTE(FieldFileSize, v))
 }
 
-// FileHashesIsNil applies the IsNil predicate on the "file_hashes" field.
-func FileHashesIsNil() predicate.Storage {
-	return predicate.Storage(sql.FieldIsNull(FieldFileHashes))
-}
-
-// FileHashesNotNil applies the NotNil predicate on the "file_hashes" field.
-func FileHashesNotNil() predicate.Storage {
-	return predicate.Storage(sql.FieldNotNull(FieldFileHashes))
-}
-
 // PackCommitEQ applies the EQ predicate on the "pack_commit" field.
 func PackCommitEQ(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldPackCommit, v))

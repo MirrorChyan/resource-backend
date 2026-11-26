@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -34,8 +33,6 @@ type Storage struct {
 	FileType string `json:"file_type,omitempty"`
 	// file size
 	FileSize int64 `json:"file_size,omitempty"`
-	// only for full update
-	FileHashes map[string]string `json:"file_hashes,omitempty"`
 	// only for the full update of a pack resource: the commit of the snapshot
 	PackCommit string `json:"pack_commit,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -100,8 +97,6 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case storage.FieldFileHashes:
-			values[i] = new([]byte)
 		case storage.FieldID, storage.FieldFileSize, storage.FieldVersionStorages:
 			values[i] = new(sql.NullInt64)
 		case storage.FieldUpdateType, storage.FieldOs, storage.FieldArch, storage.FieldPackagePath, storage.FieldPackageHashSha256, storage.FieldFileType, storage.FieldPackCommit:
@@ -172,14 +167,6 @@ func (_m *Storage) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field file_size", values[i])
 			} else if value.Valid {
 				_m.FileSize = value.Int64
-			}
-		case storage.FieldFileHashes:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field file_hashes", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.FileHashes); err != nil {
-					return fmt.Errorf("unmarshal field file_hashes: %w", err)
-				}
 			}
 		case storage.FieldPackCommit:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -277,9 +264,6 @@ func (_m *Storage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("file_size=")
 	builder.WriteString(fmt.Sprintf("%v", _m.FileSize))
-	builder.WriteString(", ")
-	builder.WriteString("file_hashes=")
-	builder.WriteString(fmt.Sprintf("%v", _m.FileHashes))
 	builder.WriteString(", ")
 	builder.WriteString("pack_commit=")
 	builder.WriteString(_m.PackCommit)

@@ -153,18 +153,6 @@ func (_u *StorageUpdate) AddFileSize(v int64) *StorageUpdate {
 	return _u
 }
 
-// SetFileHashes sets the "file_hashes" field.
-func (_u *StorageUpdate) SetFileHashes(v map[string]string) *StorageUpdate {
-	_u.mutation.SetFileHashes(v)
-	return _u
-}
-
-// ClearFileHashes clears the value of the "file_hashes" field.
-func (_u *StorageUpdate) ClearFileHashes() *StorageUpdate {
-	_u.mutation.ClearFileHashes()
-	return _u
-}
-
 // SetPackCommit sets the "pack_commit" field.
 func (_u *StorageUpdate) SetPackCommit(v string) *StorageUpdate {
 	_u.mutation.SetPackCommit(v)
@@ -369,12 +357,6 @@ func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedFileSize(); ok {
 		_spec.AddField(storage.FieldFileSize, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.FileHashes(); ok {
-		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
-	}
-	if _u.mutation.FileHashesCleared() {
-		_spec.ClearField(storage.FieldFileHashes, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.PackCommit(); ok {
 		_spec.SetField(storage.FieldPackCommit, field.TypeString, value)
@@ -615,18 +597,6 @@ func (_u *StorageUpdateOne) AddFileSize(v int64) *StorageUpdateOne {
 	return _u
 }
 
-// SetFileHashes sets the "file_hashes" field.
-func (_u *StorageUpdateOne) SetFileHashes(v map[string]string) *StorageUpdateOne {
-	_u.mutation.SetFileHashes(v)
-	return _u
-}
-
-// ClearFileHashes clears the value of the "file_hashes" field.
-func (_u *StorageUpdateOne) ClearFileHashes() *StorageUpdateOne {
-	_u.mutation.ClearFileHashes()
-	return _u
-}
-
 // SetPackCommit sets the "pack_commit" field.
 func (_u *StorageUpdateOne) SetPackCommit(v string) *StorageUpdateOne {
 	_u.mutation.SetPackCommit(v)
@@ -861,12 +831,6 @@ func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err er
 	}
 	if value, ok := _u.mutation.AddedFileSize(); ok {
 		_spec.AddField(storage.FieldFileSize, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.FileHashes(); ok {
-		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
-	}
-	if _u.mutation.FileHashesCleared() {
-		_spec.ClearField(storage.FieldFileHashes, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.PackCommit(); ok {
 		_spec.SetField(storage.FieldPackCommit, field.TypeString, value)

@@ -29,8 +29,6 @@ const (
 	FieldFileType = "file_type"
 	// FieldFileSize holds the string denoting the file_size field in the database.
 	FieldFileSize = "file_size"
-	// FieldFileHashes holds the string denoting the file_hashes field in the database.
-	FieldFileHashes = "file_hashes"
 	// FieldPackCommit holds the string denoting the pack_commit field in the database.
 	FieldPackCommit = "pack_commit"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -78,7 +76,6 @@ var Columns = []string{
 	FieldPackageHashSha256,
 	FieldFileType,
 	FieldFileSize,
-	FieldFileHashes,
 	FieldPackCommit,
 	FieldCreatedAt,
 	FieldVersionStorages,

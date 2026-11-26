@@ -112,12 +112,6 @@ func (_c *StorageCreate) SetNillableFileSize(v *int64) *StorageCreate {
 	return _c
 }
 
-// SetFileHashes sets the "file_hashes" field.
-func (_c *StorageCreate) SetFileHashes(v map[string]string) *StorageCreate {
-	_c.mutation.SetFileHashes(v)
-	return _c
-}
-
 // SetPackCommit sets the "pack_commit" field.
 func (_c *StorageCreate) SetPackCommit(v string) *StorageCreate {
 	_c.mutation.SetPackCommit(v)
@@ -335,10 +329,6 @@ func (_c *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FileSize(); ok {
 		_spec.SetField(storage.FieldFileSize, field.TypeInt64, value)
 		_node.FileSize = value
-	}
-	if value, ok := _c.mutation.FileHashes(); ok {
-		_spec.SetField(storage.FieldFileHashes, field.TypeJSON, value)
-		_node.FileHashes = value
 	}
 	if value, ok := _c.mutation.PackCommit(); ok {
 		_spec.SetField(storage.FieldPackCommit, field.TypeString, value)

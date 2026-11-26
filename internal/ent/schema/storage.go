@@ -39,9 +39,6 @@ func (Storage) Fields() []ent.Field {
 		field.Int64("file_size").
 			Default(0).
 			Comment("file size"),
-		field.JSON("file_hashes", map[string]string{}).
-			Optional().
-			Comment("only for full update"),
 		field.String("pack_commit").
 			Optional().
 			Comment("only for the full update of a pack resource: the commit of the snapshot"),
