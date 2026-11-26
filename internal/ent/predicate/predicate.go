@@ -15,5 +15,8 @@ type ResourcePlatformConfig func(*sql.Selector)
 // Storage is the predicate function for storage builders.
 type Storage func(*sql.Selector)
 
+// StorageFileHash is the predicate function for storagefilehash builders.
+type StorageFileHash func(*sql.Selector)
+
 // Version is the predicate function for version builders.
 type Version func(*sql.Selector)

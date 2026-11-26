@@ -706,6 +706,29 @@ func HasOldVersionWith(preds ...predicate.Version) predicate.Storage {
 	})
 }
 
+// HasFileHash applies the HasEdge predicate on the "file_hash" edge.
+func HasFileHash() predicate.Storage {
+	return predicate.Storage(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, FileHashTable, FileHashColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasFileHashWith applies the HasEdge predicate on the "file_hash" edge with a given conditions (other predicates).
+func HasFileHashWith(preds ...predicate.StorageFileHash) predicate.Storage {
+	return predicate.Storage(func(s *sql.Selector) {
+		step := newFileHashStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Storage) predicate.Storage {
 	return predicate.Storage(sql.AndPredicates(predicates...))

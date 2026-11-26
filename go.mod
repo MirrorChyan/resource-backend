@@ -20,6 +20,7 @@ require (
 	github.com/hashicorp/consul/api v1.35.0
 	github.com/hibiken/asynq v0.26.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/klauspost/compress v1.20.4
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.25.0
@@ -64,8 +65,8 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/hcl/v2 v2.25.0 // indirect
 	github.com/hashicorp/serf v0.11.0 // indirect
-	github.com/klauspost/compress v1.20.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

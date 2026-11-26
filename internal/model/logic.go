@@ -89,6 +89,14 @@ type StorageInfoCreatePayload struct {
 	AcceptedAt int64
 }
 
+// FullStorage holds a full-update storage row together with its compressed file hashes.
+// When the package has no file hashes, HashData is nil and HashFormat is 0.
+type FullStorage struct {
+	Storage    *ent.Storage
+	HashFormat uint8
+	HashData   []byte
+}
+
 type IncrementalUpdateInfo struct {
 	Storage *ent.Storage
 }

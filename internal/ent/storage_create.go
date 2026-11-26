@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -179,6 +180,25 @@ func (_c *StorageCreate) SetNillableOldVersionID(id *int) *StorageCreate {
 // SetOldVersion sets the "old_version" edge to the Version entity.
 func (_c *StorageCreate) SetOldVersion(v *Version) *StorageCreate {
 	return _c.SetOldVersionID(v.ID)
+}
+
+// SetFileHashID sets the "file_hash" edge to the StorageFileHash entity by ID.
+func (_c *StorageCreate) SetFileHashID(id int) *StorageCreate {
+	_c.mutation.SetFileHashID(id)
+	return _c
+}
+
+// SetNillableFileHashID sets the "file_hash" edge to the StorageFileHash entity by ID if the given value is not nil.
+func (_c *StorageCreate) SetNillableFileHashID(id *int) *StorageCreate {
+	if id != nil {
+		_c = _c.SetFileHashID(*id)
+	}
+	return _c
+}
+
+// SetFileHash sets the "file_hash" edge to the StorageFileHash entity.
+func (_c *StorageCreate) SetFileHash(v *StorageFileHash) *StorageCreate {
+	return _c.SetFileHashID(v.ID)
 }
 
 // Mutation returns the StorageMutation object of the builder.
@@ -360,6 +380,22 @@ func (_c *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.storage_old_version = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.FileHashIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   storage.FileHashTable,
+			Columns: []string{storage.FileHashColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(storagefilehash.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

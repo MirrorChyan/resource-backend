@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -54,9 +55,11 @@ type StorageEdges struct {
 	Version *Version `json:"version,omitempty"`
 	// only for incremental update
 	OldVersion *Version `json:"old_version,omitempty"`
+	// FileHash holds the value of the file_hash edge.
+	FileHash *StorageFileHash `json:"file_hash,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // VersionOrErr returns the Version value or an error if the edge
@@ -79,6 +82,17 @@ func (e StorageEdges) OldVersionOrErr() (*Version, error) {
 		return nil, &NotFoundError{label: version.Label}
 	}
 	return nil, &NotLoadedError{edge: "old_version"}
+}
+
+// FileHashOrErr returns the FileHash value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e StorageEdges) FileHashOrErr() (*StorageFileHash, error) {
+	if e.FileHash != nil {
+		return e.FileHash, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: storagefilehash.Label}
+	}
+	return nil, &NotLoadedError{edge: "file_hash"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -213,6 +227,11 @@ func (_m *Storage) QueryVersion() *VersionQuery {
 // QueryOldVersion queries the "old_version" edge of the Storage entity.
 func (_m *Storage) QueryOldVersion() *VersionQuery {
 	return NewStorageClient(_m.config).QueryOldVersion(_m)
+}
+
+// QueryFileHash queries the "file_hash" edge of the Storage entity.
+func (_m *Storage) QueryFileHash() *StorageFileHashQuery {
+	return NewStorageClient(_m.config).QueryFileHash(_m)
 }
 
 // Update returns a builder for updating this Storage.

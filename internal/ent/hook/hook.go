@@ -45,6 +45,18 @@ func (f StorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StorageMutation", m)
 }
 
+// The StorageFileHashFunc type is an adapter to allow the use of ordinary
+// function as StorageFileHash mutator.
+type StorageFileHashFunc func(context.Context, *ent.StorageFileHashMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f StorageFileHashFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.StorageFileHashMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StorageFileHashMutation", m)
+}
+
 // The VersionFunc type is an adapter to allow the use of ordinary
 // function as Version mutator.
 type VersionFunc func(context.Context, *ent.VersionMutation) (ent.Value, error)

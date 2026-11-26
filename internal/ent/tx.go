@@ -18,6 +18,8 @@ type Tx struct {
 	ResourcePlatformConfig *ResourcePlatformConfigClient
 	// Storage is the client for interacting with the Storage builders.
 	Storage *StorageClient
+	// StorageFileHash is the client for interacting with the StorageFileHash builders.
+	StorageFileHash *StorageFileHashClient
 	// Version is the client for interacting with the Version builders.
 	Version *VersionClient
 
@@ -154,6 +156,7 @@ func (tx *Tx) init() {
 	tx.Resource = NewResourceClient(tx.config)
 	tx.ResourcePlatformConfig = NewResourcePlatformConfigClient(tx.config)
 	tx.Storage = NewStorageClient(tx.config)
+	tx.StorageFileHash = NewStorageFileHashClient(tx.config)
 	tx.Version = NewVersionClient(tx.config)
 }
 

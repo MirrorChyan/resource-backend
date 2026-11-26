@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -61,6 +62,9 @@ func (Storage) Edges() []ent.Edge {
 		edge.To("old_version", Version.Type).
 			Unique().
 			Comment("only for incremental update"),
+		edge.To("file_hash", StorageFileHash.Type).
+			Unique().
+			Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }
 

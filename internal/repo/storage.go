@@ -10,6 +10,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 	"github.com/MirrorChyan/resource-backend/internal/model"
 	"github.com/MirrorChyan/resource-backend/internal/model/types"
+	"github.com/MirrorChyan/resource-backend/internal/pkg/filehash"
 )
 
 type Storage struct {
@@ -27,18 +28,37 @@ func (r *Storage) CreateFullUpdateStorage(ctx context.Context, verID int,
 	size int64,
 	fileHashes map[string]string,
 ) (*ent.Storage, error) {
+	encoded, err := filehash.EncodeHashes(fileHashes)
+	if err != nil {
+		return nil, err
+	}
 
-	return r.db.Storage.Create().
-		SetUpdateType(storage.UpdateTypeFull).
-		SetOs(os).
-		SetArch(arch).
-		SetPackagePath(path).
-		SetPackageHashSha256(hash).
-		SetFileType(string(fileType)).
-		SetFileSize(size).
-		SetFileHashes(fileHashes).
-		SetVersionID(verID).
-		Save(ctx)
+	var created *ent.Storage
+	err = r.WithTx(ctx, func(tx *ent.Tx) error {
+		st, err := tx.Storage.Create().
+			SetUpdateType(storage.UpdateTypeFull).
+			SetOs(os).
+			SetArch(arch).
+			SetPackagePath(path).
+			SetPackageHashSha256(hash).
+			SetFileType(string(fileType)).
+			SetFileSize(size).
+			SetFileHashes(fileHashes).
+			SetVersionID(verID).
+			Save(ctx)
+		if err != nil {
+			return err
+		}
+		if err := r.SaveFileHashes(ctx, tx, st.ID, encoded); err != nil {
+			return err
+		}
+		created = st
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 func (r *Storage) CreateIncrementalUpdateStorage(ctx context.Context, tx *ent.Tx,
@@ -76,7 +96,28 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 			storage.Os(os),
 			storage.Arch(arch),
 		).
+		Select(storageColumnsWithoutFileHashes...).
 		Only(ctx)
+}
+
+// GetFullUpdateStorageWithHashes fetches the full-update storage row without the legacy
+// file_hashes column, loads and validates its hashes, and returns both the cacheable
+// compressed form and the decoded map.
+func (r *Storage) GetFullUpdateStorageWithHashes(ctx context.Context, verID int, os, arch string) (*model.FullStorage, map[string]string, error) {
+	st, err := r.GetFullUpdateStorage(ctx, verID, os, arch)
+	if err != nil {
+		return nil, nil, err
+	}
+	enc, hashes, err := r.getFileHashesWithEncoded(ctx, st.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	full := &model.FullStorage{Storage: st}
+	if enc != nil {
+		full.HashFormat = enc.Format
+		full.HashData = enc.Data
+	}
+	return full, hashes, nil
 }
 
 // HasPlatform includes purged packages and all channels: either still counts as a prior upload.
@@ -114,19 +155,39 @@ func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
 	commit string,
 	createdAt time.Time,
 ) (*ent.Storage, error) {
-	return r.db.Storage.Create().
-		SetUpdateType(storage.UpdateTypeFull).
-		SetOs(os).
-		SetArch(arch).
-		SetPackagePath(path).
-		SetPackageHashSha256(hash).
-		SetFileType(string(types.Zip)).
-		SetFileSize(size).
-		SetFileHashes(objects).
-		SetPackCommit(commit).
-		SetCreatedAt(createdAt).
-		SetVersionID(verID).
-		Save(ctx)
+	encoded, err := filehash.EncodeHashes(objects)
+	if err != nil {
+		return nil, err
+	}
+
+	var created *ent.Storage
+	err = r.WithTx(ctx, func(tx *ent.Tx) error {
+		st, err := tx.Storage.Create().
+			SetUpdateType(storage.UpdateTypeFull).
+			SetOs(os).
+			SetArch(arch).
+			SetPackagePath(path).
+			SetPackageHashSha256(hash).
+			SetFileType(string(types.Zip)).
+			SetFileSize(size).
+			SetFileHashes(objects).
+			SetPackCommit(commit).
+			SetCreatedAt(createdAt).
+			SetVersionID(verID).
+			Save(ctx)
+		if err != nil {
+			return err
+		}
+		if err := r.SaveFileHashes(ctx, tx, st.ID, encoded); err != nil {
+			return err
+		}
+		created = st
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 // RestoredPackage is the package written again for a storage the purge emptied.
@@ -181,6 +242,7 @@ func (r *Storage) ListPurgedIncrementalStorages(ctx context.Context, verID int, 
 			storage.PackagePathIsNil(),
 		).
 		WithOldVersion().
+		Select(storageColumnsWithoutFileHashes...).
 		All(ctx)
 }
 
@@ -198,6 +260,7 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 			storage.Os(os),
 			storage.Arch(arch),
 		).
+		Select(storageColumnsWithoutFileHashes...).
 		Only(ctx)
 }
 
@@ -208,6 +271,7 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
 	val, err := r.db.Storage.Query().
 		Where(storage.IDEQ(storageId)).
+		Select(storageColumnsWithoutFileHashes...).
 		First(ctx)
 	if err != nil {
 		return err

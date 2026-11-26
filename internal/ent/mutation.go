@@ -15,6 +15,7 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/ent/resource"
 	"github.com/MirrorChyan/resource-backend/internal/ent/resourceplatformconfig"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
+	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/ent/version"
 )
 
@@ -30,6 +31,7 @@ const (
 	TypeResource               = "Resource"
 	TypeResourcePlatformConfig = "ResourcePlatformConfig"
 	TypeStorage                = "Storage"
+	TypeStorageFileHash        = "StorageFileHash"
 	TypeVersion                = "Version"
 )
 
@@ -1375,6 +1377,8 @@ type StorageMutation struct {
 	clearedversion      bool
 	old_version         *int
 	clearedold_version  bool
+	file_hash           *int
+	clearedfile_hash    bool
 	done                bool
 	oldValue            func(context.Context) (*Storage, error)
 	predicates          []predicate.Storage
@@ -2038,6 +2042,45 @@ func (m *StorageMutation) ResetOldVersion() {
 	m.clearedold_version = false
 }
 
+// SetFileHashID sets the "file_hash" edge to the StorageFileHash entity by id.
+func (m *StorageMutation) SetFileHashID(id int) {
+	m.file_hash = &id
+}
+
+// ClearFileHash clears the "file_hash" edge to the StorageFileHash entity.
+func (m *StorageMutation) ClearFileHash() {
+	m.clearedfile_hash = true
+}
+
+// FileHashCleared reports if the "file_hash" edge to the StorageFileHash entity was cleared.
+func (m *StorageMutation) FileHashCleared() bool {
+	return m.clearedfile_hash
+}
+
+// FileHashID returns the "file_hash" edge ID in the mutation.
+func (m *StorageMutation) FileHashID() (id int, exists bool) {
+	if m.file_hash != nil {
+		return *m.file_hash, true
+	}
+	return
+}
+
+// FileHashIDs returns the "file_hash" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FileHashID instead. It exists only for internal usage by the builders.
+func (m *StorageMutation) FileHashIDs() (ids []int) {
+	if id := m.file_hash; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFileHash resets all changes to the "file_hash" edge.
+func (m *StorageMutation) ResetFileHash() {
+	m.file_hash = nil
+	m.clearedfile_hash = false
+}
+
 // Where appends a list predicates to the StorageMutation builder.
 func (m *StorageMutation) Where(ps ...predicate.Storage) {
 	m.predicates = append(m.predicates, ps...)
@@ -2389,12 +2432,15 @@ func (m *StorageMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *StorageMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.version != nil {
 		edges = append(edges, storage.EdgeVersion)
 	}
 	if m.old_version != nil {
 		edges = append(edges, storage.EdgeOldVersion)
+	}
+	if m.file_hash != nil {
+		edges = append(edges, storage.EdgeFileHash)
 	}
 	return edges
 }
@@ -2411,13 +2457,17 @@ func (m *StorageMutation) AddedIDs(name string) []ent.Value {
 		if id := m.old_version; id != nil {
 			return []ent.Value{*id}
 		}
+	case storage.EdgeFileHash:
+		if id := m.file_hash; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *StorageMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	return edges
 }
 
@@ -2429,12 +2479,15 @@ func (m *StorageMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *StorageMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedversion {
 		edges = append(edges, storage.EdgeVersion)
 	}
 	if m.clearedold_version {
 		edges = append(edges, storage.EdgeOldVersion)
+	}
+	if m.clearedfile_hash {
+		edges = append(edges, storage.EdgeFileHash)
 	}
 	return edges
 }
@@ -2447,6 +2500,8 @@ func (m *StorageMutation) EdgeCleared(name string) bool {
 		return m.clearedversion
 	case storage.EdgeOldVersion:
 		return m.clearedold_version
+	case storage.EdgeFileHash:
+		return m.clearedfile_hash
 	}
 	return false
 }
@@ -2460,6 +2515,9 @@ func (m *StorageMutation) ClearEdge(name string) error {
 		return nil
 	case storage.EdgeOldVersion:
 		m.ClearOldVersion()
+		return nil
+	case storage.EdgeFileHash:
+		m.ClearFileHash()
 		return nil
 	}
 	return fmt.Errorf("unknown Storage unique edge %s", name)
@@ -2475,8 +2533,709 @@ func (m *StorageMutation) ResetEdge(name string) error {
 	case storage.EdgeOldVersion:
 		m.ResetOldVersion()
 		return nil
+	case storage.EdgeFileHash:
+		m.ResetFileHash()
+		return nil
 	}
 	return fmt.Errorf("unknown Storage edge %s", name)
+}
+
+// StorageFileHashMutation represents an operation that mutates the StorageFileHash nodes in the graph.
+type StorageFileHashMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	format         *uint8
+	addformat      *int8
+	data           *[]byte
+	raw_size       *int
+	addraw_size    *int
+	entries        *int
+	addentries     *int
+	clearedFields  map[string]struct{}
+	storage        *int
+	clearedstorage bool
+	done           bool
+	oldValue       func(context.Context) (*StorageFileHash, error)
+	predicates     []predicate.StorageFileHash
+}
+
+var _ ent.Mutation = (*StorageFileHashMutation)(nil)
+
+// storagefilehashOption allows management of the mutation configuration using functional options.
+type storagefilehashOption func(*StorageFileHashMutation)
+
+// newStorageFileHashMutation creates new mutation for the StorageFileHash entity.
+func newStorageFileHashMutation(c config, op Op, opts ...storagefilehashOption) *StorageFileHashMutation {
+	m := &StorageFileHashMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeStorageFileHash,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withStorageFileHashID sets the ID field of the mutation.
+func withStorageFileHashID(id int) storagefilehashOption {
+	return func(m *StorageFileHashMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *StorageFileHash
+		)
+		m.oldValue = func(ctx context.Context) (*StorageFileHash, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().StorageFileHash.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withStorageFileHash sets the old StorageFileHash of the mutation.
+func withStorageFileHash(node *StorageFileHash) storagefilehashOption {
+	return func(m *StorageFileHashMutation) {
+		m.oldValue = func(context.Context) (*StorageFileHash, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m StorageFileHashMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m StorageFileHashMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *StorageFileHashMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *StorageFileHashMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().StorageFileHash.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetStorageID sets the "storage_id" field.
+func (m *StorageFileHashMutation) SetStorageID(i int) {
+	m.storage = &i
+}
+
+// StorageID returns the value of the "storage_id" field in the mutation.
+func (m *StorageFileHashMutation) StorageID() (r int, exists bool) {
+	v := m.storage
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStorageID returns the old "storage_id" field's value of the StorageFileHash entity.
+// If the StorageFileHash object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageFileHashMutation) OldStorageID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStorageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStorageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStorageID: %w", err)
+	}
+	return oldValue.StorageID, nil
+}
+
+// ResetStorageID resets all changes to the "storage_id" field.
+func (m *StorageFileHashMutation) ResetStorageID() {
+	m.storage = nil
+}
+
+// SetFormat sets the "format" field.
+func (m *StorageFileHashMutation) SetFormat(u uint8) {
+	m.format = &u
+	m.addformat = nil
+}
+
+// Format returns the value of the "format" field in the mutation.
+func (m *StorageFileHashMutation) Format() (r uint8, exists bool) {
+	v := m.format
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFormat returns the old "format" field's value of the StorageFileHash entity.
+// If the StorageFileHash object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageFileHashMutation) OldFormat(ctx context.Context) (v uint8, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFormat is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFormat requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFormat: %w", err)
+	}
+	return oldValue.Format, nil
+}
+
+// AddFormat adds u to the "format" field.
+func (m *StorageFileHashMutation) AddFormat(u int8) {
+	if m.addformat != nil {
+		*m.addformat += u
+	} else {
+		m.addformat = &u
+	}
+}
+
+// AddedFormat returns the value that was added to the "format" field in this mutation.
+func (m *StorageFileHashMutation) AddedFormat() (r int8, exists bool) {
+	v := m.addformat
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFormat resets all changes to the "format" field.
+func (m *StorageFileHashMutation) ResetFormat() {
+	m.format = nil
+	m.addformat = nil
+}
+
+// SetData sets the "data" field.
+func (m *StorageFileHashMutation) SetData(b []byte) {
+	m.data = &b
+}
+
+// Data returns the value of the "data" field in the mutation.
+func (m *StorageFileHashMutation) Data() (r []byte, exists bool) {
+	v := m.data
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldData returns the old "data" field's value of the StorageFileHash entity.
+// If the StorageFileHash object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageFileHashMutation) OldData(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldData is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldData requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldData: %w", err)
+	}
+	return oldValue.Data, nil
+}
+
+// ResetData resets all changes to the "data" field.
+func (m *StorageFileHashMutation) ResetData() {
+	m.data = nil
+}
+
+// SetRawSize sets the "raw_size" field.
+func (m *StorageFileHashMutation) SetRawSize(i int) {
+	m.raw_size = &i
+	m.addraw_size = nil
+}
+
+// RawSize returns the value of the "raw_size" field in the mutation.
+func (m *StorageFileHashMutation) RawSize() (r int, exists bool) {
+	v := m.raw_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRawSize returns the old "raw_size" field's value of the StorageFileHash entity.
+// If the StorageFileHash object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageFileHashMutation) OldRawSize(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRawSize is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRawSize requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRawSize: %w", err)
+	}
+	return oldValue.RawSize, nil
+}
+
+// AddRawSize adds i to the "raw_size" field.
+func (m *StorageFileHashMutation) AddRawSize(i int) {
+	if m.addraw_size != nil {
+		*m.addraw_size += i
+	} else {
+		m.addraw_size = &i
+	}
+}
+
+// AddedRawSize returns the value that was added to the "raw_size" field in this mutation.
+func (m *StorageFileHashMutation) AddedRawSize() (r int, exists bool) {
+	v := m.addraw_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRawSize resets all changes to the "raw_size" field.
+func (m *StorageFileHashMutation) ResetRawSize() {
+	m.raw_size = nil
+	m.addraw_size = nil
+}
+
+// SetEntries sets the "entries" field.
+func (m *StorageFileHashMutation) SetEntries(i int) {
+	m.entries = &i
+	m.addentries = nil
+}
+
+// Entries returns the value of the "entries" field in the mutation.
+func (m *StorageFileHashMutation) Entries() (r int, exists bool) {
+	v := m.entries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEntries returns the old "entries" field's value of the StorageFileHash entity.
+// If the StorageFileHash object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageFileHashMutation) OldEntries(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEntries is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEntries requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEntries: %w", err)
+	}
+	return oldValue.Entries, nil
+}
+
+// AddEntries adds i to the "entries" field.
+func (m *StorageFileHashMutation) AddEntries(i int) {
+	if m.addentries != nil {
+		*m.addentries += i
+	} else {
+		m.addentries = &i
+	}
+}
+
+// AddedEntries returns the value that was added to the "entries" field in this mutation.
+func (m *StorageFileHashMutation) AddedEntries() (r int, exists bool) {
+	v := m.addentries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetEntries resets all changes to the "entries" field.
+func (m *StorageFileHashMutation) ResetEntries() {
+	m.entries = nil
+	m.addentries = nil
+}
+
+// ClearStorage clears the "storage" edge to the Storage entity.
+func (m *StorageFileHashMutation) ClearStorage() {
+	m.clearedstorage = true
+	m.clearedFields[storagefilehash.FieldStorageID] = struct{}{}
+}
+
+// StorageCleared reports if the "storage" edge to the Storage entity was cleared.
+func (m *StorageFileHashMutation) StorageCleared() bool {
+	return m.clearedstorage
+}
+
+// StorageIDs returns the "storage" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// StorageID instead. It exists only for internal usage by the builders.
+func (m *StorageFileHashMutation) StorageIDs() (ids []int) {
+	if id := m.storage; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetStorage resets all changes to the "storage" edge.
+func (m *StorageFileHashMutation) ResetStorage() {
+	m.storage = nil
+	m.clearedstorage = false
+}
+
+// Where appends a list predicates to the StorageFileHashMutation builder.
+func (m *StorageFileHashMutation) Where(ps ...predicate.StorageFileHash) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the StorageFileHashMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *StorageFileHashMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.StorageFileHash, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *StorageFileHashMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *StorageFileHashMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (StorageFileHash).
+func (m *StorageFileHashMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *StorageFileHashMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.storage != nil {
+		fields = append(fields, storagefilehash.FieldStorageID)
+	}
+	if m.format != nil {
+		fields = append(fields, storagefilehash.FieldFormat)
+	}
+	if m.data != nil {
+		fields = append(fields, storagefilehash.FieldData)
+	}
+	if m.raw_size != nil {
+		fields = append(fields, storagefilehash.FieldRawSize)
+	}
+	if m.entries != nil {
+		fields = append(fields, storagefilehash.FieldEntries)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *StorageFileHashMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case storagefilehash.FieldStorageID:
+		return m.StorageID()
+	case storagefilehash.FieldFormat:
+		return m.Format()
+	case storagefilehash.FieldData:
+		return m.Data()
+	case storagefilehash.FieldRawSize:
+		return m.RawSize()
+	case storagefilehash.FieldEntries:
+		return m.Entries()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *StorageFileHashMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case storagefilehash.FieldStorageID:
+		return m.OldStorageID(ctx)
+	case storagefilehash.FieldFormat:
+		return m.OldFormat(ctx)
+	case storagefilehash.FieldData:
+		return m.OldData(ctx)
+	case storagefilehash.FieldRawSize:
+		return m.OldRawSize(ctx)
+	case storagefilehash.FieldEntries:
+		return m.OldEntries(ctx)
+	}
+	return nil, fmt.Errorf("unknown StorageFileHash field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *StorageFileHashMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case storagefilehash.FieldStorageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStorageID(v)
+		return nil
+	case storagefilehash.FieldFormat:
+		v, ok := value.(uint8)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFormat(v)
+		return nil
+	case storagefilehash.FieldData:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetData(v)
+		return nil
+	case storagefilehash.FieldRawSize:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRawSize(v)
+		return nil
+	case storagefilehash.FieldEntries:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEntries(v)
+		return nil
+	}
+	return fmt.Errorf("unknown StorageFileHash field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *StorageFileHashMutation) AddedFields() []string {
+	var fields []string
+	if m.addformat != nil {
+		fields = append(fields, storagefilehash.FieldFormat)
+	}
+	if m.addraw_size != nil {
+		fields = append(fields, storagefilehash.FieldRawSize)
+	}
+	if m.addentries != nil {
+		fields = append(fields, storagefilehash.FieldEntries)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *StorageFileHashMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case storagefilehash.FieldFormat:
+		return m.AddedFormat()
+	case storagefilehash.FieldRawSize:
+		return m.AddedRawSize()
+	case storagefilehash.FieldEntries:
+		return m.AddedEntries()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *StorageFileHashMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case storagefilehash.FieldFormat:
+		v, ok := value.(int8)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFormat(v)
+		return nil
+	case storagefilehash.FieldRawSize:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRawSize(v)
+		return nil
+	case storagefilehash.FieldEntries:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddEntries(v)
+		return nil
+	}
+	return fmt.Errorf("unknown StorageFileHash numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *StorageFileHashMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *StorageFileHashMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *StorageFileHashMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown StorageFileHash nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *StorageFileHashMutation) ResetField(name string) error {
+	switch name {
+	case storagefilehash.FieldStorageID:
+		m.ResetStorageID()
+		return nil
+	case storagefilehash.FieldFormat:
+		m.ResetFormat()
+		return nil
+	case storagefilehash.FieldData:
+		m.ResetData()
+		return nil
+	case storagefilehash.FieldRawSize:
+		m.ResetRawSize()
+		return nil
+	case storagefilehash.FieldEntries:
+		m.ResetEntries()
+		return nil
+	}
+	return fmt.Errorf("unknown StorageFileHash field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *StorageFileHashMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.storage != nil {
+		edges = append(edges, storagefilehash.EdgeStorage)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *StorageFileHashMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case storagefilehash.EdgeStorage:
+		if id := m.storage; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *StorageFileHashMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *StorageFileHashMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *StorageFileHashMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedstorage {
+		edges = append(edges, storagefilehash.EdgeStorage)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *StorageFileHashMutation) EdgeCleared(name string) bool {
+	switch name {
+	case storagefilehash.EdgeStorage:
+		return m.clearedstorage
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *StorageFileHashMutation) ClearEdge(name string) error {
+	switch name {
+	case storagefilehash.EdgeStorage:
+		m.ClearStorage()
+		return nil
+	}
+	return fmt.Errorf("unknown StorageFileHash unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *StorageFileHashMutation) ResetEdge(name string) error {
+	switch name {
+	case storagefilehash.EdgeStorage:
+		m.ResetStorage()
+		return nil
+	}
+	return fmt.Errorf("unknown StorageFileHash edge %s", name)
 }
 
 // VersionMutation represents an operation that mutates the Version nodes in the graph.

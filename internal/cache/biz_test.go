@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -28,7 +27,7 @@ func requireHolds[V any](t *testing.T, name string, c *Cache[string, V], value V
 // Every cache of the group holds a thousand small entries; each was sized for more.
 func TestVersionCacheGroupHoldsAThousandEntriesEach(t *testing.T) {
 	g := newVersionCacheGroup()
-	requireHolds(t, "full update storage", g.FullUpdateStorageCache, &ent.Storage{}, 1000)
+	requireHolds(t, "full update storage", g.FullUpdateStorageCache, &model.FullStorage{Storage: &ent.Storage{}}, 1000)
 	requireHolds(t, "version name id", g.VersionNameIdCache, 1, 1000)
 	requireHolds(t, "incremental update info", g.IncrementalUpdateInfoCache, &model.IncrementalUpdateInfo{}, 1000)
 	requireHolds(t, "multi version info", g.MultiVersionInfoCache, &model.MultiVersionInfo{}, 1000)
@@ -36,18 +35,15 @@ func TestVersionCacheGroupHoldsAThousandEntriesEach(t *testing.T) {
 	requireHolds(t, "platform update type", g.PlatformUpdateTypeCache, map[model.Platform]types.Update{}, 1000)
 }
 
-// A storage weighs more than the strings of its file hashes, so that its estimate does not
-// fall short of what it takes in memory.
+// A full storage weighs more than its compressed file hashes byte slice.
 func TestStorageCostCountsFileHashes(t *testing.T) {
-	hashes := make(map[string]string, 1000)
-	var size int64
-	for i := range 1000 {
-		k, v := fmt.Sprintf("bin/file-%d.dll", i), strings.Repeat("a", 64)
-		hashes[k] = v
-		size += int64(len(k) + len(v))
-	}
-	require.Greater(t, storageCost(&ent.Storage{FileHashes: hashes}), size)
-	require.Less(t, storageCost(&ent.Storage{}), int64(1024))
+	compressed := make([]byte, 32<<10)
+	require.Greater(t, storageCost(&model.FullStorage{
+		Storage:    &ent.Storage{PackagePath: "/oss/res/1/resource.zip"},
+		HashFormat: 1,
+		HashData:   compressed,
+	}), int64(len(compressed)))
+	require.Less(t, storageCost(&model.FullStorage{}), int64(1024))
 }
 
 func TestMultiVersionInfoCostCountsReleaseNote(t *testing.T) {
