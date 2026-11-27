@@ -11,7 +11,6 @@ import (
 	"github.com/MirrorChyan/resource-backend/internal/config"
 	"github.com/MirrorChyan/resource-backend/internal/db"
 	"github.com/MirrorChyan/resource-backend/internal/ent"
-	"github.com/MirrorChyan/resource-backend/internal/migration"
 	_ "github.com/MirrorChyan/resource-backend/internal/pkg/banner"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/logger"
 	"github.com/MirrorChyan/resource-backend/internal/pkg/publiccdk"
@@ -65,7 +64,6 @@ func main() {
 
 	app.AddAdapter(
 		restserver.NewAdapter(restSrv),
-		migration.NewFileHashesMigrator(zap.L(), dx, redis, dl),
 	)
 
 	app.Run(context.Background())

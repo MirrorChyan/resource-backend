@@ -43,7 +43,6 @@ func (r *Storage) CreateFullUpdateStorage(ctx context.Context, verID int,
 			SetPackageHashSha256(hash).
 			SetFileType(string(fileType)).
 			SetFileSize(size).
-			SetFileHashes(fileHashes).
 			SetVersionID(verID).
 			Save(ctx)
 		if err != nil {
@@ -96,13 +95,11 @@ func (r *Storage) GetFullUpdateStorage(ctx context.Context, verID int, os, arch 
 			storage.Os(os),
 			storage.Arch(arch),
 		).
-		Select(storageColumnsWithoutFileHashes...).
 		Only(ctx)
 }
 
-// GetFullUpdateStorageWithHashes fetches the full-update storage row without the legacy
-// file_hashes column, loads and validates its hashes, and returns both the cacheable
-// compressed form and the decoded map.
+// GetFullUpdateStorageWithHashes fetches the full-update storage row, loads and validates
+// its hashes, and returns both the cacheable compressed form and the decoded map.
 func (r *Storage) GetFullUpdateStorageWithHashes(ctx context.Context, verID int, os, arch string) (*model.FullStorage, map[string]string, error) {
 	st, err := r.GetFullUpdateStorage(ctx, verID, os, arch)
 	if err != nil {
@@ -170,7 +167,6 @@ func (r *Storage) CreatePackStorage(ctx context.Context, verID int,
 			SetPackageHashSha256(hash).
 			SetFileType(string(types.Zip)).
 			SetFileSize(size).
-			SetFileHashes(objects).
 			SetPackCommit(commit).
 			SetCreatedAt(createdAt).
 			SetVersionID(verID).
@@ -242,7 +238,6 @@ func (r *Storage) ListPurgedIncrementalStorages(ctx context.Context, verID int, 
 			storage.PackagePathIsNil(),
 		).
 		WithOldVersion().
-		Select(storageColumnsWithoutFileHashes...).
 		All(ctx)
 }
 
@@ -260,7 +255,6 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 			storage.Os(os),
 			storage.Arch(arch),
 		).
-		Select(storageColumnsWithoutFileHashes...).
 		Only(ctx)
 }
 
@@ -271,7 +265,6 @@ func (r *Storage) GetIncrementalUpdateStorage(ctx context.Context, verID, oldVer
 func (r *Storage) PurgeStorageInfo(ctx context.Context, storageId int) error {
 	val, err := r.db.Storage.Query().
 		Where(storage.IDEQ(storageId)).
-		Select(storageColumnsWithoutFileHashes...).
 		First(ctx)
 	if err != nil {
 		return err

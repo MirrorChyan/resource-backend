@@ -182,7 +182,6 @@ func TestPackUploads(t *testing.T) {
 	stored, err := l.storageLogic.GetFullUpdateStorage(ctx, versionID(t, client, n1), "", "")
 	require.NoError(t, err)
 	require.Equal(t, c1, stored.PackCommit)
-	require.Empty(t, stored.FileHashes)
 	hashes, err := l.storageLogic.GetFileHashes(ctx, stored.ID)
 	require.NoError(t, err)
 	require.Contains(t, hashes, gitpack.RootTreeKey)

@@ -31,14 +31,6 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	decoded, err := DecodeHashes(enc.Format, enc.Data)
 	require.NoError(t, err)
 	require.Equal(t, hashes, decoded)
-
-	// Better compression level round-trips through the same decoder.
-	raw, err := MarshalHashes(hashes)
-	require.NoError(t, err)
-	better := CompressRawJSON(raw, true)
-	decodedBetter, err := DecodeHashes(FormatZstdJSON, better)
-	require.NoError(t, err)
-	require.Equal(t, hashes, decodedBetter)
 }
 
 func TestEncodeEmptyReturnsNil(t *testing.T) {
@@ -62,39 +54,9 @@ func TestDecodeRejectsCorruptedData(t *testing.T) {
 	_, err = DecodeHashes(FormatZstdJSON, []byte("not-valid-zstd"))
 	require.ErrorContains(t, err, "decompress")
 
-	badJSON := CompressRawJSON([]byte("{not-json"), false)
+	badJSON := zstdDefaultEncoder.EncodeAll([]byte("{not-json"), nil)
 	_, err = DecodeHashes(FormatZstdJSON, badJSON)
 	require.ErrorContains(t, err, "unmarshal")
-}
-
-func TestParseRawHashesJSON(t *testing.T) {
-	m, kind, err := ParseRawHashesJSON(nil, false)
-	require.NoError(t, err)
-	require.Nil(t, m)
-	require.Equal(t, RawHashSQLNull, kind)
-
-	m, kind, err = ParseRawHashesJSON([]byte("  "), true)
-	require.NoError(t, err)
-	require.Nil(t, m)
-	require.Equal(t, RawHashSQLNull, kind)
-
-	m, kind, err = ParseRawHashesJSON([]byte("null"), true)
-	require.NoError(t, err)
-	require.Nil(t, m)
-	require.Equal(t, RawHashJSONNull, kind)
-
-	m, kind, err = ParseRawHashesJSON([]byte("{}"), true)
-	require.NoError(t, err)
-	require.Nil(t, m)
-	require.Equal(t, RawHashEmptyObject, kind)
-
-	m, kind, err = ParseRawHashesJSON([]byte(`{"a.txt":"123"}`), true)
-	require.NoError(t, err)
-	require.Equal(t, map[string]string{"a.txt": "123"}, m)
-	require.Equal(t, RawHashNonEmpty, kind)
-
-	_, _, err = ParseRawHashesJSON([]byte(`{bad`), true)
-	require.Error(t, err)
 }
 
 func TestCodecConcurrentSafety(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/MirrorChyan/resource-backend/internal/cache"
-	"github.com/MirrorChyan/resource-backend/internal/ent/storage"
 	"github.com/MirrorChyan/resource-backend/internal/ent/storagefilehash"
 	"github.com/MirrorChyan/resource-backend/internal/logic/misc"
 	"github.com/MirrorChyan/resource-backend/internal/model"
@@ -75,7 +74,7 @@ func TestCorruptFileHashesReturnErrorWithoutSkipOrCachePoison(t *testing.T) {
 	_ = s1
 }
 
-func TestFullUpdateStorageCacheStoresCompressedFallbackAndServesHits(t *testing.T) {
+func TestFullUpdateStorageCacheStoresCompressedHashesAndServesHits(t *testing.T) {
 	ctx := context.Background()
 	l, client := newPatchTestLogic(t)
 	l.cacheGroup.FullUpdateStorageCache = cache.NewWeightedCache[string, *model.FullStorage](-1, 64<<20, 1024, func(s *model.FullStorage) int64 {
@@ -88,38 +87,34 @@ func TestFullUpdateStorageCacheStoresCompressedFallbackAndServesHits(t *testing.
 	res := client.Resource.Create().SetID("res").SetName("res").SetDescription("").SaveX(ctx)
 	v1 := client.Version.Create().SetResource(res).SetName("v1").SetNumber(1).SaveX(ctx)
 
-	// Create a legacy row directly via ent (only in storages.file_hashes, absent from storage_file_hashes).
-	legacyHashes := make(map[string]string, 100)
+	hashes := make(map[string]string, 100)
 	for i := range 100 {
-		legacyHashes["assets/dir/file_"+strconv.Itoa(i)+".png"] = strings.Repeat("a", 64)
+		hashes["assets/dir/file_"+strconv.Itoa(i)+".png"] = strings.Repeat("a", 64)
 	}
-	st := client.Storage.Create().
-		SetVersion(v1).
-		SetUpdateType(storage.UpdateTypeFull).
-		SetOs("windows").
-		SetArch("amd64").
-		SetPackagePath("/p/v1.zip").
-		SetFileHashes(legacyHashes).
-		SaveX(ctx)
+	st, err := l.storageLogic.CreateFullUpdateStorage(ctx, v1.ID, "windows", "amd64", "/p/v1.zip", types.Zip, "h1", 100, hashes)
+	require.NoError(t, err)
 
-	// First read falls back to legacy column and caches compressed bytes.
+	// The first read caches the compressed bytes.
 	got1, err := l.getFullUpdateStorageByCache(ctx, v1.ID, "windows", "amd64")
 	require.NoError(t, err)
-	require.Equal(t, legacyHashes, got1.fileHashes)
+	require.Equal(t, hashes, got1.fileHashes)
 
 	cacheKey := l.cacheGroup.GetCacheKey(strconv.Itoa(v1.ID), "windows", "amd64")
 	entry, ok := l.cacheGroup.FullUpdateStorageCache.Get(cacheKey)
 	require.True(t, ok)
 	require.Equal(t, filehash.FormatZstdJSON, entry.HashFormat)
-	rawJSON, err := filehash.MarshalHashes(legacyHashes)
+	rawJSON, err := filehash.MarshalHashes(hashes)
 	require.NoError(t, err)
 	require.Less(t, len(entry.HashData), len(rawJSON))
 
-	// Corrupt legacy column in DB; second call must still succeed from compressed cache hit.
-	client.Storage.UpdateOneID(st.ID).ClearFileHashes().ExecX(ctx)
+	// With the row corrupted in the database, the second read is still served from the cache.
+	client.StorageFileHash.Update().
+		Where(storagefilehash.StorageID(st.ID)).
+		SetData([]byte("corrupted")).
+		ExecX(ctx)
 	got2, err := l.getFullUpdateStorageByCache(ctx, v1.ID, "windows", "amd64")
 	require.NoError(t, err)
-	require.Equal(t, legacyHashes, got2.fileHashes)
+	require.Equal(t, hashes, got2.fileHashes)
 }
 
 func TestDoProcessPackStorageDoesNotReadNewFileHashesTable(t *testing.T) {
@@ -155,7 +150,7 @@ func TestDoProcessPackStorageDoesNotReadNewFileHashesTable(t *testing.T) {
 	require.False(t, stillCached)
 }
 
-func TestPatchSkippedWhenHashesMissingInBothTables(t *testing.T) {
+func TestPatchSkippedWhenHashesMissing(t *testing.T) {
 	ctx := context.Background()
 	l, client := newPatchTestLogic(t)
 	l.cacheGroup.FullUpdateStorageCache = cache.NewCache[string, *model.FullStorage](-1, 1024)
